@@ -2,13 +2,35 @@ use bevy::prelude::*;
 use rand::Rng;
 use crate::entities::spawn_circle;
 use crate::systems::{movement_system, bounce_system};
+use super::GameState;
 
 pub struct BouncingCirclesScenePlugin;
 
 impl Plugin for BouncingCirclesScenePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_scene)
-           .add_systems(Update, (movement_system, bounce_system));
+        app.add_systems(OnEnter(GameState::BouncingBalls), setup_scene)
+           .add_systems(Update, movement_system.run_if(in_state(GameState::BouncingBalls)))
+           .add_systems(Update, bounce_system.run_if(in_state(GameState::BouncingBalls)))
+           .add_systems(Update, handle_escape.run_if(in_state(GameState::BouncingBalls)))
+           .add_systems(OnExit(GameState::BouncingBalls), cleanup_scene);
+    }
+}
+
+fn handle_escape(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if keyboard.just_pressed(KeyCode::Escape) {
+        next_state.set(GameState::MainMenu);
+    }
+}
+
+fn cleanup_scene(
+    mut commands: Commands,
+    circles_query: Query<Entity, With<crate::components::CircleCollider>>,
+) {
+    for entity in &circles_query {
+        commands.entity(entity).despawn();
     }
 }
 
