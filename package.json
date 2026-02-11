@@ -1,0 +1,13 @@
+{
+  "name": "refract",
+  "version": "1.0.0",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "bitecs": "^0.4.0",
+    "electron": "^40.3.0",
+    "pixi.js": "^8.16.0"
+  }
+}
