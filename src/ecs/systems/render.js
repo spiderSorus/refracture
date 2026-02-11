@@ -9,31 +9,41 @@ const renderExitQuery = exitQuery(renderQuery);
 const sprites = new Map();
 
 module.exports = function createRenderSystem(app, state) {
-    const grid = new PIXI.Graphics();
-    app.stage.addChild(grid);
+    // 1. World Layer (moves with camera)
+    const worldLayer = app.stage;
 
-    function drawWorldGrid() {
-        grid.clear();
+    // 2. UI Layer (static screen space)
+    const uiLayer = new PIXI.Container();
+    app.stage.parent.addChild(uiLayer);
+
+    const crosshair = new PIXI.Graphics();
+    uiLayer.addChild(crosshair);
+
+    function drawOriginCrosshair() {
+        crosshair.clear();
         if (!state.debug) return;
 
-        const color = 0x333333;
-        const step = UNIT_SIZE * PPU; // 80px
+        // Convert World Origin (0,0) to Screen Pixels
+        // Formula: (WorldPos - Pivot) * Scale + ScreenCenter
+        const zoom = worldLayer.scale.x;
+        const screenX = (0 - worldLayer.pivot.x) * zoom + (app.screen.width / 2);
+        const screenY = (0 - worldLayer.pivot.y) * zoom + (app.screen.height / 2);
 
-        // We draw a large enough area to cover the movement
-        // Or you can draw based on the current view bounds
-        const gridRange = 5000;
+        const size = 25; // Length of the arms
+        const thickness = 4;
 
-        for (let x = -gridRange; x <= gridRange; x += step) {
-            grid.rect(x, -gridRange, 1, gridRange * 2).fill(color);
-        }
-        for (let y = -gridRange; y <= gridRange; y += step) {
-            grid.rect(-gridRange, y, gridRange * 2, 1).fill(color);
-        }
+        crosshair.setStrokeStyle({ width: thickness, color: 0x00FF00 });
+
+        // Draw the cross centered at the screen-mapped origin
+        crosshair.moveTo(screenX, screenY - size).lineTo(screenX, screenY + size);
+        crosshair.moveTo(screenX - size, screenY).lineTo(screenX + size, screenY);
+        crosshair.stroke();
     }
 
     return (world) => {
-        drawWorldGrid();
+        drawOriginCrosshair();
 
+        // --- Standard ECS Rendering ---
         const entered = renderEnterQuery(world);
         for (let i = 0; i < entered.length; i++) {
             const eid = entered[i];
@@ -46,7 +56,7 @@ module.exports = function createRenderSystem(app, state) {
                 g.rect(-sizePx / 2, -sizePx / 2, sizePx, sizePx).fill(Graphic.color[eid]);
             }
 
-            app.stage.addChild(g);
+            worldLayer.addChild(g);
             sprites.set(eid, g);
         }
 
@@ -58,7 +68,6 @@ module.exports = function createRenderSystem(app, state) {
             if (visual) {
                 const isDebugEntity = hasComponent(world, Debug, eid);
                 visual.visible = isDebugEntity ? state.debug : true;
-
                 visual.x = Position.x[eid] * PPU;
                 visual.y = Position.y[eid] * PPU;
             }
@@ -69,7 +78,7 @@ module.exports = function createRenderSystem(app, state) {
             const eid = exited[i];
             const visual = sprites.get(eid);
             if (visual) {
-                app.stage.removeChild(visual);
+                worldLayer.removeChild(visual);
                 visual.destroy();
                 sprites.delete(eid);
             }
