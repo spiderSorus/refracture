@@ -1,11 +1,19 @@
-const { defineComponent, f32, ui32, ui8 } = require('bitecs');
+const { defineComponent, Types } = require('bitecs');
 
-const Position = defineComponent({ x: f32, y: f32 });
-const Velocity = defineComponent({ x: f32, y: f32 });
+const Position = defineComponent({
+    x: Types.f32,
+    y: Types.f32
+});
+
+const Velocity = defineComponent({
+    x: Types.f32,
+    y: Types.f32
+});
+
 const Graphic = defineComponent({
-    shape: ui8, // 0: Circle, 1: Rect
-    color: ui32,
-    size: f32
+    shape: Types.ui8,
+    color: Types.ui32,
+    size: Types.f32
 });
 
 module.exports = { Position, Velocity, Graphic };

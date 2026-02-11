@@ -6,7 +6,7 @@
     "start": "electron ."
   },
   "dependencies": {
-    "bitecs": "^0.4.0",
+    "bitecs": "^0.3.40",
     "electron": "^40.3.0",
     "pixi.js": "^8.16.0"
   }
