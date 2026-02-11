@@ -1,0 +1,1276 @@
+
+--- FILE: src/app.js ---
+const SceneManager = require('./core/SceneManager');
+const LoadingScene = require('./scenes/LoadingScene');
+
+async function initGame(app) {
+    const director = new SceneManager(app);
+    // Load the animation scene first
+    await director.loadScene(LoadingScene);
+}
+
+module.exports = { initGame };
+--- FILE: src/constants.js ---
+module.exports = {
+    UNIT_SIZE: 10,       // A "Standard" unit
+    PPU: 8,             // Pixels Per Unit (e.g., 1 unit = 8 pixels)
+    PLAYER_SPEED: 10,    // 10 units per second
+    SHAPES: { CIRCLE: 0, RECT: 1 }
+};
+--- FILE: src/core/SceneManager.js ---
+module.exports = class SceneManager {
+    constructor(app) {
+        this.app = app;
+        this.currentScene = null;
+    }
+
+    async loadScene(SceneClass) {
+        console.log(`SceneManager: Loading ${SceneClass.name}...`);
+
+        // 1. Cleanup old scene
+        if (this.currentScene) {
+            this.app.ticker.remove(this.currentScene.update, this.currentScene);
+            this.currentScene.destroy();
+        }
+
+        // 2. Initialize new scene
+        this.currentScene = new SceneClass(this.app, this);
+        await this.currentScene.init();
+
+        // 3. Re-attach ticker
+        // We bind 'this' so the scene update has access to its own properties
+        this.app.ticker.add(this.currentScene.update, this.currentScene);
+    }
+};
+--- FILE: src/ecs/components/Bouncing.js ---
+const { defineComponent } = require('bitecs');
+// A tag component needs no properties
+const Bouncing = defineComponent();
+module.exports = { Bouncing };
+--- FILE: src/ecs/components/CameraTarget.js ---
+const { defineComponent } = require('bitecs');
+const CameraTarget = defineComponent();
+module.exports = { CameraTarget };
+
+--- FILE: src/ecs/components/Debug.js ---
+const { defineComponent } = require('bitecs');
+const Debug = defineComponent();
+module.exports = { Debug };
+
+--- FILE: src/ecs/components/Graphic.js ---
+const { defineComponent, Types } = require('bitecs');
+const Graphic = defineComponent({ 
+    // Legacy (Shapes)
+    shape: Types.ui8, 
+    color: Types.ui32, 
+    size: Types.f32,
+    // New (Controllers)
+    controllerId: Types.ui8,
+    frame: Types.ui16,
+    lastFrame: Types.ui16
+});
+module.exports = { Graphic };
+
+--- FILE: src/ecs/components/index.js ---
+module.exports = {
+    ...require('./Position'),
+    ...require('./Velocity'),
+    ...require('./Input'),
+    ...require('./Graphic'),
+    ...require('./Keyboard'),
+    ...require('./Debug'),
+    ...require('./CameraTarget'),
+    ...require('./Mass'),
+    ...require('./Platform'),
+    ...require('./Parent'),
+    ...require('./Web'),
+    ...require('./Bouncing'),
+};
+
+--- FILE: src/ecs/components/Input.js ---
+const { defineComponent, Types } = require('bitecs');
+const Input = defineComponent({ 
+    index: Types.ui8,
+    r2: Types.f32  // New: Stores trigger value (0.0 - 1.0)
+});
+module.exports = { Input };
+
+--- FILE: src/ecs/components/Keyboard.js ---
+const { defineComponent, Types } = require('bitecs');
+const Keyboard = defineComponent({ keys: [Types.ui8, 256] });
+module.exports = { Keyboard };
+
+--- FILE: src/ecs/components/Mass.js ---
+const { defineComponent, Types } = require('bitecs');
+
+const Mass = defineComponent({
+    value: Types.f32
+});
+
+module.exports = { Mass };
+--- FILE: src/ecs/components/Parent.js ---
+const { defineComponent, Types } = require('bitecs');
+
+const Parent = defineComponent({ 
+    eid: Types.eid 
+});
+
+module.exports = { Parent };
+
+--- FILE: src/ecs/components/Platform.js ---
+const { defineComponent, Types } = require('bitecs');
+
+const Platform = defineComponent({
+    width: Types.f32,
+    height: Types.f32
+});
+
+module.exports = { Platform };
+--- FILE: src/ecs/components/Position.js ---
+const { defineComponent, Types } = require('bitecs');
+const Position = defineComponent({ x: Types.f32, y: Types.f32 });
+module.exports = { Position };
+
+--- FILE: src/ecs/components/Velocity.js ---
+const { defineComponent, Types } = require('bitecs');
+const Velocity = defineComponent({ x: Types.f32, y: Types.f32 });
+module.exports = { Velocity };
+
+--- FILE: src/ecs/components/Web.js ---
+const { defineComponent, Types } = require('bitecs');
+const Web = defineComponent({ 
+    entityA: Types.eid,
+    entityB: Types.eid,
+    anchorAX: Types.f32,
+    anchorAY: Types.f32,
+    anchorBX: Types.f32,
+    anchorBY: Types.f32
+});
+module.exports = { Web };
+
+--- FILE: src/ecs/entities/player.js ---
+const { addEntity, addComponent } = require('bitecs');
+const { Position, Velocity, Graphic, Input } = require('../components');
+const { UNIT_SIZE } = require('../../constants');
+
+module.exports = function createPlayer(world, x, y) {
+    const eid = addEntity(world);
+    addComponent(world, Position, eid);
+    addComponent(world, Velocity, eid);
+    addComponent(world, Graphic, eid);
+    addComponent(world, Input, eid);
+
+    Position.x[eid] = x;
+    Position.y[eid] = y;
+    Input.index[eid] = 0; // Gamepad index 0
+
+    Graphic.shape[eid] = 0; // Circle
+    Graphic.color[eid] = 0x00FFCC;
+    Graphic.size[eid] = UNIT_SIZE; // 10 units
+
+    return eid;
+};
+--- FILE: src/ecs/entities/target.js ---
+const { addEntity, addComponent } = require('bitecs');
+const { Position, Graphic, CameraTarget } = require('../components');
+const { UNIT_SIZE } = require('../../constants');
+
+module.exports = function createTarget(world, x, y) {
+    const eid = addEntity(world);
+    addComponent(world, Position, eid);
+    addComponent(world, Graphic, eid);
+    addComponent(world, CameraTarget, eid); // The camera will now track this too
+
+    Position.x[eid] = x;
+    Position.y[eid] = y;
+
+    Graphic.shape[eid] = 1; // 1 = RECT
+    Graphic.color[eid] = 0xFF0000; // Red
+    Graphic.size[eid] = UNIT_SIZE;
+
+    return eid;
+};
+--- FILE: src/ecs/systems/camera.js ---
+const { defineQuery } = require('bitecs');
+const { Position, CameraTarget } = require('../components');
+const { PPU } = require('../../constants');
+
+const targetQuery = defineQuery([Position, CameraTarget]);
+
+module.exports = function createCameraSystem(app) {
+    return (world) => {
+        const ents = targetQuery(world);
+        if (ents.length === 0) return;
+
+        let targetX, targetY;
+        let zoom = 1.0;
+
+        if (ents.length === 1) {
+            targetX = Position.x[ents[0]] * PPU;
+            targetY = Position.y[ents[0]] * PPU;
+        } else {
+            const e1 = ents[0];
+            const e2 = ents[1];
+            const p1x = Position.x[e1] * PPU;
+            const p1y = Position.y[e1] * PPU;
+            const p2x = Position.x[e2] * PPU;
+            const p2y = Position.y[e2] * PPU;
+
+            targetX = (p1x + p2x) / 2;
+            targetY = (p1y + p2y) / 2;
+
+            const dx = Math.abs(p1x - p2x);
+            const dy = Math.abs(p1y - p2y);
+            const padding = 200; 
+            
+            const zoomX = app.screen.width / (dx + padding);
+            const zoomY = app.screen.height / (dy + padding);
+            zoom = Math.min(zoomX, zoomY, 1.0);
+        }
+
+        const lerp = 0.1;
+        
+        // Smooth zoom
+        app.stage.scale.set(
+            app.stage.scale.x + (zoom - app.stage.scale.x) * lerp
+        );
+        
+        // Smooth pivot (looking at target)
+        app.stage.pivot.x += (targetX - app.stage.pivot.x) * lerp;
+        app.stage.pivot.y += (targetY - app.stage.pivot.y) * lerp;
+        
+        // Offset stage to center the pivot on screen
+        app.stage.position.x = app.screen.width / 2;
+        app.stage.position.y = app.screen.height / 2;
+    };
+};
+
+--- FILE: src/ecs/systems/gravity.js ---
+const { defineQuery } = require('bitecs');
+const { Position, Velocity, Mass } = require('../components');
+
+// We want anything that has Mass, Position, and Velocity
+const gravityQuery = defineQuery([Position, Velocity, Mass]);
+
+const G = 500; // Gravitational Constant (Tweaked for game feel)
+const MIN_DIST = 20; // Softening parameter to prevent shooting off to infinity
+
+module.exports = function createGravitySystem() {
+    return (world, dt) => {
+        const ents = gravityQuery(world);
+
+        // N-Body Simulation: Check every pair of objects
+        for (let i = 0; i < ents.length; i++) {
+            const e1 = ents[i];
+
+            for (let j = i + 1; j < ents.length; j++) {
+                const e2 = ents[j];
+
+                const dx = Position.x[e2] - Position.x[e1];
+                const dy = Position.y[e2] - Position.y[e1];
+                const distSq = dx * dx + dy * dy;
+                const dist = Math.sqrt(distSq);
+
+                // Prevent division by zero or extreme forces at close range
+                if (dist < MIN_DIST) continue;
+
+                // F = G * m1 * m2 / r^2
+                const f = (G * Mass.value[e1] * Mass.value[e2]) / distSq;
+
+                // Normalize direction (dx/dist, dy/dist)
+                const fx = (dx / dist) * f;
+                const fy = (dy / dist) * f;
+
+                // Apply Force to Velocity (a = F/m) -> (dv = a * dt)
+                // Entity 1 is pulled TOWARDS Entity 2 (+)
+                Velocity.x[e1] += (fx / Mass.value[e1]) * dt;
+                Velocity.y[e1] += (fy / Mass.value[e1]) * dt;
+
+                // Entity 2 is pulled TOWARDS Entity 1 (-) (Newton's 3rd Law)
+                Velocity.x[e2] -= (fx / Mass.value[e2]) * dt;
+                Velocity.y[e2] -= (fy / Mass.value[e2]) * dt;
+            }
+        }
+    };
+};
+--- FILE: src/ecs/systems/input.js ---
+const { defineQuery } = require('bitecs');
+const { Velocity, Input } = require('../components');
+const { PLAYER_SPEED } = require('../../constants');
+
+const inputQuery = defineQuery([Input, Velocity]);
+
+module.exports = function createInputSystem() {
+    return (world) => {
+        const ents = inputQuery(world);
+        const gamepads = navigator.getGamepads();
+
+        for (let i = 0; i < ents.length; i++) {
+            const eid = ents[i];
+            const gp = gamepads[Input.index[eid]];
+
+            if (gp) {
+                // Movement
+                const threshold = 0.15;
+                const lx = gp.axes[0];
+                const ly = gp.axes[1];
+                Velocity.x[eid] = Math.abs(lx) > threshold ? lx * PLAYER_SPEED : 0;
+                Velocity.y[eid] = Math.abs(ly) > threshold ? ly * PLAYER_SPEED : 0;
+
+                // Triggers (R2 is button 7 on standard gamepads)
+                // If keyboard override is needed later, we can map Shift/Ctrl here too.
+                const r2 = gp.buttons[7] ? gp.buttons[7].value : 0;
+                Input.r2[eid] = r2;
+            }
+        }
+    };
+};
+
+--- FILE: src/ecs/systems/keyboard.js ---
+const { defineQuery } = require('bitecs');
+const { Keyboard } = require('../components');
+
+const keyboardQuery = defineQuery([Keyboard]);
+
+module.exports = function createKeyboardSystem() {
+    const keyMap = {};
+
+    window.addEventListener('keydown', (e) => {
+        keyMap[e.code] = 1;
+        // Prevent scrolling with arrows
+        if (['ArrowUp', 'ArrowDown', 'Space', 'Enter'].includes(e.code)) e.preventDefault();
+    });
+
+    window.addEventListener('keyup', (e) => {
+        keyMap[e.code] = 0;
+    });
+
+    return (world) => {
+        const ents = keyboardQuery(world);
+        for (let i = 0; i < ents.length; i++) {
+            const eid = ents[i];
+
+            // Map standard keys to array indices
+            Keyboard.keys[eid][32] = keyMap['Space'] || 0;
+            Keyboard.keys[eid][13] = keyMap['Enter'] || 0; // Enter
+            Keyboard.keys[eid][38] = keyMap['ArrowUp'] || 0; // Up
+            Keyboard.keys[eid][40] = keyMap['ArrowDown'] || 0; // Down
+            Keyboard.keys[eid][88] = keyMap['KeyX'] || 0; // 'X' key
+        }
+    };
+};
+--- FILE: src/ecs/systems/movement.js ---
+const { defineQuery } = require('bitecs');
+const { Position, Velocity } = require('../components');
+
+// This was missing!
+const movementQuery = defineQuery([Position, Velocity]);
+
+module.exports = function createMovementSystem() {
+    return (world, elapsedMS) => {
+        const ents = movementQuery(world);
+        const dt = elapsedMS / 1000; // Time in seconds
+
+        for (let i = 0; i < ents.length; i++) {
+            const eid = ents[i];
+            Position.x[eid] += Velocity.x[eid] * dt;
+            Position.y[eid] += Velocity.y[eid] * dt;
+        }
+    };
+};
+--- FILE: src/ecs/systems/platform.js ---
+const { defineQuery, addComponent, removeComponent, hasComponent } = require('bitecs');
+const { Position, Velocity, Platform, Input, Parent } = require('../components');
+
+const platformQuery = defineQuery([Position, Velocity, Platform]);
+const playerQuery = defineQuery([Position, Input]);
+
+module.exports = function createPlatformSystem() {
+    return (world, dt) => {
+        const platforms = platformQuery(world);
+        const players = playerQuery(world);
+
+        // 1. Platform Logic (Simple Bounce)
+        for (let i = 0; i < platforms.length; i++) {
+            const pid = platforms[i];
+            if (Position.x[pid] > 200 && Velocity.x[pid] > 0) Velocity.x[pid] *= -1;
+            if (Position.x[pid] < 0 && Velocity.x[pid] < 0) Velocity.x[pid] *= -1;
+        }
+
+        // 2. Player Logic
+        for (let i = 0; i < players.length; i++) {
+            const eid = players[i];
+
+            // --- PARENTED BEHAVIOR ---
+            if (hasComponent(world, Parent, eid)) {
+                const pid = Parent.eid[eid];
+
+                // A. Apply Platform Velocity (Carry)
+                const pVx = Velocity.x[pid];
+                const pVy = Velocity.y[pid];
+                Position.x[eid] += pVx * dt;
+                Position.y[eid] += pVy * dt;
+
+                // B. Calculate Relative Position (The "Anchor")
+                // Currently, the anchor is just the player's center (Position)
+                let localX = Position.x[eid] - Position.x[pid];
+                let localY = Position.y[eid] - Position.y[pid];
+
+                // C. Check Bounds
+                const halfW = Platform.width[pid] / 2;
+                const halfH = Platform.height[pid] / 2;
+
+                // Check if R2 is held (Threshold 0.1)
+                const isSafetyOn = Input.r2[eid] > 0.1;
+
+                if (isSafetyOn) {
+                    // --- SAFETY MODE: CLAMP ---
+                    // If we are about to leave, force position to the edge
+                    if (localX < -halfW) localX = -halfW;
+                    if (localX > halfW) localX = halfW;
+                    if (localY < -halfH) localY = -halfH;
+                    if (localY > halfH) localY = halfH;
+
+                    // Apply Clamped Position back to World
+                    Position.x[eid] = Position.x[pid] + localX;
+                    Position.y[eid] = Position.y[pid] + localY;
+
+                    // (Optional) Kill Player Velocity into the wall so it feels "solid"
+                    // Velocity.x[eid] = 0; 
+                }
+                else {
+                    // --- NORMAL MODE: DETACH ---
+                    // If outside bounds, let them fall off
+                    if (Math.abs(localX) > halfW || Math.abs(localY) > halfH) {
+                        console.log("Player detached!");
+                        removeComponent(world, Parent, eid);
+                    }
+                }
+
+            } else {
+                // --- ATTACH BEHAVIOR ---
+                for (let j = 0; j < platforms.length; j++) {
+                    const pid = platforms[j];
+                    const dx = Math.abs(Position.x[eid] - Position.x[pid]);
+                    const dy = Math.abs(Position.y[eid] - Position.y[pid]);
+                    const w = Platform.width[pid] / 2;
+                    const h = Platform.height[pid] / 2;
+
+                    if (dx < w && dy < h) {
+                        console.log("Player attached!");
+                        addComponent(world, Parent, eid);
+                        Parent.eid[eid] = pid;
+                        break;
+                    }
+                }
+            }
+        }
+    };
+};
+--- FILE: src/ecs/systems/render.js ---
+const { defineQuery, enterQuery, exitQuery, hasComponent } = require('bitecs');
+const { Position, Graphic, Input, Debug, Platform } = require('../components'); // Added Platform
+const { PPU } = require('../../constants');
+const PIXI = require('pixi.js');
+
+const controllers = {
+    2: require('../../graphics/platform')
+};
+
+const renderQuery = defineQuery([Position, Graphic]);
+const renderEnterQuery = enterQuery(renderQuery);
+const renderExitQuery = exitQuery(renderQuery);
+const playerQuery = defineQuery([Input, Position]);
+
+const sprites = new Map();
+
+module.exports = function createRenderSystem(app, state) {
+    const worldLayer = app.stage;
+
+    // --- Z-INDEX FIX ---
+    // Allow us to reorder sprites (Player on top of Platform)
+    worldLayer.sortableChildren = true;
+
+    const uiLayer = new PIXI.Container();
+    app.stage.addChild(uiLayer);
+
+    const crosshair = new PIXI.Graphics();
+    worldLayer.addChildAt(crosshair, 0);
+
+    const textStyle = new PIXI.TextStyle({
+        fontFamily: 'monospace', fontSize: 20, fill: '#FFB000', fontWeight: 'bold',
+        stroke: { color: '#000000', width: 4 },
+    });
+    const playerText = new PIXI.Text({ text: '', style: textStyle });
+    uiLayer.addChild(playerText);
+
+    function updateHUD(world) {
+        if (!state.debug) {
+            uiLayer.visible = false;
+            return;
+        }
+        uiLayer.visible = true;
+        if (app.stage.getChildIndex(uiLayer) !== app.stage.children.length - 1) {
+            app.stage.setChildIndex(uiLayer, app.stage.children.length - 1);
+        }
+
+        const players = playerQuery(world);
+        if (players.length > 0) {
+            const p = players[0];
+            playerText.text = `POS: ${Position.x[p].toFixed(0)}, ${Position.y[p].toFixed(0)}`;
+            playerText.position.set(20, app.screen.height - 50);
+        }
+
+        crosshair.clear();
+        const zoom = worldLayer.scale.x;
+        const size = 30 / zoom;
+        crosshair.moveTo(0, -size).lineTo(0, size).stroke({ width: 2 / zoom, color: 0x00FF00 });
+        crosshair.moveTo(-size, 0).lineTo(size, 0).stroke({ width: 2 / zoom, color: 0x00FF00 });
+    }
+
+    return (world) => {
+        const dt = app.ticker.deltaMS / 1000;
+        updateHUD(world);
+
+        // 1. ENTER
+        const entered = renderEnterQuery(world);
+        for (let i = 0; i < entered.length; i++) {
+            const eid = entered[i];
+            const g = new PIXI.Graphics();
+
+            // --- Z-INDEX ASSIGNMENT ---
+            // Platforms = 0 (Background)
+            // Players/Others = 10 (Foreground)
+            const isPlatform = hasComponent(world, Platform, eid);
+            g.zIndex = isPlatform ? 0 : 10;
+
+            worldLayer.addChild(g);
+            sprites.set(eid, g);
+            Graphic.lastFrame[eid] = 65535;
+        }
+
+        // 2. UPDATE
+        const ents = renderQuery(world);
+        for (let i = 0; i < ents.length; i++) {
+            const eid = ents[i];
+            const g = sprites.get(eid);
+            if (!g) continue;
+
+            // Debug visibility
+            g.visible = hasComponent(world, Debug, eid) ? state.debug : true;
+            if (!g.visible) continue;
+
+            g.x = Position.x[eid] * PPU;
+            g.y = Position.y[eid] * PPU;
+
+            // Controller Logic
+            const cId = Graphic.controllerId[eid];
+            const ctrl = controllers[cId];
+
+            if (ctrl) {
+                const currentFrame = Graphic.frame[eid];
+                const lastFrame = Graphic.lastFrame[eid];
+
+                if (currentFrame !== lastFrame) {
+                    if (ctrl.onFrameChange) ctrl.onFrameChange(eid, lastFrame, currentFrame);
+                    Graphic.lastFrame[eid] = currentFrame;
+                }
+
+                ctrl.update(g, eid, currentFrame, PPU, dt);
+            } else {
+                // Fallback
+                g.clear();
+                const size = Graphic.size[eid] * PPU;
+                if (Graphic.shape[eid] === 0) g.circle(0, 0, size / 2).fill(Graphic.color[eid]);
+                else g.rect(-size / 2, -size / 2, size, size).fill(Graphic.color[eid]);
+            }
+        }
+
+        // 3. EXIT
+        const exited = renderExitQuery(world);
+        for (let i = 0; i < exited.length; i++) {
+            const eid = exited[i];
+            const g = sprites.get(eid);
+            if (g) {
+                worldLayer.removeChild(g);
+                g.destroy();
+                sprites.delete(eid);
+            }
+        }
+    };
+};
+--- FILE: src/graphics/platform.js ---
+const { Platform } = require('../ecs/components');
+
+module.exports = {
+    // Logic when state changes
+    onFrameChange: (eid, oldFrame, newFrame) => {
+        // console.log(`Platform ${eid} frame changed: ${oldFrame} -> ${newFrame}`);
+    },
+
+    // Main Draw Loop called by RenderSystem
+    update: (g, eid, frame, PPU, dt) => {
+        g.clear();
+
+        // 1. Get Dimensions from Component
+        const w = Platform.width[eid] * PPU;
+        const h = Platform.height[eid] * PPU;
+
+        // 2. Draw Centered
+        g.rect(-w / 2, -h / 2, w, h);
+
+        // 3. Style based on Frame (State)
+        if (frame === 1) {
+            g.fill(0xAAAAAA);
+            g.stroke({ width: 4, color: 0x00FF00 });
+        } else {
+            g.fill(0x808080);
+            g.stroke({ width: 2, color: 0xFFFFFF });
+        }
+    }
+};
+--- FILE: src/scenes/GameScene.js ---
+const { createWorld, addComponent } = require('bitecs');
+const { CameraTarget } = require('../ecs/components');
+const createPlayer = require('../ecs/entities/player');
+const createTarget = require('../ecs/entities/target');
+
+// Systems
+const createInputSystem = require('../ecs/systems/input');
+const createMovementSystem = require('../ecs/systems/movement');
+const createRenderSystem = require('../ecs/systems/render');
+const createCameraSystem = require('../ecs/systems/camera');
+
+module.exports = class GameScene {
+    constructor(app, manager) {
+        this.app = app;
+        this.manager = manager;
+        this.world = createWorld();
+        this.state = { debug: true }; // Start with debug on
+    }
+
+    async init() {
+        console.log("GameScene: Entering Gameplay...");
+
+        this.inputSystem = createInputSystem();
+        this.movementSystem = createMovementSystem();
+        this.cameraSystem = createCameraSystem(this.app);
+        this.renderSystem = createRenderSystem(this.app, this.state);
+
+        // Spawn Entities
+        const playerEid = createPlayer(this.world, 0, 0);
+        addComponent(this.world, CameraTarget, playerEid);
+        createTarget(this.world, 1000, 0);
+    }
+
+    update() {
+        const ms = this.app.ticker.elapsedMS;
+
+        this.inputSystem(this.world);
+        this.movementSystem(this.world, ms);
+        this.cameraSystem(this.world);
+        this.renderSystem(this.world);
+    }
+
+    destroy() {
+        console.log("GameScene: Exiting...");
+        this.app.stage.removeChildren();
+    }
+};
+--- FILE: src/scenes/LoadingScene.js ---
+const PIXI = require('pixi.js');
+const MenuScene = require('./MenuScene');
+
+module.exports = class LoadingScene {
+    constructor(app, manager) {
+        this.app = app;
+        this.manager = manager;
+        this.box = new PIXI.Graphics();
+        this.currentSize = 0;
+        this.targetSize = 200;
+        this.growthSpeed = 300; // pixels per second
+    }
+
+    async init() {
+        console.log("LoadingScene: Initializing Centered Growth...");
+
+        // Draw a 1x1 rect so we can scale it effectively, 
+        // or just redraw the rect in the update loop.
+        // We will position it in the center of the screen.
+        this.box.x = this.app.screen.width / 2;
+        this.box.y = this.app.screen.height / 2;
+
+        this.app.stage.addChild(this.box);
+    }
+
+    update() {
+        const dt = this.app.ticker.deltaMS / 1000;
+
+        if (this.currentSize < this.targetSize) {
+            this.currentSize += this.growthSpeed * dt;
+
+            // Re-draw the box centered on its own coordinates
+            this.box.clear();
+            this.box.rect(
+                -this.currentSize / 2,
+                -this.currentSize / 2,
+                this.currentSize,
+                this.currentSize
+            ).fill(0x0000FF);
+        } else {
+            // Once we hit 200px, transition
+            this.manager.loadScene(MenuScene);
+        }
+    }
+
+    destroy() {
+        console.log("LoadingScene: Transitioning to Menu...");
+        this.app.stage.removeChild(this.box);
+        this.box.destroy();
+    }
+};
+--- FILE: src/scenes/MenuScene.js ---
+const PIXI = require('pixi.js');
+const { createWorld, addEntity, addComponent, defineQuery } = require('bitecs');
+const { Keyboard } = require('../ecs/components');
+const createKeyboardSystem = require('../ecs/systems/keyboard');
+
+// Import Test Scenes
+const testScenes = require('./test/index');
+
+// Constants for Menu States
+const STATE_WAITING = 0; // "Press Start"
+const STATE_MAIN = 1;    // "New / Load / Test"
+const STATE_TEST = 2;    // List of Test Scenes
+
+const keyboardQuery = defineQuery([Keyboard]);
+
+module.exports = class MenuScene {
+    constructor(app, manager) {
+        this.app = app;
+        this.manager = manager;
+        this.world = createWorld();
+        this.keyboardSystem = createKeyboardSystem();
+
+        // Menu State
+        this.menuState = STATE_WAITING;
+        this.selectionIndex = 0;
+
+        // Input Edge Detection
+        this.lastInput = { up: 0, down: 0, confirm: 0 };
+
+        // Data for Menus
+        this.mainMenuItems = [
+            { label: "< NEW >", action: () => console.log("New Game - TODO") },
+            { label: "< LOAD >", action: () => console.log("Load Game - TODO") },
+            { label: "< TEST >", action: () => this.switchState(STATE_TEST) }
+        ];
+    }
+
+    async init() {
+        // Setup Input Entity
+        const eid = addEntity(this.world);
+        addComponent(this.world, Keyboard, eid);
+
+        // Setup Visual Containers
+        this.container = new PIXI.Container();
+        this.app.stage.addChild(this.container);
+
+        this.titleText = new PIXI.Text({
+            text: 'REFRACT', style: {
+                fontFamily: 'monospace', fontSize: 60, fill: '#FFB000', fontWeight: 'bold'
+            }
+        });
+        this.titleText.anchor.set(0.5);
+        this.titleText.x = this.app.screen.width / 2;
+        this.titleText.y = 100;
+        this.container.addChild(this.titleText);
+
+        this.menuText = new PIXI.Text({
+            text: '', style: {
+                fontFamily: 'monospace', fontSize: 30, fill: '#FFFFFF', align: 'center', lineHeight: 50
+            }
+        });
+        this.menuText.anchor.set(0.5, 0);
+        this.menuText.x = this.app.screen.width / 2;
+        this.menuText.y = 250;
+        this.container.addChild(this.menuText);
+
+        this.renderMenu();
+    }
+
+    switchState(newState) {
+        this.menuState = newState;
+        this.selectionIndex = 0; // Reset selection on state change
+        this.renderMenu();
+    }
+
+    // "Ring Buffer" Logic
+    moveSelection(dir, length) {
+        this.selectionIndex += dir;
+        if (this.selectionIndex < 0) this.selectionIndex = length - 1;
+        if (this.selectionIndex >= length) this.selectionIndex = 0;
+        this.renderMenu();
+    }
+
+    update() {
+        this.keyboardSystem(this.world);
+        const ents = keyboardQuery(this.world);
+        if (ents.length === 0) return;
+
+        const eid = ents[0];
+        const keys = Keyboard.keys[eid];
+
+        // Input Mapping
+        const up = keys[38];
+        const down = keys[40];
+        // Confirm is Space (32), Enter (13), or X (88)
+        const confirm = keys[32] || keys[13] || keys[88];
+
+        // 1. Handle Navigation (Up/Down) - Only on Edge (Press)
+        if (up && !this.lastInput.up) {
+            if (this.menuState === STATE_MAIN) this.moveSelection(-1, this.mainMenuItems.length);
+            if (this.menuState === STATE_TEST) this.moveSelection(-1, testScenes.length);
+        }
+        if (down && !this.lastInput.down) {
+            if (this.menuState === STATE_MAIN) this.moveSelection(1, this.mainMenuItems.length);
+            if (this.menuState === STATE_TEST) this.moveSelection(1, testScenes.length);
+        }
+
+        // 2. Handle Confirmation
+        if (confirm && !this.lastInput.confirm) {
+            if (this.menuState === STATE_WAITING) {
+                this.switchState(STATE_MAIN);
+            } else if (this.menuState === STATE_MAIN) {
+                // Execute the action for the selected item
+                this.mainMenuItems[this.selectionIndex].action();
+            } else if (this.menuState === STATE_TEST) {
+                // Load the selected test scene
+                const selected = testScenes[this.selectionIndex];
+                if (selected && selected.SceneClass) {
+                    console.log(`Loading ${selected.label}...`);
+                    try {
+                        this.manager.loadScene(selected.SceneClass);
+                    } catch (e) {
+                        console.error("Failed to load scene:", e);
+                    }
+                }
+            }
+        }
+
+        // Update Edge State
+        this.lastInput = { up, down, confirm };
+    }
+
+    renderMenu() {
+        if (this.menuState === STATE_WAITING) {
+            this.menuText.text = "[ PRESS SPACE TO START ]";
+            return;
+        }
+
+        let items = [];
+        if (this.menuState === STATE_MAIN) items = this.mainMenuItems;
+        else if (this.menuState === STATE_TEST) items = testScenes;
+
+        // Generate Text String
+        const textStr = items.map((item, index) => {
+            let label = item.label;
+
+            // AUTO-NUMBERING: If we are in the Test Menu, prepend the index
+            if (this.menuState === STATE_TEST) {
+                const num = String(index).padStart(2, '0'); // "00", "01", etc.
+                label = `${num} ${label}`;
+            }
+
+            if (index === this.selectionIndex) {
+                return `> ${label} <`; // Highlight
+            }
+            return `  ${label}  `;
+        }).join('\n');
+
+        this.menuText.text = textStr;
+
+        // Visual polish: Green text for tests, White for main menu
+        this.menuText.style.fill = (this.menuState === STATE_TEST) ? '#00FF00' : '#FFFFFF';
+    }
+
+    destroy() {
+        this.app.stage.removeChild(this.container);
+        this.container.destroy({ children: true });
+    }
+};
+--- FILE: src/scenes/test/00_MovementTest.js ---
+const { createWorld, addComponent } = require('bitecs');
+const { CameraTarget } = require('../../ecs/components');
+
+// Import Factories
+const createPlayer = require('../../ecs/entities/player');
+const createTarget = require('../../ecs/entities/target');
+
+// Import Systems
+const createInputSystem = require('../../ecs/systems/input');
+const createMovementSystem = require('../../ecs/systems/movement');
+const createRenderSystem = require('../../ecs/systems/render');
+const createCameraSystem = require('../../ecs/systems/camera');
+const createKeyboardSystem = require('../../ecs/systems/keyboard');
+
+module.exports = class MovementTest {
+    constructor(app, manager) {
+        this.app = app;
+        this.manager = manager;
+
+        // Scene-specific World & State
+        this.world = createWorld();
+        this.state = { debug: true }; // Default to debug ON so you can see the HUD
+    }
+
+    async init() {
+        console.log("SCENE: Initializing Movement Test (OG Setup)...");
+
+        // 1. Initialize Systems
+        this.keyboardSystem = createKeyboardSystem();
+        this.inputSystem = createInputSystem();
+        this.movementSystem = createMovementSystem();
+        this.cameraSystem = createCameraSystem(this.app);
+        this.renderSystem = createRenderSystem(this.app, this.state);
+
+        // 2. Spawn Entities
+        // Player at World Origin (0,0)
+        const playerEid = createPlayer(this.world, 0, 0);
+        addComponent(this.world, CameraTarget, playerEid);
+
+        // Target at (1000, 0)
+        createTarget(this.world, 100, 0);
+
+        // 3. Setup Exit Listener (Backspace to return to Menu)
+        this._onKeyDown = (e) => {
+            if (e.code === 'Backspace' || e.code === 'Escape') {
+                // Dynamic require to avoid circular dependency
+                const MenuScene = require('../MenuScene');
+                this.manager.loadScene(MenuScene);
+            }
+        };
+        window.addEventListener('keydown', this._onKeyDown);
+    }
+
+    update() {
+        const ms = this.app.ticker.elapsedMS;
+
+        // Run Systems in Order
+        this.keyboardSystem(this.world, this.state);
+        this.inputSystem(this.world);
+        this.movementSystem(this.world, ms);
+        this.cameraSystem(this.world);
+        this.renderSystem(this.world);
+    }
+
+    destroy() {
+        console.log("SCENE: Destroying Movement Test...");
+
+        // Remove the Exit Listener
+        window.removeEventListener('keydown', this._onKeyDown);
+
+        // Cleanup Pixi Stage (Removes all graphics/UI)
+        this.app.stage.removeChildren();
+    }
+};
+--- FILE: src/scenes/test/01_PhysicsDemo.js ---
+const { createWorld, addEntity, addComponent } = require('bitecs');
+const { Position, Velocity, Graphic, Mass, CameraTarget } = require('../../ecs/components');
+const { UNIT_SIZE } = require('../../constants');
+
+// Systems
+const createRenderSystem = require('../../ecs/systems/render');
+const createCameraSystem = require('../../ecs/systems/camera');
+const createGravitySystem = require('../../ecs/systems/gravity');
+const createMovementSystem = require('../../ecs/systems/movement');
+
+module.exports = class PhysicsDemo {
+    constructor(app, manager) {
+        this.app = app;
+        this.manager = manager;
+        this.world = createWorld();
+        this.state = { debug: true };
+    }
+
+    async init() {
+        console.log("SCENE: Orbit Simulation Initialized");
+
+        // --- Init Systems ---
+        this.movementSystem = createMovementSystem();
+        this.gravitySystem = createGravitySystem();
+        this.cameraSystem = createCameraSystem(this.app);
+        this.renderSystem = createRenderSystem(this.app, this.state);
+
+        // --- Create SUN (Heavy, Stationary) ---
+        const sun = addEntity(this.world);
+        addComponent(this.world, Position, sun);
+        addComponent(this.world, Velocity, sun);
+        addComponent(this.world, Mass, sun);
+        addComponent(this.world, Graphic, sun);
+        addComponent(this.world, CameraTarget, sun);
+
+        Position.x[sun] = 0;
+        Position.y[sun] = 0;
+        Mass.value[sun] = 1000; // Heavy!
+        Graphic.shape[sun] = 0; // Circle
+        Graphic.color[sun] = 0xFFD700; // Gold
+        Graphic.size[sun] = 40;
+
+        // --- Create EARTH (Light, Moving) ---
+        const earth = addEntity(this.world);
+        addComponent(this.world, Position, earth);
+        addComponent(this.world, Velocity, earth);
+        addComponent(this.world, Mass, earth);
+        addComponent(this.world, Graphic, earth);
+        addComponent(this.world, CameraTarget, earth);
+
+        const orbitRadius = 200;
+        Position.x[earth] = orbitRadius;
+        Position.y[earth] = 0;
+        Mass.value[earth] = 10;
+
+        // Orbital Velocity Calculation: v = sqrt(G * M_sun / r)
+        // G=500, M=1000, r=200 -> v = sqrt(500 * 1000 / 200) = sqrt(2500) = 50
+        Velocity.x[earth] = 0;
+        Velocity.y[earth] = 50;
+
+        Graphic.shape[earth] = 0;
+        Graphic.color[earth] = 0x0099FF; // Blue
+        Graphic.size[earth] = 10;
+
+        // --- Exit Handler ---
+        this._onExit = (e) => {
+            if (e.code === 'Backspace' || e.code === 'Escape') {
+                const MenuScene = require('../MenuScene');
+                this.manager.loadScene(MenuScene);
+            }
+        };
+        window.addEventListener('keydown', this._onExit);
+    }
+
+    update() {
+        const ms = this.app.ticker.elapsedMS;
+        const dt = ms / 1000;
+
+        // 1. Calculate Forces
+        this.gravitySystem(this.world, dt);
+
+        // 2. Apply Movement
+        this.movementSystem(this.world, ms);
+
+        // 3. Render
+        this.cameraSystem(this.world);
+        this.renderSystem(this.world);
+    }
+
+    destroy() {
+        window.removeEventListener('keydown', this._onExit);
+        this.app.stage.removeChildren();
+    }
+};
+--- FILE: src/scenes/test/02_PlatformTest.js ---
+const { createWorld, addEntity, addComponent } = require('bitecs');
+const { Position, Velocity, Graphic, Input, CameraTarget, Platform } = require('../../ecs/components');
+const { UNIT_SIZE } = require('../../constants');
+
+// Factories
+const createPlayer = require('../../ecs/entities/player');
+
+// Systems
+const createInputSystem = require('../../ecs/systems/input');
+const createMovementSystem = require('../../ecs/systems/movement');
+const createRenderSystem = require('../../ecs/systems/render');
+const createCameraSystem = require('../../ecs/systems/camera');
+const createPlatformSystem = require('../../ecs/systems/platform'); // <--- New System
+
+module.exports = class PlatformTest {
+    constructor(app, manager) {
+        this.app = app;
+        this.manager = manager;
+        this.world = createWorld();
+        this.state = { debug: true };
+    }
+
+    async init() {
+        console.log("SCENE: Platform Test");
+
+        // Init Systems
+        this.inputSystem = createInputSystem();
+        this.movementSystem = createMovementSystem(); // Handling Player Input Movement
+        this.platformSystem = createPlatformSystem(); // Handling Platform Logic
+        this.cameraSystem = createCameraSystem(this.app);
+        this.renderSystem = createRenderSystem(this.app, this.state);
+
+        // 1. Create Player
+        const player = createPlayer(this.world, 0, 0);
+        addComponent(this.world, CameraTarget, player);
+
+        // 2. Create Moving Platform
+        this.createPlatform(0, 0, 100, 40, 50, 0); // X, Y, W, H, VelX, VelY
+
+
+
+        // Exit Handler
+        this._onExit = (e) => {
+            if (e.code === 'Backspace') {
+                const MenuScene = require('../MenuScene');
+                this.manager.loadScene(MenuScene);
+            }
+        };
+        window.addEventListener('keydown', this._onExit);
+    }
+
+    createPlatform(x, y, w, h, vx, vy) {
+        const eid = addEntity(this.world);
+        addComponent(this.world, Position, eid);
+        addComponent(this.world, Velocity, eid);
+        addComponent(this.world, Platform, eid); // Tag it as a platform
+        addComponent(this.world, Graphic, eid);
+        Graphic.controllerId[eid] = 2; // Matches the key in 'controllers' map above
+
+        Position.x[eid] = x;
+        Position.y[eid] = y;
+        Velocity.x[eid] = vx;
+        Velocity.y[eid] = vy;
+
+        Platform.width[eid] = w;
+        Platform.height[eid] = h;
+
+        // Visuals
+        Graphic.shape[eid] = 1; // Rect
+        Graphic.color[eid] = 0x808080; // Gray
+        Graphic.size[eid] = w / 10; // NOTE: Our RenderSystem uses size for both W and H (Square).
+        // To support rectangles properly, we might need to tweak RenderSystem later.
+        // For now, it will draw a Square based on size.
+    }
+
+    update() {
+        const ms = this.app.ticker.elapsedMS;
+        const dt = ms / 1000;
+
+        this.inputSystem(this.world);
+
+        // 1. Player moves themselves (Input)
+        this.movementSystem(this.world, ms);
+
+        // 2. Platform moves itself AND carries Player
+        this.platformSystem(this.world, dt);
+
+        this.cameraSystem(this.world);
+        this.renderSystem(this.world);
+    }
+
+    destroy() {
+        window.removeEventListener('keydown', this._onExit);
+        this.app.stage.removeChildren();
+    }
+};
+--- FILE: src/scenes/test/03_WebTest.js ---
+const { createWorld, addEntity, addComponent } = require('bitecs');
+const { Position, Velocity, Graphic, Mass, CameraTarget, Platform } = require('../../ecs/components');
+
+// Systems
+const createRenderSystem = require('../../ecs/systems/render');
+const createCameraSystem = require('../../ecs/systems/camera');
+const createGravitySystem = require('../../ecs/systems/gravity');
+const createMovementSystem = require('../../ecs/systems/movement');
+const createPlatformSystem = require('../../ecs/systems/platform');
+const createInputSystem = require('../../ecs/systems/input');
+
+// Factories
+const createPlayer = require('../../ecs/entities/player');
+
+module.exports = class WebTest {
+    constructor(app, manager) {
+        this.app = app;
+        this.manager = manager;
+        this.world = createWorld();
+        this.state = { debug: true };
+    }
+
+    async init() {
+        console.log("SCENE: Web Test - Baseline Orbit");
+
+        this.inputSystem = createInputSystem();
+        this.movementSystem = createMovementSystem();
+        this.gravitySystem = createGravitySystem();
+        this.platformSystem = createPlatformSystem();
+        this.cameraSystem = createCameraSystem(this.app);
+        this.renderSystem = createRenderSystem(this.app, this.state);
+
+        // 1. CENTER PLATFORM (The Sun)
+        // Static, massive, at (0,0)
+        const sun = this.createPlatformEntity(0, 0, 60, 60, 0xFFCC00);
+        Mass.value[sun] = 2500;
+
+        // 2. ORBITING PLATFORM (The Planet)
+        // 400 units away on the X axis
+        const planet = this.createPlatformEntity(400, 0, 40, 40, 0x00FFCC);
+        Mass.value[planet] = 10;
+
+        // Orbital Velocity calculation: v = sqrt(G * M / r)
+        // v = sqrt(500 * 2500 / 400) = sqrt(3125) ≈ 56
+        Velocity.y[planet] = 56;
+
+        // 3. THE PLAYER
+        // We spawn them exactly where the planet is
+        const player = createPlayer(this.world, 400, 0);
+
+        // Make the camera track BOTH the sun and the player for a nice wide view
+        addComponent(this.world, CameraTarget, player);
+        addComponent(this.world, CameraTarget, sun);
+
+        this._onExit = (e) => {
+            if (e.code === 'Backspace') {
+                const MenuScene = require('../MenuScene');
+                this.manager.loadScene(MenuScene);
+            }
+        };
+        window.addEventListener('keydown', this._onExit);
+    }
+
+    createPlatformEntity(x, y, w, h, color) {
+        const eid = addEntity(this.world);
+        addComponent(this.world, Position, eid);
+        addComponent(this.world, Velocity, eid);
+        addComponent(this.world, Mass, eid);
+        addComponent(this.world, Platform, eid);
+        addComponent(this.world, Graphic, eid);
+
+        Position.x[eid] = x;
+        Position.y[eid] = y;
+        Platform.width[eid] = w;
+        Platform.height[eid] = h;
+
+        Graphic.controllerId[eid] = 2; // Uses src/graphics/platform.js
+        Graphic.color[eid] = color;
+
+        return eid;
+    }
+
+    update() {
+        const ms = this.app.ticker.elapsedMS;
+        const dt = ms / 1000;
+
+        // Sequence is vital:
+        this.inputSystem(this.world);
+        this.gravitySystem(this.world, dt);    // Calculate orbital pull
+        this.movementSystem(this.world, ms);   // Move entities by velocity
+        this.platformSystem(this.world, dt);   // Attach player and apply "sticky" movement
+        this.cameraSystem(this.world);
+        this.renderSystem(this.world);
+    }
+
+    destroy() {
+        window.removeEventListener('keydown', this._onExit);
+        this.app.stage.removeChildren();
+    }
+};
+--- FILE: src/scenes/test/index.js ---
+module.exports = [
+    { label: "Movement Test", SceneClass: require('./00_MovementTest') },
+    { label: "Physics Demo", SceneClass: require('./01_PhysicsDemo') },
+    { label: "Platform Test", SceneClass: require('./02_PlatformTest') },
+    { label: "Web Test", SceneClass: require('./03_WebTest') }
+];

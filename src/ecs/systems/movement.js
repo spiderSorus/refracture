@@ -1,6 +1,7 @@
 const { defineQuery } = require('bitecs');
 const { Position, Velocity } = require('../components');
 
+// This was missing!
 const movementQuery = defineQuery([Position, Velocity]);
 
 module.exports = function createMovementSystem() {

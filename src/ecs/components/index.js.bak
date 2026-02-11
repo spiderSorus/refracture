@@ -1,0 +1,24 @@
+const { defineComponent, Types } = require('bitecs');
+
+const Position = defineComponent({ x: Types.f32, y: Types.f32 });
+const Velocity = defineComponent({ x: Types.f32, y: Types.f32 });
+const Input = defineComponent({ index: Types.ui8 });
+const Graphic = defineComponent({ shape: Types.ui8, color: Types.ui32, size: Types.f32 });
+
+const Debug = defineComponent();
+const CameraTarget = defineComponent();
+
+// New: Stores key states. We'll use this to bridge raw input to logic.
+const Keyboard = defineComponent({
+    keys: [Types.ui8, 256] // Stores 0 or 1 for key codes
+});
+
+module.exports = {
+    Position,
+    Velocity,
+    Graphic,
+    Input,
+    Debug,
+    CameraTarget,
+    Keyboard
+};
