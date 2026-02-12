@@ -1,17 +1,20 @@
+// src/main.js
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
 
 function createWindow() {
     const win = new BrowserWindow({
-        width: 1500,
-        height: 1200,
+        width: 1200,
+        height: 800,
         webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false, // Allows easy imports for local dev
+            nodeIntegration: false,
+            contextIsolation: true
         }
     });
 
-    win.loadFile('index.html');
+    // LOAD THE VITE SERVER
+    // This tells Electron to look at the web server where your game is running
+    win.loadURL('http://localhost:3000');
 }
 
 app.whenReady().then(createWindow);

@@ -3,53 +3,19 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:;
-    worker-src 'self' blob:;
-    connect-src 'self' https://pixijs.com;
-    img-src 'self' data: https://pixijs.com;
-    style-src 'self' 'unsafe-inline';
-">
     <title>Refract</title>
     <style>
         body {
             margin: 0;
-            overflow: hidden;
             background: #080808;
-        }
-
-        canvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
+            overflow: hidden;
         }
     </style>
 </head>
 
 <body>
-    <script>
-        const PIXI = require('pixi.js');
-        // Import the function from your src folder
-        const { initGame } = require('./src/app.js');
-
-        async function setup() {
-            const app = new PIXI.Application();
-
-            // PixiJS v8 initialization
-            await app.init({
-                resizeTo: window,
-                background: '#080808'
-            });
-
-            document.body.appendChild(app.canvas);
-
-            // Call the function from app.js
-            initGame(app);
-        }
-
-        setup();
-    </script>
+    <div id="game"></div>
+    <script type="module" src="./src/app.js"></script>
 </body>
 
 </html>
