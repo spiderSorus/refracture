@@ -9,6 +9,7 @@
   "dependencies": {
     "bitecs": "^0.3.40",
     "electron": "^40.3.0",
+    "phaser": "^3.90.0",
     "pixi.js": "^8.16.0"
   }
 }

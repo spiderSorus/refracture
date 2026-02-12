@@ -1,37 +1,34 @@
 const { defineQuery, enterQuery, exitQuery, hasComponent } = require('bitecs');
-const { Position, Graphic, Input, Debug, Platform, Parent } = require('../components');
+const { Position, Graphic, Input, Debug, Platform, Parent, WorldSpace } = require('../components');
 const { PPU } = require('../../constants');
 const PIXI = require('pixi.js');
 
 const controllers = {
-    2: require('../../graphics/platform')
+    2: require('../../graphics/platform'),
+    3: require('../../graphics/web')
 };
 
-const renderQuery = defineQuery([Position, Graphic]);
+const renderQuery = defineQuery([WorldSpace, Graphic]);
 const renderEnterQuery = enterQuery(renderQuery);
 const renderExitQuery = exitQuery(renderQuery);
-const playerQuery = defineQuery([Input, Position]);
-
-const sprites = new Map();
+const playerQuery = defineQuery([Input, WorldSpace]);
 
 module.exports = function createRenderSystem(app, state) {
-    // We treat the app.stage as the camera/world container
     const worldLayer = app.stage;
     worldLayer.sortableChildren = true;
 
-    // --- UI OVERLAY SETUP ---
-    // We create a container that we will manually lock to screen coordinates
+    // MOVED INSIDE: Fresh map for every scene
+    const sprites = new Map();
+
     const uiLayer = new PIXI.Container();
     app.stage.addChild(uiLayer);
+    uiLayer.zIndex = 1000;
 
     const crosshair = new PIXI.Graphics();
-    worldLayer.addChildAt(crosshair, 0);
+    uiLayer.addChild(crosshair);
 
     const textStyle = new PIXI.TextStyle({
-        fontFamily: 'monospace',
-        fontSize: 18,
-        fill: '#00FF00', // Classic terminal green
-        fontWeight: 'bold',
+        fontFamily: 'monospace', fontSize: 18, fill: '#00FF00', fontWeight: 'bold',
         stroke: { color: '#000000', width: 4 },
     });
 
@@ -39,61 +36,43 @@ module.exports = function createRenderSystem(app, state) {
     uiLayer.addChild(playerText);
 
     function updateHUD(world) {
-        if (!state.debug) {
-            uiLayer.visible = false;
-            return;
-        }
-        uiLayer.visible = true;
-
-        // --- THE UI STICKY TRICK ---
-        // We counteract the camera's movement and scale 
-        // to keep the UI fixed in the top-left of the window.
         const invScale = 1 / worldLayer.scale.x;
         uiLayer.scale.set(invScale);
         uiLayer.x = worldLayer.pivot.x - (app.screen.width / 2) * invScale;
         uiLayer.y = worldLayer.pivot.y - (app.screen.height / 2) * invScale;
 
-        // Ensure UI is visually on top of everything
-        uiLayer.zIndex = 999;
-
         const players = playerQuery(world);
         if (players.length > 0) {
             const p = players[0];
             const isAttached = hasComponent(world, Parent, p);
-            const status = isAttached ? "[ATTACHED]" : "[FREE]";
-
-            playerText.text = `PLAYER X: ${Position.x[p].toFixed(2)}\nPLAYER Y: ${Position.y[p].toFixed(2)}\nSTATE: ${status}`;
+            playerText.text = `WORLD X: ${WorldSpace.x[p].toFixed(2)}\nWORLD Y: ${WorldSpace.y[p].toFixed(2)}\nSTATE: ${isAttached ? "[ATTACHED]" : "[FREE]"}`;
             playerText.position.set(20 * invScale, 20 * invScale);
         }
 
-        // Draw Origin Crosshair (moves with world)
         crosshair.clear();
-        const size = 30 * invScale;
-        crosshair.moveTo(0, -size).lineTo(0, size).stroke({ width: 2 * invScale, color: 0x00FF00, alpha: 0.5 });
-        crosshair.moveTo(-size, 0).lineTo(size, 0).stroke({ width: 2 * invScale, color: 0x00FF00, alpha: 0.5 });
+        const originX = -uiLayer.x;
+        const originY = -uiLayer.y;
+        const size = 20 * invScale;
+        crosshair.moveTo(originX, originY - size).lineTo(originX, originY + size).stroke({ width: 2 * invScale, color: 0x00FF00, alpha: 0.5 });
+        crosshair.moveTo(originX - size, originY).lineTo(originX + size, originY).stroke({ width: 2 * invScale, color: 0x00FF00, alpha: 0.5 });
     }
 
     return (world) => {
         const dt = app.ticker.deltaMS / 1000;
+        uiLayer.visible = state.debug;
+        if (state.debug) updateHUD(world);
 
-        // 1. Process HUD
-        updateHUD(world);
-
-        // 2. ENTITY ENTER
         const entered = renderEnterQuery(world);
         for (let i = 0; i < entered.length; i++) {
             const eid = entered[i];
             const g = new PIXI.Graphics();
-
-            // Platforms in back, players in front
-            g.zIndex = hasComponent(world, Platform, eid) ? 0 : 10;
-
+            const cId = Graphic.controllerId[eid];
+            g.zIndex = (cId === 2 || cId === 3) ? 0 : 10;
             worldLayer.addChild(g);
             sprites.set(eid, g);
             Graphic.lastFrame[eid] = 65535;
         }
 
-        // 3. ENTITY UPDATE
         const ents = renderQuery(world);
         for (let i = 0; i < ents.length; i++) {
             const eid = ents[i];
@@ -103,45 +82,28 @@ module.exports = function createRenderSystem(app, state) {
             g.visible = hasComponent(world, Debug, eid) ? state.debug : true;
             if (!g.visible) continue;
 
-            // Map world units to pixels
-            g.x = Position.x[eid] * PPU;
-            g.y = Position.y[eid] * PPU;
+            g.x = WorldSpace.x[eid] * PPU;
+            g.y = WorldSpace.y[eid] * PPU;
 
             const cId = Graphic.controllerId[eid];
             const ctrl = controllers[cId];
 
             if (ctrl && typeof ctrl.update === 'function') {
-                const currentFrame = Graphic.frame[eid];
-                const lastFrame = Graphic.lastFrame[eid];
-
-                if (currentFrame !== lastFrame) {
-                    if (ctrl.onFrameChange) ctrl.onFrameChange(eid, lastFrame, currentFrame);
-                    Graphic.lastFrame[eid] = currentFrame;
-                }
-                ctrl.update(g, eid, currentFrame, PPU, dt);
+                ctrl.update(g, eid, Graphic.frame[eid], PPU, dt, world);
             } else {
-                // Default Render Fallback
                 g.clear();
                 const size = Graphic.size[eid] * PPU;
-                const color = Graphic.color[eid] || 0xFFFFFF;
-                if (Graphic.shape[eid] === 0) g.circle(0, 0, size / 2).fill(color);
-                else g.rect(-size / 2, -size / 2, size, size).fill(color);
+                if (Graphic.shape[eid] === 0) g.circle(0, 0, size / 2).fill(Graphic.color[eid]);
+                else g.rect(-size / 2, -size / 2, size, size).fill(Graphic.color[eid]);
             }
         }
 
-        // 4. ENTITY EXIT
         const exited = renderExitQuery(world);
         for (let i = 0; i < exited.length; i++) {
             const eid = exited[i];
             const g = sprites.get(eid);
-            if (g) {
-                worldLayer.removeChild(g);
-                g.destroy();
-                sprites.delete(eid);
-            }
+            if (g) { worldLayer.removeChild(g); g.destroy(); sprites.delete(eid); }
         }
-
-        // Final sort to handle Z-indices
         worldLayer.sortChildren();
     };
 };

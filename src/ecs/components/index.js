@@ -11,4 +11,7 @@ module.exports = {
     ...require('./Parent'),
     ...require('./Web'),
     ...require('./Bouncing'),
+    ...require('./Orbit'),
+    ...require('./Patrol'),
+    ...require('./WorldSpace'),
 };

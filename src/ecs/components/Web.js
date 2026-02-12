@@ -1,10 +1,8 @@
 const { defineComponent, Types } = require('bitecs');
-const Web = defineComponent({ 
-    entityA: Types.eid,
-    entityB: Types.eid,
-    anchorAX: Types.f32,
-    anchorAY: Types.f32,
-    anchorBX: Types.f32,
-    anchorBY: Types.f32
+
+const Web = defineComponent({
+    entityA: Types.eid, // Platform A
+    entityB: Types.eid  // Platform B
 });
+
 module.exports = { Web };
