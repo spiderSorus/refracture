@@ -11,6 +11,7 @@ export class MenuScene extends Phaser.Scene {
 
     create() {
         this.inputManager = new InputManager(this);
+        this.textObjects = []; // CRITICAL: Reset the array
 
         this.add.text(100, 100, 'REFRACT', {
             fontSize: '64px',
@@ -19,7 +20,7 @@ export class MenuScene extends Phaser.Scene {
         });
 
         this.options.forEach((opt, index) => {
-            const text = this.add.text(100, 300 + (index * 60), opt, {
+            const text = this.add.text(100, 300 + (index * 60), `  ${opt}`, {
                 fontSize: '32px',
                 fill: '#666',
                 fontFamily: 'monospace'
@@ -41,22 +42,31 @@ export class MenuScene extends Phaser.Scene {
         }
 
         if (this.inputManager.getAction('SELECT')) {
-            const choice = this.options[this.selected];
-            if (choice === 'TEST SUITE') {
-                this.scene.start('TestMenuScene');
-            }
+            this.handleSelection();
         }
     }
 
     updateSelection() {
         this.textObjects.forEach((text, index) => {
+            // Safety check to prevent the drawImage error during scene transitions
+            if (!text || !text.active || !text.canvas) return;
+
             if (index === this.selected) {
-                text.setColor('rgb(234, 0, 255)');
+                text.setColor('#0f0');
                 text.setText(`> ${this.options[index]}`);
             } else {
                 text.setColor('#666');
                 text.setText(`  ${this.options[index]}`);
             }
         });
+    }
+
+    handleSelection() {
+        const choice = this.options[this.selected];
+        if (choice === 'TEST SUITE') {
+            this.scene.start('TestMenuScene');
+        } else {
+            console.log("Not implemented yet:", choice);
+        }
     }
 }

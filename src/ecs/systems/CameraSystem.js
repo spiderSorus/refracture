@@ -1,43 +1,35 @@
-import Phaser from 'phaser';
-
 export const CameraSystem = (entities, scene) => {
     const targets = entities.filter(e => e.components.CameraTarget && e.components.Position);
     if (targets.length === 0) return;
 
     const cam = scene.cameras.main;
-    const padding = 100; // Extra space around entities
 
-    // 1. Calculate the bounding box of all targets
+    // 1. Find the bounds of all targets
     let minX = Infinity, minY = Infinity;
     let maxX = -Infinity, maxY = -Infinity;
 
-    targets.forEach(e => {
-        const { x, y } = e.components.Position;
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
+    targets.forEach(t => {
+        const { x, y } = t.components.Position;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
     });
 
-    // 2. Calculate midpoint (LookAt point)
+    // 2. Calculate Center
     const centerX = (minX + maxX) / 2;
     const centerY = (minY + maxY) / 2;
 
-    // 3. Calculate required zoom
-    const width = (maxX - minX) + (padding * 2);
-    const height = (maxY - minY) + (padding * 2);
+    // 3. Calculate Required Zoom
+    const padding = 100; // Keep targets away from screen edges
+    const width = (maxX - minX) + padding * 2;
+    const height = (maxY - minY) + padding * 2;
 
-    const zoomX = scene.scale.width / width;
-    const zoomY = scene.scale.height / height;
+    const zoomX = cam.width / width;
+    const zoomY = cam.height / height;
+    const targetZoom = Math.min(zoomX, zoomY, 1.5); // Cap zoom so it doesn't get too pixelated
 
-    // Use the smaller zoom level to ensure everything fits
-    const targetZoom = Math.min(zoomX, zoomY, 1.5); // Cap zoom at 1.5x
-
-    // 4. Apply to camera with a slight lerp for smoothness
-    cam.centerOn(
-        Phaser.Math.Linear(cam.midPoint.x, centerX, 0.1),
-        Phaser.Math.Linear(cam.midPoint.y, centerY, 0.1)
-    );
-
-    cam.setZoom(Phaser.Math.Linear(cam.zoom, targetZoom, 0.05));
+    // 4. Smoothly Pan and Zoom
+    cam.pan(centerX, centerY, 100, 'Linear', true);
+    cam.zoomTo(targetZoom, 100, 'Linear', true);
 };

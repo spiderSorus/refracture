@@ -1,5 +1,3 @@
-import Phaser from 'phaser';
-import { InputManager } from '../../core/Input';
 import { createPlayer } from '../../ecs/entities/player';
 import { createTarget } from '../../ecs/entities/target';
 import { CameraTarget } from '../../ecs/components/index';
@@ -7,58 +5,44 @@ import {
     MovementSystem,
     PhysicsSystem,
     RenderSystem,
-    DebugSystem,
     CameraSystem
 } from '../../ecs/systems/index';
+import { BaseTestScene } from './BaseTestScene';
 
-export class CameraTest extends Phaser.Scene {
+export class CameraTest extends BaseTestScene {
     constructor() {
-        super('CameraTest');
-        this.entities = [];
+        super('CameraTest', 'Camera Test', 'Dynamic framing and auto-zoom demo');
     }
 
     create() {
-        this.inputManager = new InputManager(this);
-        this.debugSystem = new DebugSystem(this);
+        // 1. Initialize Base (Input, UI, Grid state)
+        super.create();
 
-        // 1. Create Player & Tag for Camera
-        const playerParts = createPlayer(400, 300);
-        playerParts.push(CameraTarget());
-        const player = this.addEntity(playerParts);
+        // 2. Create Entities using the method defined in the parent
+        const player = this.addEntity([
+            ...createPlayer(400, 300),
+            CameraTarget()
+        ]);
 
-        // 2. Create Target & Tag for Camera
-        const targetParts = createTarget(600, 500);
-        targetParts.push(CameraTarget());
-        const target = this.addEntity(targetParts);
+        const target = this.addEntity([
+            ...createTarget(600, 500),
+            CameraTarget()
+        ]);
 
-        // 3. Force Initial Target State
-        player.components.Targeter.currentTarget = target.id;
-
-        this.add.text(20, 20, '02_CameraTest', { font: '20px monospace', fill: '#fff' }).setScrollFactor(0);
-        this.add.text(20, 50, 'Move away to see dynamic zoom', { font: '16px monospace', fill: '#aaa' }).setScrollFactor(0);
+        // 3. Set initial state
+        if (player.components.Targeter) {
+            player.components.Targeter.currentTarget = target.id;
+        }
     }
 
     update(time, delta) {
-        if (this.inputManager.getAction('BACK')) {
-            this.scene.start('TestMenuScene');
-            return;
-        }
+        // Check if we are still in the scene
+        if (!super.update(time, delta)) return;
 
-        // ECS Flow
+        // Run Systems
         MovementSystem(this.entities, this.inputManager);
         RenderSystem(this.entities, this);
         PhysicsSystem(this.entities, delta);
-        CameraSystem(this.entities, this); // Manage Zoom/Pan
-        this.debugSystem.update(this.entities);
-    }
-
-    addEntity(componentsArray) {
-        const entity = {
-            id: crypto.randomUUID(),
-            components: {}
-        };
-        componentsArray.forEach(c => { if (c._type) entity.components[c._type] = c; });
-        this.entities.push(entity);
-        return entity;
+        CameraSystem(this.entities, this);
     }
 }

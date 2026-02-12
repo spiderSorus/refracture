@@ -11,16 +11,19 @@ export class TestMenuScene extends Phaser.Scene {
 
     create() {
         this.inputManager = new InputManager(this);
+        this.textObjects = [];
 
-        this.add.text(50, 50, 'SELECT TEST (ESC to Back)', {
+        // Background / UI Header
+        this.add.text(50, 50, 'LAB / TEST SUITE', {
             fontSize: '32px',
             fill: '#0ff',
             fontFamily: 'monospace'
         });
 
+        // Generate menu items from the registry
         TestScenes.forEach((sceneClass, index) => {
             const name = sceneClass.name;
-            const text = this.add.text(100, 150 + (index * 50), name, {
+            const text = this.add.text(100, 150 + (index * 50), `  ${name}`, {
                 fontSize: '24px',
                 fill: '#666',
                 fontFamily: 'monospace'
@@ -32,6 +35,7 @@ export class TestMenuScene extends Phaser.Scene {
     }
 
     update() {
+        // Navigation
         if (this.inputManager.getAction('UP')) {
             this.selected = (this.selected - 1 + TestScenes.length) % TestScenes.length;
             this.updateSelection();
@@ -41,9 +45,10 @@ export class TestMenuScene extends Phaser.Scene {
             this.updateSelection();
         }
 
+        // Action
         if (this.inputManager.getAction('SELECT')) {
-            const sceneToStart = TestScenes[this.selected];
-            this.scene.start(sceneToStart.name);
+            const sceneClass = TestScenes[this.selected];
+            this.scene.start(sceneClass.name);
         }
 
         if (this.inputManager.getAction('BACK')) {
@@ -53,12 +58,12 @@ export class TestMenuScene extends Phaser.Scene {
 
     updateSelection() {
         this.textObjects.forEach((text, index) => {
+            if (!text || !text.active) return;
+            const sceneName = TestScenes[index].name;
             if (index === this.selected) {
-                text.setColor('rgb(234, 0, 255)');
-                text.setText(`> ${TestScenes[index].name}`);
+                text.setColor('#0f0').setText(`> ${sceneName}`);
             } else {
-                text.setColor('#666');
-                text.setText(`  ${TestScenes[index].name}`);
+                text.setColor('#666').setText(`  ${sceneName}`);
             }
         });
     }

@@ -1,54 +1,27 @@
-import Phaser from 'phaser';
-import { InputManager } from '../../core/Input';
 import { createPlayer } from '../../ecs/entities/player';
-import {
-    MovementSystem,
-    PhysicsSystem,
-    RenderSystem
-} from '../../ecs/systems/index';
+import { MovementSystem, PhysicsSystem, RenderSystem } from '../../ecs/systems/index';
+import { BaseTestScene } from './BaseTestScene';
 
-export class MovementTest extends Phaser.Scene {
+export class MovementTest extends BaseTestScene {
     constructor() {
-        super('MovementTest');
-        this.entities = [];
+        // Key, Title, Subtitle
+        super('MovementTest', 'Movement Test', 'Standard 8-way movement. Use Arrows or Left Stick.');
     }
 
     create() {
-        this.inputManager = new InputManager(this);
+        super.create(); // This initializes this.inputManager and the UI
 
-        // Spawn Player
+        // Spawn Player at Grid 40, 30 (400px, 300px)
         this.addEntity(createPlayer(400, 300));
-
-        // UI
-        this.add.text(20, 20, '00_MovementTest', { font: '20px monospace', fill: '#fff' });
-        this.add.text(20, 50, 'Use Arrows or Left Stick to Move', { font: '16px monospace', fill: '#aaa' });
-
-        this.input.keyboard.on('keydown-ESC', () => {
-            this.scene.start('TestMenuScene');
-        });
     }
 
     update(time, delta) {
-        if (this.inputManager.getAction('BACK')) {
-            this.scene.start('TestMenuScene');
-            return;
-        }
+        // super.update handles ESC, Blue Grid, and HTML Debug Console
+        if (!super.update(time, delta)) return;
 
-        // Systems
+        // Scene Logic
         MovementSystem(this.entities, this.inputManager);
         RenderSystem(this.entities, this);
         PhysicsSystem(this.entities, delta);
-    }
-
-    addEntity(componentsArray) {
-        const entity = {
-            id: crypto.randomUUID(),
-            components: {}
-        };
-        componentsArray.forEach(c => {
-            if (c._type) entity.components[c._type] = c;
-        });
-        this.entities.push(entity);
-        return entity;
     }
 }
