@@ -1,19 +1,13 @@
 import {
-    Position,
-    Velocity,
-    Graphic,
-    InputControlled,
-    PlayerTag,
-    Targeter
+    Position, Velocity, Rotation, Graphic,
+    PlayerTag, InputControlled
 } from '../components/index';
 
-export const createPlayer = (x, y) => {
-    return [
-        Position(x, y),
-        Velocity(0, 0),
-        Graphic('circle', 0x00ff00),
-        InputControlled(),
-        PlayerTag(),
-        Targeter()
-    ];
-};
+export const createPlayer = (x, y) => [
+    Position(x, y),
+    Velocity(0, 0),
+    Rotation(0), // Initialize at 0 radians (facing East)
+    Graphic('triangle', 0x00ffff),
+    PlayerTag(),
+    InputControlled()
+];
