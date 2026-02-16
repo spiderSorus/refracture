@@ -1,0 +1,1199 @@
+
+--- FILE: src/app.js ---
+import Phaser from 'phaser';
+import { MenuScene } from './scenes/MenuScene';
+import { TestMenuScene } from './scenes/TestMenuScene';
+import { TestScenes } from './scenes/test/index'; // Import the array
+
+const config = {
+    type: Phaser.AUTO,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    backgroundColor: '#050505',
+    parent: 'game-container',
+    input: { gamepad: true },
+    scene: [
+        MenuScene,
+        TestMenuScene,
+        ...TestScenes
+    ]
+};
+
+new Phaser.Game(config);
+--- FILE: src/core/Constants.js ---
+export const GRID = {
+    UNIT: 10,        // 1 Grid Unit = 10px
+    PLAYER_SIZE: 1,  // 1 Unit wide/high
+    SPEED: 5,        // 5 Units per second (5 * 10 = 50px/sec)
+};
+--- FILE: src/core/Input.js ---
+import Phaser from 'phaser';
+
+export class InputManager {
+    constructor(scene) {
+        this.scene = scene;
+        this.cursors = scene.input.keyboard.createCursorKeys();
+
+        this.keys = scene.input.keyboard.addKeys({
+            enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
+            esc: Phaser.Input.Keyboard.KeyCodes.ESC,
+            x: Phaser.Input.Keyboard.KeyCodes.X,
+            y: Phaser.Input.Keyboard.KeyCodes.Y,
+            tab: Phaser.Input.Keyboard.KeyCodes.TAB,
+            next: Phaser.Input.Keyboard.KeyCodes.E,
+            prev: Phaser.Input.Keyboard.KeyCodes.Q
+        });
+
+        this.pad = null;
+        this.prevPadState = {};
+
+        if (this.scene.input.gamepad.total > 0) {
+            this.pad = this.scene.input.gamepad.getPad(0);
+        }
+
+        this.scene.input.gamepad.on('connected', (pad) => {
+            this.pad = pad;
+        });
+    }
+
+    isButtonDown(action) {
+        if (action === 'X' && this.keys.x.isDown) return true;
+        if (action === 'Y' && this.keys.y.isDown) return true;
+        if (this.pad) {
+            if (action === 'X' && this.pad.X) return true;
+            if (action === 'Y' && this.pad.Y) return true;
+        }
+        return false;
+    }
+
+    getAction(action) {
+        const justDown = (key) => Phaser.Input.Keyboard.JustDown(key);
+
+        if (action === 'NEXT_TARGET') return justDown(this.keys.next) || this.isButtonPressed('R1');
+        if (action === 'PREV_TARGET') return justDown(this.keys.prev) || this.isButtonPressed('L1');
+        if (action === 'UP') return justDown(this.cursors.up) || this.isButtonPressed('up');
+        if (action === 'DOWN') return justDown(this.cursors.down) || this.isButtonPressed('down');
+        if (action === 'SELECT') return justDown(this.keys.enter) || this.isButtonPressed('A');
+        if (action === 'BACK') return justDown(this.keys.esc) || this.isButtonPressed('B');
+
+        return false;
+    }
+
+    isButtonPressed(button) {
+        if (!this.pad) return false;
+        const isDown = this.pad[button];
+        const wasDown = this.prevPadState[button] || false;
+        this.prevPadState[button] = isDown;
+        return isDown && !wasDown;
+    }
+
+    getMovement() {
+        let x = 0, y = 0;
+        if (this.cursors.left.isDown) x = -1;
+        else if (this.cursors.right.isDown) x = 1;
+        if (this.cursors.up.isDown) y = -1;
+        else if (this.cursors.down.isDown) y = 1;
+
+        if (this.pad) {
+            const t = 0.15;
+            if (Math.abs(this.pad.leftStick.x) > t) x = this.pad.leftStick.x;
+            if (Math.abs(this.pad.leftStick.y) > t) y = this.pad.leftStick.y;
+        }
+        return { x, y };
+    }
+}
+--- FILE: src/core/UIManager.js ---
+export class UIManager {
+    constructor() {
+        // Prevent duplicate overlays on HMR refresh
+        if (document.getElementById('game-ui-overlay')) {
+            this.overlay = document.getElementById('game-ui-overlay');
+            return;
+        }
+
+        this.overlay = document.createElement('div');
+        this.overlay.id = 'game-ui-overlay';
+        this.overlay.style.cssText = `
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 1000; font-family: monospace; color: #fff;
+            overflow: hidden;
+        `;
+        document.body.appendChild(this.overlay);
+    }
+
+    showTitle(title = "SCENE", sub = "") {
+        const el = document.createElement('div');
+        el.style.cssText = `
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; opacity: 0; transition: opacity 0.5s ease-in-out;
+        `;
+
+        el.innerHTML = `
+            <h1 style="color: #8b008b; font-size: 64px; margin: 0; font-weight: bold; text-shadow: 2px 2px #000;">
+                ${title.toString().toUpperCase()}
+            </h1>
+            <p style="color: #ff69b4; font-size: 24px; margin: 10px 0 0 0; text-shadow: 1px 1px #000;">
+                ${sub.toString()}
+            </p>
+        `;
+
+        this.overlay.appendChild(el);
+
+        // Trigger reflow for transition
+        requestAnimationFrame(() => {
+            el.style.opacity = '1';
+        });
+
+        setTimeout(() => {
+            el.style.opacity = '0';
+            setTimeout(() => el.remove(), 1000);
+        }, 3000);
+    }
+
+    updateDebug(playerData, targetData) {
+        let debugEl = document.getElementById('debug-console');
+        if (!debugEl) {
+            debugEl = document.createElement('div');
+            debugEl.id = 'debug-console';
+            debugEl.style.cssText = `
+                position: absolute; top: 0; left: 0; width: 100%;
+                background: rgba(0,0,0,0.8); padding: 20px;
+                display: flex; justify-content: space-between;
+                font-size: 14px; color: #0f0; visibility: hidden;
+                border-bottom: 1px solid #0f0;
+            `;
+            this.overlay.appendChild(debugEl);
+        }
+
+        debugEl.innerHTML = `
+            <div>
+                [ PLAYER ]<br>
+                POS: ${playerData.x}, ${playerData.y}<br>
+                GRID: ${playerData.gx}, ${playerData.gy}
+            </div>
+            <div style="color: #f0f; text-align: right;">
+                [ TARGET ]<br>
+                ${targetData ? `ID: ${targetData.id}` : 'NO TARGET'}
+            </div>
+        `;
+    }
+
+    toggleDebug() {
+        const el = document.getElementById('debug-console');
+        if (el) {
+            el.style.visibility = (el.style.visibility === 'hidden') ? 'visible' : 'hidden';
+        }
+    }
+}
+
+// Create and export a single instance
+export const UI = new UIManager();
+--- FILE: src/ecs/components/index.js ---
+export const Position = (x = 0, y = 0) => ({ _type: 'Position', x, y });
+export const Velocity = (x = 0, y = 0) => ({ _type: 'Velocity', x, y });
+export const Rotation = (angle = 0) => ({ _type: 'Rotation', angle }); // NEW
+export const Graphic = (texture = 'rect', color = 0xffffff) => ({ _type: 'Graphic', texture, color });
+export const PlayerTag = () => ({ _type: 'PlayerTag' });
+export const InputControlled = () => ({ _type: 'InputControlled' });
+export const CameraTarget = () => ({ _type: 'CameraTarget' });
+export const EntityType = (type) => ({ _type: 'EntityType', value: type });
+export const AbilityState = () => ({
+    _type: 'AbilityState', armed: null, targetIndex: 0, potentialTargets: [], currentTargetId: null
+});
+export const Parent = (entityId, offset = { x: 0, y: 0 }) => ({
+    _type: 'Parent',
+    id: entityId,
+    offset
+});
+export const Collider = (type = 'circle', radius = 50, width = 100, height = 100) => ({
+    _type: 'Collider',
+    type, radius, width, height
+});
+export const PlatformTag = () => ({ _type: 'PlatformTag' });
+--- FILE: src/ecs/entities/player.js ---
+import {
+    Position, Velocity, Rotation, Graphic,
+    PlayerTag, InputControlled
+} from '../components/index';
+
+export const createPlayer = (x, y) => [
+    Position(x, y),
+    Velocity(0, 0),
+    Rotation(0), // Initialize at 0 radians (facing East)
+    Graphic('triangle', 0x00ffff),
+    PlayerTag(),
+    InputControlled()
+];
+--- FILE: src/ecs/entities/target.js ---
+import { Position, Graphic, Rotation, EntityType } from '../components/index';
+
+/**
+ * Standard Target Factory
+ * @param {number} x 
+ * @param {number} y 
+ * @param {string} type - 'A', 'B', or 'C'
+ */
+export const createTarget = (x, y, type = 'A') => {
+    // Determine color/shape based on type
+    const config = {
+        'A': { color: 0x0000ff, texture: 'rect' },
+        'B': { color: 0x00ff00, texture: 'rect' },
+        'C': { color: 0xffff00, texture: 'circle' }
+    }[type] || { color: 0xffffff, texture: 'rect' };
+
+    return [
+        Position(x, y),
+        Rotation(0), // Allows targets to face a direction if they move later
+        Graphic(config.texture, config.color),
+        EntityType(type)
+    ];
+};
+--- FILE: src/ecs/systems/AbilityTargetingSystem.js ---
+import Phaser from 'phaser';
+import { GRID } from '../../core/Constants';
+
+export const AbilityTargetingSystem = (entities, inputManager) => {
+    const player = entities.find(e => e.components.PlayerTag);
+    if (!player || !player.components.AbilityState || !player.components.Rotation) return;
+
+    const state = player.components.AbilityState;
+    const pPos = player.components.Position;
+    const pRot = player.components.Rotation.angle; // Current heading in radians
+
+    // 1. Armed State Logic
+    const holdX = inputManager.isButtonDown('X');
+    const holdY = inputManager.isButtonDown('Y');
+    const prevArmed = state.armed;
+
+    if (holdX && holdY) state.armed = null;
+    else if (holdX) state.armed = 'X';
+    else if (holdY) state.armed = 'Y';
+    else state.armed = null;
+
+    if (prevArmed !== state.armed) {
+        state.targetIndex = 0;
+        state.currentTargetId = null;
+    }
+
+    if (!state.armed) return;
+
+    // 2. Filter Configuration
+    const config = {
+        'X': { types: ['A', 'B'], range: 400 * GRID.UNIT },
+        'Y': { types: ['C'], range: 1000 * GRID.UNIT }
+    }[state.armed];
+
+    // 3. The 90-Degree Cone Filter
+    const FOV = Math.PI / 2; // 90 degrees total
+    const HALF_FOV = FOV / 2; // 45 degrees in either direction
+
+    const validTargets = entities.filter(e => {
+        if (e === player || !e.components.EntityType) return false;
+
+        const typeMatch = config.types.includes(e.components.EntityType.value);
+        const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, e.components.Position.x, e.components.Position.y);
+
+        if (!typeMatch || dist > config.range) return false;
+
+        // --- CONE LOGIC ---
+        // 1. Find the angle from player to target
+        const angleToTarget = Phaser.Math.Angle.Between(pPos.x, pPos.y, e.components.Position.x, e.components.Position.y);
+
+        // 2. Find the difference between player heading and target angle
+        // wrapAngle ensures the difference is always between -PI and PI
+        const angleDiff = Phaser.Math.Angle.Wrap(angleToTarget - pRot);
+
+        // 3. Check if the target is within the 45-degree offset
+        return Math.abs(angleDiff) <= HALF_FOV;
+    }).sort((a, b) => {
+        // Spiral Sort (Rings of 50px + Clockwise Angle)
+        const d1 = Phaser.Math.Distance.Between(pPos.x, pPos.y, a.components.Position.x, a.components.Position.y);
+        const d2 = Phaser.Math.Distance.Between(pPos.x, pPos.y, b.components.Position.x, b.components.Position.y);
+
+        const r1 = Math.floor(d1 / 50);
+        const r2 = Math.floor(d2 / 50);
+        if (r1 !== r2) return r1 - r2;
+
+        const a1 = Math.atan2(a.components.Position.y - pPos.y, a.components.Position.x - pPos.x);
+        const a2 = Math.atan2(b.components.Position.y - pPos.y, b.components.Position.x - pPos.x);
+        return a1 - a2;
+    });
+
+    state.potentialTargets = validTargets.map(t => t.id);
+    const count = state.potentialTargets.length;
+
+    // 4. Cycling Logic
+    if (count > 0) {
+        if (inputManager.getAction('NEXT_TARGET')) {
+            state.targetIndex = (state.targetIndex + 1) % count;
+        } else if (inputManager.getAction('PREV_TARGET')) {
+            state.targetIndex = (state.targetIndex - 1 + count) % count;
+        }
+        state.currentTargetId = state.potentialTargets[state.targetIndex];
+    } else {
+        state.currentTargetId = null;
+    }
+};
+--- FILE: src/ecs/systems/AttachmentSystem.js ---
+export const AttachmentSystem = (entities, inputManager) => {
+    const player = entities.find(e => e.components.PlayerTag);
+    if (!player) return;
+
+    const pPos = player.components.Position;
+    const parentComp = player.components.Parent;
+
+    // 1. Handle Detachment (B Button Tap)
+    if (parentComp && inputManager.getAction('BACK')) {
+        delete player.components.Parent;
+        return;
+    }
+
+    // 2. Handle Attachment (If not already attached)
+    if (!parentComp) {
+        const platforms = entities.filter(e => e.components.PlatformTag && e.components.Collider);
+
+        for (const plat of platforms) {
+            const platPos = plat.components.Position;
+            const col = plat.components.Collider;
+            let inside = false;
+
+            if (col.type === 'circle') {
+                const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, platPos.x, platPos.y);
+                inside = dist <= col.radius;
+            } else {
+                // Simple AABB check for complex/rect shapes
+                inside = (pPos.x >= platPos.x - col.width / 2 && pPos.x <= platPos.x + col.width / 2 &&
+                    pPos.y >= platPos.y - col.height / 2 && pPos.y <= platPos.y + col.height / 2);
+            }
+
+            if (inside) {
+                // Calculate and store the relative offset so the player doesn't "jump" to center
+                player.components.Parent = {
+                    _type: 'Parent',
+                    id: plat.id,
+                    offset: { x: pPos.x - platPos.x, y: pPos.y - platPos.y }
+                };
+                break;
+            }
+        }
+    }
+};
+--- FILE: src/ecs/systems/CameraSystem.js ---
+export const CameraSystem = (entities, scene) => {
+    const targets = entities.filter(e => e.components.CameraTarget && e.components.Position);
+    if (targets.length === 0) return;
+
+    const cam = scene.cameras.main;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    targets.forEach(t => {
+        const { x, y } = t.components.Position;
+        minX = Math.min(minX, x); minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+    });
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const width = (maxX - minX) + 200;
+    const height = (maxY - minY) + 200;
+
+    const targetZoom = Math.min(cam.width / width, cam.height / height, 1.5);
+
+    cam.pan(centerX, centerY, 500, 'Power2');
+    cam.zoomTo(targetZoom, 500, 'Power2');
+};
+--- FILE: src/ecs/systems/DebugLayerSystem.js ---
+import { GRID } from '../../core/Constants';
+
+export const DebugLayerSystem = (scene) => {
+    if (!scene.showDebugGrid) {
+        if (scene.debugGraphics) scene.debugGraphics.clear();
+        return;
+    }
+
+    if (!scene.debugGraphics) {
+        scene.debugGraphics = scene.add.graphics().setDepth(1500);
+    }
+
+    scene.debugGraphics.clear();
+    const cam = scene.cameras.main;
+    const worldView = cam.worldView;
+
+    scene.debugGraphics.lineStyle(1, 0x0000ff, 0.5);
+
+    const startX = Math.floor(worldView.x / GRID.UNIT) * GRID.UNIT;
+    const endX = Math.ceil(worldView.right / GRID.UNIT) * GRID.UNIT;
+    const startY = Math.floor(worldView.y / GRID.UNIT) * GRID.UNIT;
+    const endY = Math.ceil(worldView.bottom / GRID.UNIT) * GRID.UNIT;
+
+    for (let x = startX; x <= endX; x += GRID.UNIT) {
+        for (let y = startY; y <= endY; y += GRID.UNIT) {
+            const crossSize = 2 / cam.zoom;
+            scene.debugGraphics.moveTo(x - crossSize, y);
+            scene.debugGraphics.lineTo(x + crossSize, y);
+            scene.debugGraphics.moveTo(x, y - crossSize);
+            scene.debugGraphics.lineTo(x, y + crossSize);
+        }
+    }
+    scene.debugGraphics.strokePath();
+};
+--- FILE: src/ecs/systems/index.js ---
+export * from './MovementSystem';
+export * from './PhysicsSystem';
+export * from './RenderSystem';
+export * from './CameraSystem';
+export * from './DebugLayerSystem';
+export * from './AbilityTargetingSystem'; // Corrected Name
+export * from './TargetRenderSystem';    // Corrected Name
+--- FILE: src/ecs/systems/MovementSystem.js ---
+import { GRID } from '../../core/Constants';
+
+export const MovementSystem = (entities, inputManager) => {
+    if (!inputManager) return;
+
+    const velocity = GRID.SPEED * GRID.UNIT;
+    const move = inputManager.getMovement();
+
+    entities.forEach(entity => {
+        const { Position: pos, Velocity: vel, Rotation: rot, InputControlled: input } = entity.components;
+
+        if (input && pos && vel) {
+            // 1. Set Velocity
+            vel.x = move.x * velocity;
+            vel.y = move.y * velocity;
+
+            // 2. Update Rotation based on direction of travel
+            if (rot && (move.x !== 0 || move.y !== 0)) {
+                // atan2 returns the angle in radians
+                rot.angle = Math.atan2(move.y, move.x);
+            }
+
+            // 3. Grid Snapping when stopped
+            if (move.x === 0 && move.y === 0) {
+                pos.x = Math.round(pos.x / GRID.UNIT) * GRID.UNIT;
+                pos.y = Math.round(pos.y / GRID.UNIT) * GRID.UNIT;
+            }
+        }
+    });
+};
+--- FILE: src/ecs/systems/PhysicsSystem.js ---
+export const PhysicsSystem = (entities, delta) => {
+    entities.forEach(entity => {
+        const { Position: pos, Velocity: vel, Parent: parent } = entity.components;
+
+        // If entity is attached to a parent, sync position based on parent + offset
+        if (parent && pos) {
+            const parentEntity = entities.find(e => e.id === parent.id);
+            if (parentEntity && parentEntity.components.Position) {
+                const pPos = parentEntity.components.Position;
+                pos.x = pPos.x + parent.offset.x;
+                pos.y = pPos.y + parent.offset.y;
+                return; // Skip standard velocity physics for attached entities
+            }
+        }
+
+        // Standard Velocity Physics
+        if (pos && vel) {
+            pos.x += vel.x * (delta / 1000);
+            pos.y += vel.y * (delta / 1000);
+        }
+    });
+};
+--- FILE: src/ecs/systems/RenderSystem.js ---
+export const RenderSystem = (entities, scene) => {
+    if (!scene.gfx) {
+        scene.gfx = scene.add.graphics().setDepth(100);
+    }
+    scene.gfx.clear();
+
+    entities.forEach(entity => {
+        const { Position: pos, Graphic: gfx, Rotation: rot, PlayerTag: isPlayer } = entity.components;
+        if (!pos || !gfx) return;
+
+        const color = gfx.color || 0xffffff;
+        const angle = rot ? rot.angle : 0;
+
+        scene.gfx.fillStyle(color, 1);
+        scene.gfx.lineStyle(2, 0xffffff, 0.5);
+
+        scene.gfx.save();
+        scene.gfx.translateCanvas(pos.x, pos.y);
+        scene.gfx.rotateCanvas(angle);
+
+        if (isPlayer) {
+            // Draw Triangle pointing Right (0 radians)
+            // Points are relative to the translated center
+            const size = 12;
+            scene.gfx.beginPath();
+            scene.gfx.moveTo(size, 0);          // Tip
+            scene.gfx.lineTo(-size, -size);     // Bottom Left
+            scene.gfx.lineTo(-size, size);      // Bottom Right
+            scene.gfx.closePath();
+            scene.gfx.fillPath();
+            scene.gfx.strokePath();
+        } else {
+            // Draw standard shapes
+            if (gfx.texture === 'circle') {
+                scene.gfx.fillCircle(0, 0, 8);
+                scene.gfx.strokeCircle(0, 0, 8);
+            } else {
+                scene.gfx.fillRect(-6, -6, 12, 12);
+                scene.gfx.strokeRect(-6, -6, 12, 12);
+            }
+        }
+
+        scene.gfx.restore();
+    });
+};
+--- FILE: src/ecs/systems/TargetingSystem.js ---
+import Phaser from 'phaser';
+import { GRID } from '../../core/Constants';
+
+export const AbilityTargetingSystem = (entities, inputManager) => {
+    const player = entities.find(e => e.components.PlayerTag);
+    if (!player || !player.components.AbilityState) return;
+
+    const state = player.components.AbilityState;
+    const pPos = player.components.Position;
+
+    // 1. Handle Hold State
+    const holdX = inputManager.isButtonDown('X');
+    const holdY = inputManager.isButtonDown('Y');
+    const prevArmed = state.armed;
+
+    if (holdX && holdY) state.armed = null;
+    else if (holdX) state.armed = 'X';
+    else if (holdY) state.armed = 'Y';
+    else state.armed = null;
+
+    if (prevArmed !== state.armed) {
+        state.targetIndex = 0;
+        state.currentTargetId = null;
+    }
+
+    if (!state.armed) return;
+
+    // 2. Configuration for Mode
+    const config = {
+        'X': { types: ['A', 'B'], range: 400 * GRID.UNIT },
+        'Y': { types: ['C'], range: 1000 * GRID.UNIT }
+    }[state.armed];
+
+    // 3. The Spiral Sort (Radial + Angular)
+    const validTargets = entities.filter(e => {
+        if (e === player || !e.components.EntityType) return false;
+
+        const typeMatch = config.types.includes(e.components.EntityType.value);
+        const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, e.components.Position.x, e.components.Position.y);
+
+        return typeMatch && dist <= config.range;
+    }).sort((a, b) => {
+        const posA = a.components.Position;
+        const posB = b.components.Position;
+
+        const distA = Phaser.Math.Distance.Between(pPos.x, pPos.y, posA.x, posA.y);
+        const distB = Phaser.Math.Distance.Between(pPos.x, pPos.y, posB.x, posB.y);
+
+        // Normalize distance into "rings" (e.g., every 50 units is a new priority tier)
+        const ringA = Math.floor(distA / (50 * GRID.UNIT));
+        const ringB = Math.floor(distB / (50 * GRID.UNIT));
+
+        if (ringA !== ringB) {
+            return ringA - ringB; // Closest ring first
+        }
+
+        // Within the same ring, sort by clockwise angle
+        // atan2 returns -PI to PI. Adding PI makes it 0 to 2PI (Clockwise)
+        const angleA = Math.atan2(posA.y - pPos.y, posA.x - pPos.x) + Math.PI;
+        const angleB = Math.atan2(posB.y - pPos.y, posB.x - pPos.x) + Math.PI;
+
+        return angleA - angleB;
+    });
+
+    state.potentialTargets = validTargets.map(t => t.id);
+
+    // 4. Ring Buffer Cycling
+    if (inputManager.getAction('NEXT_TARGET')) {
+        state.targetIndex++;
+    }
+
+    if (state.potentialTargets.length > 0) {
+        state.targetIndex = state.targetIndex % state.potentialTargets.length;
+        state.currentTargetId = state.potentialTargets[state.targetIndex];
+    } else {
+        state.currentTargetId = null;
+    }
+};
+--- FILE: src/ecs/systems/TargetRenderSystem.js ---
+export const TargetRenderSystem = (entities, scene) => {
+    const player = entities.find(e => e.components.PlayerTag);
+    const state = player?.components.AbilityState;
+
+    if (!scene.targetGfx) {
+        scene.targetGfx = scene.add.graphics().setDepth(1400);
+    }
+    scene.targetGfx.clear();
+
+    // Only draw if we are actively arming an ability
+    if (!state || !state.armed) return;
+
+    entities.forEach(e => {
+        const pos = e.components.Position;
+        if (!pos || !e.components.EntityType) return;
+
+        if (state.potentialTargets.includes(e.id)) {
+            const isCurrent = state.currentTargetId === e.id;
+
+            if (isCurrent) {
+                // Active Target: Green Ring
+                scene.targetGfx.lineStyle(2, 0x00ff00, 1.0);
+                scene.targetGfx.strokeCircle(pos.x, pos.y, 15);
+            } else {
+                // Potential Targets: Light Grey Square
+                scene.targetGfx.lineStyle(1, 0xaaaaaa, 0.4);
+                scene.targetGfx.strokeRect(pos.x - 8, pos.y - 8, 16, 16);
+            }
+        }
+    });
+};
+--- FILE: src/ecs/systems/TitleSystem.js ---
+export class TitleSystem {
+    constructor(scene, titleText, subText) {
+        this.scene = scene;
+
+        const styleTitle = {
+            font: 'bold 64px monospace',
+            fill: '#8b008b', // Dark Hot Pink
+            align: 'center'
+        };
+        const styleSub = {
+            font: '24px monospace',
+            fill: '#ff69b4', // Hot Pink
+            align: 'center'
+        };
+
+        // Create Container at screen center
+        const screenCenterX = scene.scale.width / 2;
+        const screenCenterY = scene.scale.height / 2;
+
+        this.container = scene.add.container(screenCenterX, screenCenterY);
+
+        // CRITICAL: setScrollFactor(0) makes it ignore camera pan AND zoom
+        this.container.setScrollFactor(0);
+        this.container.setDepth(2000);
+        this.container.setAlpha(0);
+
+        const title = scene.add.text(0, -40, titleText.toUpperCase(), styleTitle).setOrigin(0.5);
+        const sub = scene.add.text(0, 40, subText, styleSub).setOrigin(0.5);
+
+        this.container.add([title, sub]);
+
+        // Animation
+        scene.tweens.add({
+            targets: this.container,
+            alpha: { from: 0, to: 1 },
+            duration: 500,
+            ease: 'Power2',
+            onComplete: () => {
+                scene.time.delayedCall(3000, () => {
+                    if (scene.sys.isActive()) { // Safety check for scene transitions
+                        scene.tweens.add({
+                            targets: this.container,
+                            alpha: 0,
+                            duration: 1000,
+                            onComplete: () => this.container.destroy()
+                        });
+                    }
+                });
+            }
+        });
+    }
+}
+--- FILE: src/main.js ---
+// src/main.js
+const { app, BrowserWindow } = require('electron');
+const path = require('path');
+
+function createWindow() {
+    const win = new BrowserWindow({
+        width: 1500,
+        height: 1200,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true
+        }
+    });
+
+    // LOAD THE VITE SERVER
+    // This tells Electron to look at the web server where your game is running
+    win.loadURL('http://localhost:3000');
+}
+
+app.whenReady().then(createWindow);
+
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+});
+--- FILE: src/scenes/LoadingScene.js ---
+
+--- FILE: src/scenes/MenuScene.js ---
+import Phaser from 'phaser';
+import { InputManager } from '../core/Input';
+
+export class MenuScene extends Phaser.Scene {
+    constructor() {
+        super('MenuScene');
+        this.options = ['START GAME', 'LOAD GAME', 'TEST SUITE'];
+        this.selected = 0;
+        this.textObjects = [];
+    }
+
+    create() {
+        this.inputManager = new InputManager(this);
+        this.textObjects = []; // CRITICAL: Reset the array
+
+        this.add.text(100, 100, 'REFRACT', {
+            fontSize: '64px',
+            fill: '#fff',
+            fontFamily: 'monospace'
+        });
+
+        this.options.forEach((opt, index) => {
+            const text = this.add.text(100, 300 + (index * 60), `  ${opt}`, {
+                fontSize: '32px',
+                fill: '#666',
+                fontFamily: 'monospace'
+            });
+            this.textObjects.push(text);
+        });
+
+        this.updateSelection();
+    }
+
+    update() {
+        if (this.inputManager.getAction('UP')) {
+            this.selected = (this.selected - 1 + this.options.length) % this.options.length;
+            this.updateSelection();
+        }
+        else if (this.inputManager.getAction('DOWN')) {
+            this.selected = (this.selected + 1) % this.options.length;
+            this.updateSelection();
+        }
+
+        if (this.inputManager.getAction('SELECT')) {
+            this.handleSelection();
+        }
+    }
+
+    updateSelection() {
+        this.textObjects.forEach((text, index) => {
+            // Safety check to prevent the drawImage error during scene transitions
+            if (!text || !text.active || !text.canvas) return;
+
+            if (index === this.selected) {
+                text.setColor('#0f0');
+                text.setText(`> ${this.options[index]}`);
+            } else {
+                text.setColor('#666');
+                text.setText(`  ${this.options[index]}`);
+            }
+        });
+    }
+
+    handleSelection() {
+        const choice = this.options[this.selected];
+        if (choice === 'TEST SUITE') {
+            this.scene.start('TestMenuScene');
+        } else {
+            console.log("Not implemented yet:", choice);
+        }
+    }
+}
+--- FILE: src/scenes/test/00_MovementTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { MovementSystem, PhysicsSystem, RenderSystem } from '../../ecs/systems/index';
+import { BaseTestScene } from './BaseTestScene';
+
+export class MovementTest extends BaseTestScene {
+    constructor() {
+        // Key, Title, Subtitle
+        super('MovementTest', 'Movement Test', 'Standard 8-way movement. Use Arrows or Left Stick.');
+    }
+
+    create() {
+        super.create(); // This initializes this.inputManager and the UI
+
+        // Spawn Player at Grid 40, 30 (400px, 300px)
+        this.addEntity(createPlayer(400, 300));
+    }
+
+    update(time, delta) {
+        // super.update handles ESC, Blue Grid, and HTML Debug Console
+        if (!super.update(time, delta)) return;
+
+        // Scene Logic
+        MovementSystem(this.entities, this.inputManager);
+        RenderSystem(this.entities, this);
+        PhysicsSystem(this.entities, delta);
+    }
+}
+--- FILE: src/scenes/test/01_TargetTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { createTarget } from '../../ecs/entities/target';
+import {
+    MovementSystem,
+    PhysicsSystem,
+    RenderSystem,
+    AbilityTargetingSystem, // Fixed Import
+    TargetRenderSystem      // Fixed Import
+} from '../../ecs/systems/index';
+import { AbilityState, EntityType } from '../../ecs/components/index';
+import { BaseTestScene } from './BaseTestScene';
+
+export class TargetTest extends BaseTestScene {
+    constructor() {
+        super('TargetTest', 'Targeting Test', 'Hold X/Y to test Spiral Logic. Tap E to cycle.');
+    }
+
+    create() {
+        super.create();
+
+        // 1. Player needs AbilityState to track current targets
+        this.addEntity([...createPlayer(400, 300), AbilityState()]);
+
+        // 2. Targets need EntityType to be filterable
+        this.addEntity([...createTarget(200, 200), EntityType('A')]);
+        this.addEntity([...createTarget(600, 200), EntityType('A')]);
+        this.addEntity([...createTarget(600, 500), EntityType('A')]);
+        this.addEntity([...createTarget(200, 500), EntityType('B')]);
+    }
+
+    update(time, delta) {
+        if (!super.update(time, delta)) return;
+
+        // Sequence: Movement -> Targeting Logic -> Targeting Visuals -> Rendering
+        MovementSystem(this.entities, this.inputManager);
+
+        AbilityTargetingSystem(this.entities, this.inputManager);
+        TargetRenderSystem(this.entities, this);
+
+        RenderSystem(this.entities, this);
+        PhysicsSystem(this.entities, delta);
+    }
+}
+--- FILE: src/scenes/test/02_CameraTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { createTarget } from '../../ecs/entities/target';
+import { CameraTarget } from '../../ecs/components/index';
+import {
+    MovementSystem,
+    PhysicsSystem,
+    RenderSystem,
+    CameraSystem
+} from '../../ecs/systems/index';
+import { BaseTestScene } from './BaseTestScene';
+
+export class CameraTest extends BaseTestScene {
+    constructor() {
+        super('CameraTest', 'Camera Test', 'Dynamic framing and auto-zoom demo');
+    }
+
+    create() {
+        // 1. Initialize Base (Input, UI, Grid state)
+        super.create();
+
+        // 2. Create Entities using the method defined in the parent
+        const player = this.addEntity([
+            ...createPlayer(400, 300),
+            CameraTarget()
+        ]);
+
+        const target = this.addEntity([
+            ...createTarget(600, 500),
+            CameraTarget()
+        ]);
+
+        // 3. Set initial state
+        if (player.components.Targeter) {
+            player.components.Targeter.currentTarget = target.id;
+        }
+    }
+
+    update(time, delta) {
+        // Check if we are still in the scene
+        if (!super.update(time, delta)) return;
+
+        // Run Systems
+        MovementSystem(this.entities, this.inputManager);
+        RenderSystem(this.entities, this);
+        PhysicsSystem(this.entities, delta);
+        CameraSystem(this.entities, this);
+    }
+}
+--- FILE: src/scenes/test/03_AbilityTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { EntityType, AbilityState, CameraTarget } from '../../ecs/components/index';
+import { AbilityTargetingSystem } from '../../ecs/systems/AbilityTargetingSystem';
+import { TargetRenderSystem } from '../../ecs/systems/TargetRenderSystem';
+import { BaseTestScene } from './BaseTestScene';
+import { MovementSystem } from '../../ecs/systems/MovementSystem';
+import { RenderSystem } from '../../ecs/systems/RenderSystem';
+import { PhysicsSystem } from '../../ecs/systems/PhysicsSystem';
+import { CameraSystem } from '../../ecs/systems/CameraSystem';
+
+export class AbilityTest extends BaseTestScene {
+    constructor() {
+        super('AbilityTest', 'Ability Test', 'Hold X (A/B) or Y (C). E/Q to Cycle.');
+    }
+
+    create() {
+        super.create();
+        this.addEntity([...createPlayer(0, 0), AbilityState(), CameraTarget()]);
+
+        const types = [
+            { id: 'A', color: 0x0000ff, tex: 'rect' },
+            { id: 'B', color: 0x00ff00, tex: 'rect' },
+            { id: 'C', color: 0xffff00, tex: 'circle' }
+        ];
+
+        types.forEach(t => {
+            for (let i = 0; i < 15; i++) {
+                this.addEntity([
+                    { _type: 'Position', x: Phaser.Math.Between(-600, 600), y: Phaser.Math.Between(-400, 400) },
+                    { _type: 'Graphic', texture: t.tex, color: t.color },
+                    EntityType(t.id),
+                    CameraTarget()
+                ]);
+            }
+        });
+    }
+
+    update(time, delta) {
+        if (!super.update(time, delta)) return;
+        MovementSystem(this.entities, this.inputManager);
+        AbilityTargetingSystem(this.entities, this.inputManager);
+        TargetRenderSystem(this.entities, this);
+        RenderSystem(this.entities, this);
+        PhysicsSystem(this.entities, delta);
+        CameraSystem(this.entities, this);
+    }
+}
+--- FILE: src/scenes/test/04_PlatformTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import { Position, Velocity, Collider, PlatformTag, Graphic, Rotation } from '../../ecs/components/index';
+import { AttachmentSystem } from '../../ecs/systems/AttachmentSystem';
+import { MovementSystem } from '../../ecs/systems/MovementSystem';
+import { PhysicsSystem } from '../../ecs/systems/PhysicsSystem';
+import { RenderSystem } from '../../ecs/systems/RenderSystem';
+
+export class PlatformTest extends BaseTestScene {
+    constructor() {
+        super('PlatformTest', 'Platform Snapping', 'Touch a circle to stick. Press B to detach.');
+    }
+
+    create() {
+        super.create();
+
+        // 1. Spawn Player
+        this.addEntity([...createPlayer(100, 100)]);
+
+        // 2. Stationary Platform (Big)
+        this.addEntity([
+            Position(300, 300),
+            Rotation(0),
+            Graphic('circle', 0x333333),
+            Collider('circle', 100),
+            PlatformTag()
+        ]);
+
+        // 3. Moving Platform (Small)
+        this.addEntity([
+            Position(600, 300),
+            Velocity(0, 0),
+            Rotation(0),
+            Graphic('circle', 0x555555),
+            Collider('circle', 50),
+            PlatformTag()
+        ]);
+    }
+
+    update(time, delta) {
+        if (!super.update(time, delta)) return;
+
+        // Make the small platform oscillate vertically
+        const platforms = this.entities.filter(e => e.components.PlatformTag);
+        const mover = platforms.find(p => p.components.Graphic.color === 0x555555);
+        if (mover) {
+            mover.components.Velocity.y = Math.sin(time / 1000) * 150;
+        }
+
+        // --- ECS Execution Order ---
+        MovementSystem(this.entities, this.inputManager);
+        AttachmentSystem(this.entities, this.inputManager); // Detects collision/stick
+        PhysicsSystem(this.entities, delta);             // Calculates parent-relative pos
+        RenderSystem(this.entities, this);
+    }
+}
+--- FILE: src/scenes/test/BaseTestScene.js ---
+import Phaser from 'phaser';
+import { UI } from '../../core/UIManager';
+import { InputManager } from '../../core/Input';
+import { DebugLayerSystem } from '../../ecs/systems/DebugLayerSystem';
+import { GRID } from '../../core/Constants';
+
+export class BaseTestScene extends Phaser.Scene {
+    constructor(key, title, subtitle) {
+        super(key);
+        // Attributes used by the HTML UI and internal state
+        this.testTitle = title || "Test Scene";
+        this.testSubtitle = subtitle || "No description provided.";
+        this.entities = [];
+        this.showDebugGrid = false;
+    }
+
+    create() {
+        // Initialize the Input Manager for this specific scene instance
+        this.inputManager = new InputManager(this);
+
+        // Trigger the HTML overlay title drop
+        const titleStr = this.testTitle || 'SCENE';
+        UI.showTitle(titleStr, this.testSubtitle);
+
+        // Toggle the Blue Grid Crosses and HTML Debug Panel
+        this.input.keyboard.on('keydown-TAB', () => {
+            this.showDebugGrid = !this.showDebugGrid;
+            UI.toggleDebug();
+        });
+
+        // Universal 'Exit to Menu' handler
+        this.input.keyboard.on('keydown-ESC', () => {
+            this.scene.start('TestMenuScene');
+        });
+    }
+
+    update(time, delta) {
+        // 1. Draw/Clear the Blue Debug Grid Crosses
+        DebugLayerSystem(this);
+
+        // 2. Locate the Player and update the HTML HUD with current coords
+        const player = this.entities.find(e => e.components.PlayerTag);
+        if (player) {
+            const p = player.components.Position;
+            UI.updateDebug({
+                x: p.x.toFixed(0),
+                y: p.y.toFixed(0),
+                gx: (p.x / GRID.UNIT).toFixed(1),
+                gy: (p.y / GRID.UNIT).toFixed(1)
+            }, null);
+        }
+
+        // Return true so child scenes (CameraTest, etc.) know the base update finished
+        return true;
+    }
+
+    /**
+     * Standard ECS Entity Spawner
+     * Converts an array of component objects into a keyed entity object.
+     */
+    addEntity(componentsArray) {
+        const entity = {
+            id: crypto.randomUUID(),
+            components: {}
+        };
+
+        componentsArray.forEach(c => {
+            if (c && c._type) {
+                entity.components[c._type] = c;
+            }
+        });
+
+        this.entities.push(entity);
+        return entity;
+    }
+}
+--- FILE: src/scenes/test/index.js ---
+import { MovementTest } from './00_MovementTest';
+import { TargetTest } from './01_TargetTest';
+import { CameraTest } from './02_CameraTest';
+import { AbilityTest } from './03_AbilityTest';
+import { PlatformTest } from './04_PlatformTest';
+
+export const TestScenes = [
+    MovementTest,
+    TargetTest,
+    CameraTest,
+    AbilityTest,
+    PlatformTest
+];
+--- FILE: src/scenes/TestMenuScene.js ---
+import Phaser from 'phaser';
+import { InputManager } from '../core/Input';
+import { TestScenes } from './test/index';
+
+export class TestMenuScene extends Phaser.Scene {
+    constructor() {
+        super('TestMenuScene');
+        this.selected = 0;
+        this.textObjects = [];
+    }
+
+    create() {
+        this.inputManager = new InputManager(this);
+        this.textObjects = [];
+
+        // Background / UI Header
+        this.add.text(50, 50, 'LAB / TEST SUITE', {
+            fontSize: '32px',
+            fill: '#0ff',
+            fontFamily: 'monospace'
+        });
+
+        // Generate menu items from the registry
+        TestScenes.forEach((sceneClass, index) => {
+            const name = sceneClass.name;
+            const text = this.add.text(100, 150 + (index * 50), `  ${name}`, {
+                fontSize: '24px',
+                fill: '#666',
+                fontFamily: 'monospace'
+            });
+            this.textObjects.push(text);
+        });
+
+        this.updateSelection();
+    }
+
+    update() {
+        // Navigation
+        if (this.inputManager.getAction('UP')) {
+            this.selected = (this.selected - 1 + TestScenes.length) % TestScenes.length;
+            this.updateSelection();
+        }
+        else if (this.inputManager.getAction('DOWN')) {
+            this.selected = (this.selected + 1) % TestScenes.length;
+            this.updateSelection();
+        }
+
+        // Action
+        if (this.inputManager.getAction('SELECT')) {
+            const sceneClass = TestScenes[this.selected];
+            this.scene.start(sceneClass.name);
+        }
+
+        if (this.inputManager.getAction('BACK')) {
+            this.scene.start('MenuScene');
+        }
+    }
+
+    updateSelection() {
+        this.textObjects.forEach((text, index) => {
+            if (!text || !text.active) return;
+            const sceneName = TestScenes[index].name;
+            if (index === this.selected) {
+                text.setColor('#0f0').setText(`> ${sceneName}`);
+            } else {
+                text.setColor('#666').setText(`  ${sceneName}`);
+            }
+        });
+    }
+}

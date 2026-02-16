@@ -1,27 +1,33 @@
 import { createPlayer } from '../../ecs/entities/player';
-import { MovementSystem, PhysicsSystem, RenderSystem } from '../../ecs/systems/index';
 import { BaseTestScene } from './BaseTestScene';
+import {
+    MovementSystem,
+    PhysicsSystem,
+    RenderSystem,
+    CameraSystem
+} from '../../ecs/systems/index';
 
 export class MovementTest extends BaseTestScene {
     constructor() {
-        // Key, Title, Subtitle
-        super('MovementTest', 'Movement Test', 'Standard 8-way movement. Use Arrows or Left Stick.');
+        super('MovementTest', 'Basic Movement', 'Use Arrows/WASD or Left Stick to move.');
     }
 
     create() {
-        super.create(); // This initializes this.inputManager and the UI
-
-        // Spawn Player at Grid 40, 30 (400px, 300px)
-        this.addEntity(createPlayer(400, 300));
+        super.create();
+        // createPlayer already includes PlayerTag and CameraTarget
+        this.addEntity([...createPlayer(400, 300)]);
     }
 
     update(time, delta) {
-        // super.update handles ESC, Blue Grid, and HTML Debug Console
         if (!super.update(time, delta)) return;
 
-        // Scene Logic
+        // Core ECS Loop
         MovementSystem(this.entities, this.inputManager);
-        RenderSystem(this.entities, this);
         PhysicsSystem(this.entities, delta);
+
+        // Essential for the camera to actually move!
+        CameraSystem(this.entities, this);
+
+        RenderSystem(this.entities, this);
     }
 }

@@ -11,13 +11,12 @@ export const CameraSystem = (entities, scene) => {
         maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
     });
 
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    const width = (maxX - minX) + 200;
-    const height = (maxY - minY) + 200;
+    const padding = 250;
+    const width = (maxX - minX) + padding;
+    const height = (maxY - minY) + padding;
 
-    const targetZoom = Math.min(cam.width / width, cam.height / height, 1.5);
+    cam.centerOn((minX + maxX) / 2, (minY + maxY) / 2);
 
-    cam.pan(centerX, centerY, 500, 'Power2');
-    cam.zoomTo(targetZoom, 500, 'Power2');
+    const targetZoom = Math.min(cam.width / width, cam.height / height, 1.2);
+    cam.setZoom(targetZoom);
 };

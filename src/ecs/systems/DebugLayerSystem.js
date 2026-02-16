@@ -1,34 +1,40 @@
-import { GRID } from '../../core/Constants';
+export const DebugLayerSystem = (entities, scene) => {
+    // Safety check: ensure scene exists and is a Phaser Scene
+    if (!scene || !scene.add) return;
 
-export const DebugLayerSystem = (scene) => {
-    if (!scene.showDebugGrid) {
-        if (scene.debugGraphics) scene.debugGraphics.clear();
-        return;
+    if (!scene.debugText) {
+        scene.debugText = scene.add.text(10, 10, '', {
+            font: '16px monospace',
+            fill: '#00ff00',
+            stroke: '#000000',
+            strokeThickness: 3,
+            backgroundColor: '#00000088'
+        });
+
+        scene.debugText.setScrollFactor(0).setDepth(2000);
     }
 
-    if (!scene.debugGraphics) {
-        scene.debugGraphics = scene.add.graphics().setDepth(1500);
-    }
-
-    scene.debugGraphics.clear();
     const cam = scene.cameras.main;
-    const worldView = cam.worldView;
+    const uiScale = 1 / cam.zoom;
 
-    scene.debugGraphics.lineStyle(1, 0x0000ff, 0.5);
+    scene.debugText.setScale(uiScale);
+    scene.debugText.setPosition(10 * uiScale, 10 * uiScale);
 
-    const startX = Math.floor(worldView.x / GRID.UNIT) * GRID.UNIT;
-    const endX = Math.ceil(worldView.right / GRID.UNIT) * GRID.UNIT;
-    const startY = Math.floor(worldView.y / GRID.UNIT) * GRID.UNIT;
-    const endY = Math.ceil(worldView.bottom / GRID.UNIT) * GRID.UNIT;
+    const player = entities.find(e => e.components.PlayerTag);
+    let debugInfo = `SCENE: ${scene.scene.key}\n`;
 
-    for (let x = startX; x <= endX; x += GRID.UNIT) {
-        for (let y = startY; y <= endY; y += GRID.UNIT) {
-            const crossSize = 2 / cam.zoom;
-            scene.debugGraphics.moveTo(x - crossSize, y);
-            scene.debugGraphics.lineTo(x + crossSize, y);
-            scene.debugGraphics.moveTo(x, y - crossSize);
-            scene.debugGraphics.lineTo(x, y + crossSize);
+    if (player) {
+        const { Position: pos, Parent: parent } = player.components;
+        debugInfo += `POS: ${Math.round(pos.x)}, ${Math.round(pos.y)}\n`;
+
+        if (parent) {
+            debugInfo += `STATUS: ATTACHED\n`;
+            debugInfo += `PARENT: ${parent.id}\n`;
+            debugInfo += `OFFSET: ${Math.round(parent.offset.x)}, ${Math.round(parent.offset.y)}\n`;
+        } else {
+            debugInfo += `STATUS: FREE\n`;
         }
     }
-    scene.debugGraphics.strokePath();
+
+    scene.debugText.setText(debugInfo);
 };

@@ -9,3 +9,13 @@ export const EntityType = (type) => ({ _type: 'EntityType', value: type });
 export const AbilityState = () => ({
     _type: 'AbilityState', armed: null, targetIndex: 0, potentialTargets: [], currentTargetId: null
 });
+export const Parent = (entityId, offset = { x: 0, y: 0 }) => ({
+    _type: 'Parent',
+    id: entityId,
+    offset
+});
+export const Collider = (type = 'circle', radius = 50, width = 100, height = 100) => ({
+    _type: 'Collider',
+    type, radius, width, height
+});
+export const PlatformTag = () => ({ _type: 'PlatformTag' });

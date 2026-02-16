@@ -1,20 +1,20 @@
 export const PhysicsSystem = (entities, delta) => {
-    const dt = delta / 1000; // Convert to seconds
+    const dt = delta / 1000;
 
     entities.forEach(entity => {
-        const pos = entity.components.Position;
-        const vel = entity.components.Velocity;
-        const gfx = entity.components.Graphic;
+        const { Position: pos, Velocity: vel, Parent: parent } = entity.components;
+        if (!pos) return;
 
-        if (pos && vel) {
-            // Integration
+        if (parent) {
+            const platform = entities.filter(e => e.id === parent.id)[0];
+            if (platform && platform.components.Position) {
+                // Hard sync: World Pos = Platform World Pos + Local Offset
+                pos.x = platform.components.Position.x + parent.offset.x;
+                pos.y = platform.components.Position.y + parent.offset.y;
+            }
+        } else if (vel) {
             pos.x += vel.x * dt;
             pos.y += vel.y * dt;
-
-            // Sync Sprite
-            if (gfx && gfx.sprite) {
-                gfx.sprite.setPosition(pos.x, pos.y);
-            }
         }
     });
 };
