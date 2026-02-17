@@ -1,23 +1,23 @@
-import { Position, Graphic, Rotation, EntityType } from '../components/index';
+import { Position, Renderable, Rotation, EntityType } from '../components/index';
 
-/**
- * Standard Target Factory
- * @param {number} x 
- * @param {number} y 
- * @param {string} type - 'A', 'B', or 'C'
- */
 export const createTarget = (x, y, type = 'A') => {
-    // Determine color/shape based on type
+    // Determine configuration based on type
     const config = {
-        'A': { color: 0x0000ff, texture: 'rect' },
-        'B': { color: 0x00ff00, texture: 'rect' },
-        'C': { color: 0xffff00, texture: 'circle' }
-    }[type] || { color: 0xffffff, texture: 'rect' };
+        'A': { color: 0x0000ff, type: 'rect' },
+        'B': { color: 0x00ff00, type: 'rect' },
+        'C': { color: 0xffff00, type: 'circle' }
+    }[type] || { color: 0xffffff, type: 'rect' };
 
     return [
         Position(x, y),
-        Rotation(0), // Allows targets to face a direction if they move later
-        Graphic(config.texture, config.color),
+        Rotation(0),
+        Renderable({
+            'BASE': {
+                type: config.type,
+                color: config.color,
+                width: 12, height: 12, radius: 6 // Default sizes
+            }
+        }),
         EntityType(type)
     ];
 };

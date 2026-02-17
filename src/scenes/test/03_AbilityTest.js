@@ -1,12 +1,7 @@
 import { createPlayer } from '../../ecs/entities/player';
-import { EntityType, AbilityState, CameraTarget } from '../../ecs/components/index';
-import { AbilityTargetingSystem } from '../../ecs/systems/AbilityTargetingSystem';
-import { TargetRenderSystem } from '../../ecs/systems/TargetRenderSystem';
+import { EntityType, AbilityState, CameraTarget, Position, Renderable } from '../../ecs/components/index';
 import { BaseTestScene } from './BaseTestScene';
-import { MovementSystem } from '../../ecs/systems/MovementSystem';
-import { RenderSystem } from '../../ecs/systems/RenderSystem';
-import { PhysicsSystem } from '../../ecs/systems/PhysicsSystem';
-import { CameraSystem } from '../../ecs/systems/CameraSystem';
+import Phaser from 'phaser'; // Needed for Math
 
 export class AbilityTest extends BaseTestScene {
     constructor() {
@@ -26,22 +21,15 @@ export class AbilityTest extends BaseTestScene {
         types.forEach(t => {
             for (let i = 0; i < 15; i++) {
                 this.addEntity([
-                    { _type: 'Position', x: Phaser.Math.Between(-600, 600), y: Phaser.Math.Between(-400, 400) },
-                    { _type: 'Graphic', texture: t.tex, color: t.color },
+                    Position(Phaser.Math.Between(-600, 600), Phaser.Math.Between(-400, 400)),
+                    // Updated to Renderable
+                    Renderable({
+                        'BASE': { type: t.tex, color: t.color, width: 15, height: 15, radius: 8 }
+                    }),
                     EntityType(t.id),
                     CameraTarget()
                 ]);
             }
         });
-    }
-
-    update(time, delta) {
-        if (!super.update(time, delta)) return;
-        MovementSystem(this.entities, this.inputManager);
-        AbilityTargetingSystem(this.entities, this.inputManager);
-        TargetRenderSystem(this.entities, this);
-        RenderSystem(this.entities, this);
-        PhysicsSystem(this.entities, delta);
-        CameraSystem(this.entities, this);
     }
 }

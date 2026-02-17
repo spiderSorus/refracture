@@ -1,7 +1,7 @@
 import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
-    Position, Collider, PlatformTag, Graphic, CameraTarget, Parent, AbilityState
+    Position, Collider, PlatformTag, Renderable, CameraTarget, Parent, AbilityState
 } from '../../ecs/components/index';
 
 export class OrbitTest extends BaseTestScene {
@@ -15,19 +15,27 @@ export class OrbitTest extends BaseTestScene {
     create() {
         super.create();
 
+        // Sun
         this.addEntity([
             { id: 'sun' },
             Position(0, 0),
-            Graphic('circle', 0xffcc00, 50),
+            // Updated
+            Renderable({
+                'BASE': { type: 'circle', radius: 50, color: 0xffcc00 }
+            }),
             Collider('circle', 50),
             PlatformTag(),
             CameraTarget()
         ]);
 
+        // Planet
         this.addEntity([
             { id: 'planet' },
             Position(this.orbitRadius, 0),
-            Graphic('circle', 0x00aaff, 50),
+            // Updated
+            Renderable({
+                'BASE': { type: 'circle', radius: 50, color: 0x00aaff }
+            }),
             Collider('circle', 50),
             PlatformTag(),
             CameraTarget()
@@ -40,7 +48,6 @@ export class OrbitTest extends BaseTestScene {
         ]);
     }
 
-    // Custom Orbit Math running in the fixed loop
     fixedUpdate(time, dt) {
         this.theta += this.orbitSpeed;
         const planet = this.entities.find(e => e.id === 'planet');

@@ -3,15 +3,16 @@ import { UI } from '../../core/UIManager';
 import { InputManager } from '../../core/Input';
 import { GRID, PHYSICS } from '../../core/Constants';
 
-// Import Systems (Removed DebugLayerSystem)
+// UPDATE IMPORTS
 import {
     MovementSystem,
     AttachmentSystem,
     AbilityTargetingSystem,
     PhysicsSystem,
     CameraSystem,
-    RenderSystem,
-    TargetRenderSystem
+    LayeredRenderSystem, // <--- NEW RENDERER
+    TargetRenderSystem,
+    DebugLayerSystem
 } from '../../ecs/systems/index';
 
 export class BaseTestScene extends Phaser.Scene {
@@ -23,11 +24,9 @@ export class BaseTestScene extends Phaser.Scene {
     }
 
     create() {
-        // 1. Reset Entities
         this.entities = [];
-
-        // 2. Setup Input & UI
         this.inputManager = new InputManager(this);
+
         const titleStr = this.testTitle || 'SCENE';
         UI.showTitle(titleStr, this.testSubtitle);
 
@@ -42,33 +41,30 @@ export class BaseTestScene extends Phaser.Scene {
     }
 
     update(time, delta) {
-        // --- FIXED TIMESTEP LOOP ---
         this.accumulator += delta;
 
         while (this.accumulator >= PHYSICS.STEP) {
             const dtSeconds = PHYSICS.STEP / 1000;
 
-            // 1. Game Logic Systems
+            // Logic Systems
             MovementSystem(this.entities, this.inputManager, dtSeconds);
             AttachmentSystem(this.entities, this.inputManager);
             AbilityTargetingSystem(this.entities, this.inputManager);
 
-            // 2. Scene-Specific Logic Hook
             this.fixedUpdate(time, PHYSICS.STEP);
-
-            // 3. Physics Integration
             PhysicsSystem(this.entities, PHYSICS.STEP);
 
             this.accumulator -= PHYSICS.STEP;
         }
 
-        // --- RENDER LOOP (Every Frame) ---
+        // --- RENDER LOOP ---
         TargetRenderSystem(this.entities, this);
         CameraSystem(this.entities, this);
-        RenderSystem(this.entities, this);
 
-        // Removed DebugLayerSystem(this.entities, this);
+        // CRITICAL FIX: Use LayeredRenderSystem instead of RenderSystem
+        LayeredRenderSystem(this.entities, this);
 
+        DebugLayerSystem(this.entities, this);
         this.updateDebugUI();
     }
 

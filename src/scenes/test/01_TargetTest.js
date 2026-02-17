@@ -11,14 +11,14 @@ export class TargetTest extends BaseTestScene {
     create() {
         super.create();
 
-        // Player with targeting enabled
+        // Player
         this.addEntity([
             ...createPlayer(400, 300),
             AbilityState(),
             CameraTarget()
         ]);
 
-        // Targets
+        // Targets (Factories use Renderable internally now)
         this.addEntity([...createTarget(200, 200), EntityType('A')]);
         this.addEntity([...createTarget(600, 200), EntityType('A')]);
         this.addEntity([...createTarget(600, 500), EntityType('A')]);

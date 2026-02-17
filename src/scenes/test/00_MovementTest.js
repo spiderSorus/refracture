@@ -1,7 +1,7 @@
 import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
-    Position, Graphic, Collider, PlatformTag, Parent, AbilityState
+    Position, Renderable, Collider, PlatformTag, Parent, AbilityState
 } from '../../ecs/components/index';
 
 export class MovementTest extends BaseTestScene {
@@ -15,7 +15,10 @@ export class MovementTest extends BaseTestScene {
         const cage = this.addEntity([
             { id: 'cage_platform' },
             Position(400, 300),
-            Graphic('circle', 0x333333, 100),
+            // Updated to Renderable
+            Renderable({
+                'BASE': { type: 'circle', radius: 100, color: 0x333333 }
+            }),
             Collider('circle', 100),
             PlatformTag()
         ]);
