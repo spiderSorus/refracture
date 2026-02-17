@@ -1,7 +1,23 @@
 export const Position = (x = 0, y = 0) => ({ _type: 'Position', x, y });
 export const Velocity = (x = 0, y = 0) => ({ _type: 'Velocity', x, y });
-export const Rotation = (angle = 0) => ({ _type: 'Rotation', angle }); // NEW
-export const Graphic = (texture = 'rect', color = 0xffffff) => ({ _type: 'Graphic', texture, color });
+export const Rotation = (angle = 0) => ({ _type: 'Rotation', angle });
+
+// REMOVED: Old Graphic component
+// REPLACED BY: Renderable
+export const Renderable = (definitions = {}) => ({
+    _type: 'Renderable',
+    // definitions: { 'LAYER_NAME': { type: 'sprite', texture: 'x', ... } }
+    definitions,
+    // internal cache for Phaser GameObjects: { 'LAYER_NAME': GameObject }
+    activeVisuals: {}
+});
+
+// Controls what the entity (usually Player) can SEE
+export const ViewLayers = (layers = ['BASE']) => ({
+    _type: 'ViewLayers',
+    layers
+});
+
 export const PlayerTag = () => ({ _type: 'PlayerTag' });
 export const InputControlled = () => ({ _type: 'InputControlled' });
 export const CameraTarget = () => ({ _type: 'CameraTarget' });

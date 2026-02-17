@@ -24,7 +24,12 @@ new Phaser.Game(config);
 export const GRID = {
     UNIT: 10,        // 1 Grid Unit = 10px
     PLAYER_SIZE: 1,  // 1 Unit wide/high
-    SPEED: 5,        // 5 Units per second (5 * 10 = 50px/sec)
+    SPEED: 5,        // 5 Units per second
+};
+
+export const PHYSICS = {
+    FPS: 60,
+    STEP: 1000 / 60, // ~16.66ms per tick
 };
 --- FILE: src/core/Input.js ---
 import Phaser from 'phaser';
@@ -191,8 +196,13 @@ export const UI = new UIManager();
 --- FILE: src/ecs/components/index.js ---
 export const Position = (x = 0, y = 0) => ({ _type: 'Position', x, y });
 export const Velocity = (x = 0, y = 0) => ({ _type: 'Velocity', x, y });
-export const Rotation = (angle = 0) => ({ _type: 'Rotation', angle }); // NEW
-export const Graphic = (texture = 'rect', color = 0xffffff) => ({ _type: 'Graphic', texture, color });
+export const Rotation = (angle = 0) => ({ _type: 'Rotation', angle });
+
+// FIXED: Now accepts 'size' as the 3rd argument
+export const Graphic = (texture = 'rect', color = 0xffffff, size = null) => ({
+    _type: 'Graphic', texture, color, size
+});
+
 export const PlayerTag = () => ({ _type: 'PlayerTag' });
 export const InputControlled = () => ({ _type: 'InputControlled' });
 export const CameraTarget = () => ({ _type: 'CameraTarget' });
@@ -213,16 +223,17 @@ export const PlatformTag = () => ({ _type: 'PlatformTag' });
 --- FILE: src/ecs/entities/player.js ---
 import {
     Position, Velocity, Rotation, Graphic,
-    PlayerTag, InputControlled
+    PlayerTag, InputControlled, CameraTarget
 } from '../components/index';
 
 export const createPlayer = (x, y) => [
     Position(x, y),
     Velocity(0, 0),
-    Rotation(0), // Initialize at 0 radians (facing East)
-    Graphic('triangle', 0x00ffff),
+    Rotation(0),
+    Graphic('triangle', 0x00ffff, 12), // Explicit size 12
     PlayerTag(),
-    InputControlled()
+    InputControlled(),
+    CameraTarget() // Makes the CameraSystem focus on the player
 ];
 --- FILE: src/ecs/entities/target.js ---
 import { Position, Graphic, Rotation, EntityType } from '../components/index';
@@ -341,101 +352,126 @@ export const AttachmentSystem = (entities, inputManager) => {
 
     const pPos = player.components.Position;
     const parentComp = player.components.Parent;
+    const bPressed = inputManager.getAction('BACK');
 
-    // 1. Handle Detachment (B Button Tap)
-    if (parentComp && inputManager.getAction('BACK')) {
+    // 1. If currently ATTACHED and B is pressed: DETACH
+    if (parentComp && bPressed) {
         delete player.components.Parent;
         return;
     }
 
-    // 2. Handle Attachment (If not already attached)
-    if (!parentComp) {
+    // 2. If currently UNATTACHED and B is pressed: ATTEMPT ATTACH
+    if (!parentComp && bPressed) {
         const platforms = entities.filter(e => e.components.PlatformTag && e.components.Collider);
 
         for (const plat of platforms) {
             const platPos = plat.components.Position;
             const col = plat.components.Collider;
-            let inside = false;
+            let isOver = false;
 
+            // Check if player center is within platform bounds
             if (col.type === 'circle') {
                 const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, platPos.x, platPos.y);
-                inside = dist <= col.radius;
+                isOver = dist <= col.radius;
             } else {
-                // Simple AABB check for complex/rect shapes
-                inside = (pPos.x >= platPos.x - col.width / 2 && pPos.x <= platPos.x + col.width / 2 &&
+                isOver = (pPos.x >= platPos.x - col.width / 2 && pPos.x <= platPos.x + col.width / 2 &&
                     pPos.y >= platPos.y - col.height / 2 && pPos.y <= platPos.y + col.height / 2);
             }
 
-            if (inside) {
-                // Calculate and store the relative offset so the player doesn't "jump" to center
+            if (isOver) {
+                // LOCK: Store the current relative offset
                 player.components.Parent = {
                     _type: 'Parent',
                     id: plat.id,
                     offset: { x: pPos.x - platPos.x, y: pPos.y - platPos.y }
                 };
-                break;
+                break; // Only attach to one platform at a time
             }
         }
     }
 };
 --- FILE: src/ecs/systems/CameraSystem.js ---
 export const CameraSystem = (entities, scene) => {
-    const targets = entities.filter(e => e.components.CameraTarget && e.components.Position);
-    if (targets.length === 0) return;
-
     const cam = scene.cameras.main;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const player = entities.find(e => e.components.PlayerTag && e.components.Position);
 
-    targets.forEach(t => {
-        const { x, y } = t.components.Position;
-        minX = Math.min(minX, x); minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
-    });
-
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    const width = (maxX - minX) + 200;
-    const height = (maxY - minY) + 200;
-
-    const targetZoom = Math.min(cam.width / width, cam.height / height, 1.5);
-
-    cam.pan(centerX, centerY, 500, 'Power2');
-    cam.zoomTo(targetZoom, 500, 'Power2');
-};
---- FILE: src/ecs/systems/DebugLayerSystem.js ---
-import { GRID } from '../../core/Constants';
-
-export const DebugLayerSystem = (scene) => {
-    if (!scene.showDebugGrid) {
-        if (scene.debugGraphics) scene.debugGraphics.clear();
+    // 1. No Player? Look at 0,0
+    if (!player) {
+        cam.centerOn(0, 0); // Or pan smoothly: cam.pan(0, 0, 1000);
         return;
     }
 
-    if (!scene.debugGraphics) {
-        scene.debugGraphics = scene.add.graphics().setDepth(1500);
-    }
+    const pPos = player.components.Position;
+    let targetX = pPos.x;
+    let targetY = pPos.y;
 
-    scene.debugGraphics.clear();
-    const cam = scene.cameras.main;
-    const worldView = cam.worldView;
+    // 2. Check for Active Target (Midpoint Logic)
+    const abilityState = player.components.AbilityState;
+    if (abilityState && abilityState.currentTargetId) {
+        const target = entities.find(e => e.id === abilityState.currentTargetId);
 
-    scene.debugGraphics.lineStyle(1, 0x0000ff, 0.5);
-
-    const startX = Math.floor(worldView.x / GRID.UNIT) * GRID.UNIT;
-    const endX = Math.ceil(worldView.right / GRID.UNIT) * GRID.UNIT;
-    const startY = Math.floor(worldView.y / GRID.UNIT) * GRID.UNIT;
-    const endY = Math.ceil(worldView.bottom / GRID.UNIT) * GRID.UNIT;
-
-    for (let x = startX; x <= endX; x += GRID.UNIT) {
-        for (let y = startY; y <= endY; y += GRID.UNIT) {
-            const crossSize = 2 / cam.zoom;
-            scene.debugGraphics.moveTo(x - crossSize, y);
-            scene.debugGraphics.lineTo(x + crossSize, y);
-            scene.debugGraphics.moveTo(x, y - crossSize);
-            scene.debugGraphics.lineTo(x, y + crossSize);
+        if (target && target.components.Position) {
+            const tPos = target.components.Position;
+            // Calculate Midpoint
+            targetX = (pPos.x + tPos.x) / 2;
+            targetY = (pPos.y + tPos.y) / 2;
         }
     }
-    scene.debugGraphics.strokePath();
+
+    // 3. Move Camera
+    // Lerp 0.1 gives a "spring" snap. Set to 1.0 for instant 1-frame snap.
+    const lerp = 0.1;
+
+    // Current camera center
+    const currentX = cam.scrollX + cam.width / 2;
+    const currentY = cam.scrollY + cam.height / 2;
+
+    // Interpolate
+    const newX = currentX + (targetX - currentX) * lerp;
+    const newY = currentY + (targetY - currentY) * lerp;
+
+    cam.centerOn(newX, newY);
+};
+--- FILE: src/ecs/systems/DebugLayerSystem.js ---
+export const DebugLayerSystem = (entities, scene) => {
+    // Safety check: ensure scene exists and is a Phaser Scene
+    if (!scene || !scene.add) return;
+
+    if (!scene.debugText) {
+        scene.debugText = scene.add.text(10, 10, '', {
+            font: '16px monospace',
+            fill: '#00ff00',
+            stroke: '#000000',
+            strokeThickness: 3,
+            backgroundColor: '#00000088'
+        });
+
+        scene.debugText.setScrollFactor(0).setDepth(2000);
+    }
+
+    const cam = scene.cameras.main;
+    const uiScale = 1 / cam.zoom;
+
+    scene.debugText.setScale(uiScale);
+    scene.debugText.setPosition(10 * uiScale, 10 * uiScale);
+
+    const player = entities.find(e => e.components.PlayerTag);
+    let debugInfo = `SCENE: ${scene.scene.key}\n`;
+
+    if (player) {
+        const { Position: pos, Parent: parent } = player.components;
+        debugInfo += `POS: ${Math.round(pos.x)}, ${Math.round(pos.y)}\n`;
+
+        if (parent) {
+            debugInfo += `STATUS: ATTACHED\n`;
+            debugInfo += `PARENT: ${parent.id}\n`;
+            debugInfo += `OFFSET: ${Math.round(parent.offset.x)}, ${Math.round(parent.offset.y)}\n`;
+        } else {
+            debugInfo += `STATUS: FREE\n`;
+        }
+    }
+
+    scene.debugText.setText(debugInfo);
 };
 --- FILE: src/ecs/systems/index.js ---
 export * from './MovementSystem';
@@ -443,105 +479,168 @@ export * from './PhysicsSystem';
 export * from './RenderSystem';
 export * from './CameraSystem';
 export * from './DebugLayerSystem';
-export * from './AbilityTargetingSystem'; // Corrected Name
-export * from './TargetRenderSystem';    // Corrected Name
+export * from './AbilityTargetingSystem';
+export * from './TargetRenderSystem';
+export * from './AttachmentSystem'; 
 --- FILE: src/ecs/systems/MovementSystem.js ---
 import { GRID } from '../../core/Constants';
 
 export const MovementSystem = (entities, inputManager) => {
     if (!inputManager) return;
 
-    const velocity = GRID.SPEED * GRID.UNIT;
+    const speed = GRID.SPEED * GRID.UNIT;
     const move = inputManager.getMovement();
 
     entities.forEach(entity => {
-        const { Position: pos, Velocity: vel, Rotation: rot, InputControlled: input } = entity.components;
+        const { Position: pos, Velocity: vel, Rotation: rot, Parent: parent, InputControlled: input } = entity.components;
 
-        if (input && pos && vel) {
-            // 1. Set Velocity
-            vel.x = move.x * velocity;
-            vel.y = move.y * velocity;
-
-            // 2. Update Rotation based on direction of travel
+        if (input && pos) {
+            // 1. Heading Rotation (Standard Twin-stick style: Left Stick moves & rotates)
+            // Note: For true Twin-stick, we'd read Right Stick here separately.
             if (rot && (move.x !== 0 || move.y !== 0)) {
-                // atan2 returns the angle in radians
                 rot.angle = Math.atan2(move.y, move.x);
             }
 
-            // 3. Grid Snapping when stopped
-            if (move.x === 0 && move.y === 0) {
-                pos.x = Math.round(pos.x / GRID.UNIT) * GRID.UNIT;
-                pos.y = Math.round(pos.y / GRID.UNIT) * GRID.UNIT;
+            // 2. Attached Movement (Locked to Bounds)
+            if (parent) {
+                const plat = entities.find(e => e.id === parent.id);
+                const col = plat?.components.Collider;
+
+                if (col) {
+                    // Calculate potential new offset
+                    // Note: We use fixed step logic in the scene, so '1.0' represents one tick here usually,
+                    // but since we are multiplying by speed, we assume the caller handles the time step 
+                    // or we normalize speed. For now, we assume simple accumulation.
+                    let nextX = parent.offset.x + (move.x * speed * 0.016);
+                    let nextY = parent.offset.y + (move.y * speed * 0.016);
+
+                    let hitEdge = false;
+
+                    // Clamp to Circular Platform
+                    if (col.type === 'circle') {
+                        const dist = Math.sqrt(nextX * nextX + nextY * nextY);
+                        if (dist > col.radius) {
+                            // Normalize the vector and multiply by radius to snap to edge
+                            const angle = Math.atan2(nextY, nextX);
+                            nextX = Math.cos(angle) * col.radius;
+                            nextY = Math.sin(angle) * col.radius;
+                            hitEdge = true;
+                        }
+                    }
+                    // Clamp to Rectangular Platform
+                    else {
+                        const halfW = col.width / 2;
+                        const halfH = col.height / 2;
+
+                        if (nextX < -halfW || nextX > halfW) hitEdge = true;
+                        if (nextY < -halfH || nextY > halfH) hitEdge = true;
+
+                        nextX = Math.max(-halfW, Math.min(halfW, nextX));
+                        nextY = Math.max(-halfH, Math.min(halfH, nextY));
+                    }
+
+                    parent.offset.x = nextX;
+                    parent.offset.y = nextY;
+
+                    // --- CONSTRAINT REACTION ---
+                    if (hitEdge && plat.components.Graphic) {
+                        // Randomize color to indicate "Struggling against barrier"
+                        plat.components.Graphic.color = Math.random() * 0xffffff;
+                    }
+                }
+
+                // Zero out velocity so PhysicsSystem doesn't double-move
+                if (vel) { vel.x = 0; vel.y = 0; }
+            }
+            // 3. Free Movement (Fallback if not parented)
+            else if (vel) {
+                vel.x = move.x * speed;
+                vel.y = move.y * speed;
             }
         }
     });
 };
 --- FILE: src/ecs/systems/PhysicsSystem.js ---
 export const PhysicsSystem = (entities, delta) => {
+    // Delta is now expected to be fixed (e.g., 16.66ms)
+    const dt = delta / 1000;
+
     entities.forEach(entity => {
         const { Position: pos, Velocity: vel, Parent: parent } = entity.components;
+        if (!pos) return;
 
-        // If entity is attached to a parent, sync position based on parent + offset
-        if (parent && pos) {
-            const parentEntity = entities.find(e => e.id === parent.id);
-            if (parentEntity && parentEntity.components.Position) {
-                const pPos = parentEntity.components.Position;
-                pos.x = pPos.x + parent.offset.x;
-                pos.y = pPos.y + parent.offset.y;
-                return; // Skip standard velocity physics for attached entities
+        if (parent) {
+            const platform = entities.find(e => e.id === parent.id);
+            // Safety: Ensure platform still exists
+            if (platform && platform.components.Position) {
+                // Hard sync: World Pos = Platform World Pos + Local Offset
+                pos.x = platform.components.Position.x + parent.offset.x;
+                pos.y = platform.components.Position.y + parent.offset.y;
+            } else {
+                // Fallback: If platform died, detach? 
+                // For now, do nothing or user remains at last pos.
             }
-        }
-
-        // Standard Velocity Physics
-        if (pos && vel) {
-            pos.x += vel.x * (delta / 1000);
-            pos.y += vel.y * (delta / 1000);
+        } else if (vel) {
+            // Standard Euler Integration
+            pos.x += vel.x * dt;
+            pos.y += vel.y * dt;
         }
     });
 };
 --- FILE: src/ecs/systems/RenderSystem.js ---
 export const RenderSystem = (entities, scene) => {
     if (!scene.gfx) {
-        scene.gfx = scene.add.graphics().setDepth(100);
+        // High base depth for the ECS graphics layer
+        scene.gfx = scene.add.graphics().setDepth(1000);
     }
     scene.gfx.clear();
 
-    entities.forEach(entity => {
-        const { Position: pos, Graphic: gfx, Rotation: rot, PlayerTag: isPlayer } = entity.components;
-        if (!pos || !gfx) return;
+    // 1. Sort entities so Player is always drawn last (on top)
+    const sortedEntities = [...entities].sort((a, b) => {
+        const aIsPlayer = a.components.PlayerTag ? 1 : 0;
+        const bIsPlayer = b.components.PlayerTag ? 1 : 0;
+        return aIsPlayer - bIsPlayer;
+    });
+
+    sortedEntities.forEach(entity => {
+        const { Position: pos, Graphic: gfx, Rotation: rot, PlayerTag: isPlayer, Collider: col } = entity.components;
+
+        if (!pos || !gfx || gfx.texture === 'none') return;
 
         const color = gfx.color || 0xffffff;
-        const angle = rot ? rot.angle : 0;
-
-        scene.gfx.fillStyle(color, 1);
-        scene.gfx.lineStyle(2, 0xffffff, 0.5);
+        const angle = (rot && !isNaN(rot.angle)) ? rot.angle : 0;
 
         scene.gfx.save();
         scene.gfx.translateCanvas(pos.x, pos.y);
         scene.gfx.rotateCanvas(angle);
 
+        // 2. Set alpha/style
+        // We can make platforms slightly transparent so the player is even clearer
+        const alpha = isPlayer ? 1.0 : 0.8;
+        scene.gfx.fillStyle(color, alpha);
+        scene.gfx.lineStyle(2, 0xffffff, isPlayer ? 1.0 : 0.5);
+
         if (isPlayer) {
-            // Draw Triangle pointing Right (0 radians)
-            // Points are relative to the translated center
-            const size = 12;
+            const size = gfx.size || 12;
             scene.gfx.beginPath();
-            scene.gfx.moveTo(size, 0);          // Tip
-            scene.gfx.lineTo(-size, -size);     // Bottom Left
-            scene.gfx.lineTo(-size, size);      // Bottom Right
+            scene.gfx.moveTo(size, 0);
+            scene.gfx.lineTo(-size, -size);
+            scene.gfx.lineTo(-size, size);
             scene.gfx.closePath();
             scene.gfx.fillPath();
             scene.gfx.strokePath();
         } else {
-            // Draw standard shapes
             if (gfx.texture === 'circle') {
-                scene.gfx.fillCircle(0, 0, 8);
-                scene.gfx.strokeCircle(0, 0, 8);
+                const r = col ? col.radius : (gfx.size || 8);
+                scene.gfx.fillCircle(0, 0, r);
+                scene.gfx.strokeCircle(0, 0, r);
             } else {
-                scene.gfx.fillRect(-6, -6, 12, 12);
-                scene.gfx.strokeRect(-6, -6, 12, 12);
+                const w = col ? col.width : (gfx.size ? gfx.size * 2 : 12);
+                const h = col ? col.height : (gfx.size ? gfx.size * 2 : 12);
+                scene.gfx.fillRect(-w / 2, -h / 2, w, h);
+                scene.gfx.strokeRect(-w / 2, -h / 2, w, h);
             }
         }
-
         scene.gfx.restore();
     });
 };
@@ -811,43 +910,40 @@ export class MenuScene extends Phaser.Scene {
 }
 --- FILE: src/scenes/test/00_MovementTest.js ---
 import { createPlayer } from '../../ecs/entities/player';
-import { MovementSystem, PhysicsSystem, RenderSystem } from '../../ecs/systems/index';
 import { BaseTestScene } from './BaseTestScene';
+import {
+    Position, Graphic, Collider, PlatformTag, Parent, AbilityState
+} from '../../ecs/components/index';
 
 export class MovementTest extends BaseTestScene {
     constructor() {
-        // Key, Title, Subtitle
-        super('MovementTest', 'Movement Test', 'Standard 8-way movement. Use Arrows or Left Stick.');
+        super('MovementTest', 'Restrained Movement', 'Player tethered. Hold X/Y to target.');
     }
 
     create() {
-        super.create(); // This initializes this.inputManager and the UI
+        super.create();
 
-        // Spawn Player at Grid 40, 30 (400px, 300px)
-        this.addEntity(createPlayer(400, 300));
-    }
+        const cage = this.addEntity([
+            { id: 'cage_platform' },
+            Position(400, 300),
+            Graphic('circle', 0x333333, 100),
+            Collider('circle', 100),
+            PlatformTag()
+        ]);
 
-    update(time, delta) {
-        // super.update handles ESC, Blue Grid, and HTML Debug Console
-        if (!super.update(time, delta)) return;
+        this.addEntity([
+            ...createPlayer(400, 300),
+            AbilityState(),
+            Parent(cage.id, { x: 0, y: 0 })
+        ]);
 
-        // Scene Logic
-        MovementSystem(this.entities, this.inputManager);
-        RenderSystem(this.entities, this);
-        PhysicsSystem(this.entities, delta);
+        this.cameras.main.centerOn(400, 300);
     }
 }
 --- FILE: src/scenes/test/01_TargetTest.js ---
 import { createPlayer } from '../../ecs/entities/player';
 import { createTarget } from '../../ecs/entities/target';
-import {
-    MovementSystem,
-    PhysicsSystem,
-    RenderSystem,
-    AbilityTargetingSystem, // Fixed Import
-    TargetRenderSystem      // Fixed Import
-} from '../../ecs/systems/index';
-import { AbilityState, EntityType } from '../../ecs/components/index';
+import { AbilityState, EntityType, CameraTarget } from '../../ecs/components/index';
 import { BaseTestScene } from './BaseTestScene';
 
 export class TargetTest extends BaseTestScene {
@@ -858,76 +954,48 @@ export class TargetTest extends BaseTestScene {
     create() {
         super.create();
 
-        // 1. Player needs AbilityState to track current targets
-        this.addEntity([...createPlayer(400, 300), AbilityState()]);
+        // Player with targeting enabled
+        this.addEntity([
+            ...createPlayer(400, 300),
+            AbilityState(),
+            CameraTarget()
+        ]);
 
-        // 2. Targets need EntityType to be filterable
+        // Targets
         this.addEntity([...createTarget(200, 200), EntityType('A')]);
         this.addEntity([...createTarget(600, 200), EntityType('A')]);
         this.addEntity([...createTarget(600, 500), EntityType('A')]);
         this.addEntity([...createTarget(200, 500), EntityType('B')]);
-    }
 
-    update(time, delta) {
-        if (!super.update(time, delta)) return;
-
-        // Sequence: Movement -> Targeting Logic -> Targeting Visuals -> Rendering
-        MovementSystem(this.entities, this.inputManager);
-
-        AbilityTargetingSystem(this.entities, this.inputManager);
-        TargetRenderSystem(this.entities, this);
-
-        RenderSystem(this.entities, this);
-        PhysicsSystem(this.entities, delta);
+        this.cameras.main.centerOn(400, 300);
     }
 }
 --- FILE: src/scenes/test/02_CameraTest.js ---
 import { createPlayer } from '../../ecs/entities/player';
 import { createTarget } from '../../ecs/entities/target';
-import { CameraTarget } from '../../ecs/components/index';
-import {
-    MovementSystem,
-    PhysicsSystem,
-    RenderSystem,
-    CameraSystem
-} from '../../ecs/systems/index';
+import { CameraTarget, AbilityState } from '../../ecs/components/index';
 import { BaseTestScene } from './BaseTestScene';
 
 export class CameraTest extends BaseTestScene {
     constructor() {
-        super('CameraTest', 'Camera Test', 'Dynamic framing and auto-zoom demo');
+        super('CameraTest', 'Camera Focus', 'Face Target (200,200) & Hold X to Lock.');
     }
 
     create() {
-        // 1. Initialize Base (Input, UI, Grid state)
         super.create();
 
-        // 2. Create Entities using the method defined in the parent
-        const player = this.addEntity([
-            ...createPlayer(400, 300),
+        this.addEntity([
+            ...createTarget(200, 200, 'A'),
             CameraTarget()
         ]);
 
-        const target = this.addEntity([
-            ...createTarget(600, 500),
+        this.addEntity([
+            ...createPlayer(0, 0),
+            AbilityState(),
             CameraTarget()
         ]);
 
-        // 3. Set initial state
-        if (player.components.Targeter) {
-            player.components.Targeter.currentTarget = target.id;
-        }
-    }
-
-    update(time, delta) {
-        // Check if we are still in the scene
-        if (!super.update(time, delta)) return;
-
-        // Run Systems
-        MovementSystem(this.entities, this.inputManager);
-        RenderSystem(this.entities, this);
-        PhysicsSystem(this.entities, delta);
-        CameraSystem(this.entities, this);
+        this.cameras.main.centerOn(0, 0);
     }
 }
 --- FILE: src/scenes/test/03_AbilityTest.js ---
@@ -981,133 +1049,207 @@ export class AbilityTest extends BaseTestScene {
 --- FILE: src/scenes/test/04_PlatformTest.js ---
 import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
-import { Position, Velocity, Collider, PlatformTag, Graphic, Rotation } from '../../ecs/components/index';
-import { AttachmentSystem } from '../../ecs/systems/AttachmentSystem';
-import { MovementSystem } from '../../ecs/systems/MovementSystem';
-import { PhysicsSystem } from '../../ecs/systems/PhysicsSystem';
-import { RenderSystem } from '../../ecs/systems/RenderSystem';
+import {
+    Position, Velocity, Collider, PlatformTag, Graphic, CameraTarget, AbilityState
+} from '../../ecs/components/index';
 
 export class PlatformTest extends BaseTestScene {
     constructor() {
-        super('PlatformTest', 'Platform Snapping', 'Touch a circle to stick. Press B to detach.');
+        super('PlatformTest', 'Platform Snapping', 'Move onto circles. Hold X to Target.');
     }
 
     create() {
         super.create();
 
-        // 1. Spawn Player
-        this.addEntity([...createPlayer(100, 100)]);
+        this.addEntity([...createPlayer(-300, 0), AbilityState()]);
 
-        // 2. Stationary Platform (Big)
         this.addEntity([
-            Position(300, 300),
-            Rotation(0),
-            Graphic('circle', 0x333333),
-            Collider('circle', 100),
-            PlatformTag()
+            Position(0, 0),
+            Graphic('circle', 0x333333, 50),
+            Collider('circle', 50),
+            PlatformTag(),
+            CameraTarget()
         ]);
 
-        // 3. Moving Platform (Small)
         this.addEntity([
-            Position(600, 300),
-            Velocity(0, 0),
-            Rotation(0),
-            Graphic('circle', 0x555555),
+            { id: 'mover_invisible' },
+            Position(400, 0),
+            Velocity(0, 150),
+            Graphic('none'),
+            Collider('rect', 0, 200, 200),
+            PlatformTag(),
+            CameraTarget()
+        ]);
+
+        this.cameras.main.centerOn(-300, 0);
+    }
+
+    // Using the new Hook to run custom logic inside the Fixed Loop
+    fixedUpdate(time, dt) {
+        const mover = this.entities.find(e => e.id === 'mover_invisible');
+        if (mover && mover.components.Velocity) {
+            mover.components.Velocity.y = Math.sin(time / 1000) * 200;
+        }
+    }
+}
+--- FILE: src/scenes/test/05_OrbitTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import {
+    Position, Collider, PlatformTag, Graphic, CameraTarget, Parent, AbilityState
+} from '../../ecs/components/index';
+
+export class OrbitTest extends BaseTestScene {
+    constructor() {
+        super('OrbitTest', 'Circular Orbit', 'Player orbits. Hold X to Target.');
+        this.theta = 0;
+        this.orbitRadius = 300;
+        this.orbitSpeed = 0.01;
+    }
+
+    create() {
+        super.create();
+
+        this.addEntity([
+            { id: 'sun' },
+            Position(0, 0),
+            Graphic('circle', 0xffcc00, 50),
             Collider('circle', 50),
-            PlatformTag()
+            PlatformTag(),
+            CameraTarget()
+        ]);
+
+        this.addEntity([
+            { id: 'planet' },
+            Position(this.orbitRadius, 0),
+            Graphic('circle', 0x00aaff, 50),
+            Collider('circle', 50),
+            PlatformTag(),
+            CameraTarget()
+        ]);
+
+        this.addEntity([
+            ...createPlayer(0, 0),
+            AbilityState(),
+            Parent('planet', { x: 0, y: -40 })
         ]);
     }
 
-    update(time, delta) {
-        if (!super.update(time, delta)) return;
+    // Custom Orbit Math running in the fixed loop
+    fixedUpdate(time, dt) {
+        this.theta += this.orbitSpeed;
+        const planet = this.entities.find(e => e.id === 'planet');
 
-        // Make the small platform oscillate vertically
-        const platforms = this.entities.filter(e => e.components.PlatformTag);
-        const mover = platforms.find(p => p.components.Graphic.color === 0x555555);
-        if (mover) {
-            mover.components.Velocity.y = Math.sin(time / 1000) * 150;
+        if (planet && planet.components.Position) {
+            planet.components.Position.x = Math.cos(this.theta) * this.orbitRadius;
+            planet.components.Position.y = Math.sin(this.theta) * this.orbitRadius;
         }
-
-        // --- ECS Execution Order ---
-        MovementSystem(this.entities, this.inputManager);
-        AttachmentSystem(this.entities, this.inputManager); // Detects collision/stick
-        PhysicsSystem(this.entities, delta);             // Calculates parent-relative pos
-        RenderSystem(this.entities, this);
     }
 }
 --- FILE: src/scenes/test/BaseTestScene.js ---
 import Phaser from 'phaser';
 import { UI } from '../../core/UIManager';
 import { InputManager } from '../../core/Input';
-import { DebugLayerSystem } from '../../ecs/systems/DebugLayerSystem';
-import { GRID } from '../../core/Constants';
+import { GRID, PHYSICS } from '../../core/Constants';
+
+// Import ALL Common Systems
+import {
+    MovementSystem,
+    AttachmentSystem,
+    AbilityTargetingSystem,
+    PhysicsSystem,
+    CameraSystem,
+    RenderSystem,
+    TargetRenderSystem,
+    DebugLayerSystem
+} from '../../ecs/systems/index';
 
 export class BaseTestScene extends Phaser.Scene {
     constructor(key, title, subtitle) {
         super(key);
-        // Attributes used by the HTML UI and internal state
         this.testTitle = title || "Test Scene";
         this.testSubtitle = subtitle || "No description provided.";
-        this.entities = [];
-        this.showDebugGrid = false;
+        this.accumulator = 0;
     }
 
     create() {
-        // Initialize the Input Manager for this specific scene instance
-        this.inputManager = new InputManager(this);
+        // 1. Reset Entities
+        this.entities = [];
 
-        // Trigger the HTML overlay title drop
+        // 2. Setup Input & UI
+        this.inputManager = new InputManager(this);
         const titleStr = this.testTitle || 'SCENE';
         UI.showTitle(titleStr, this.testSubtitle);
 
-        // Toggle the Blue Grid Crosses and HTML Debug Panel
         this.input.keyboard.on('keydown-TAB', () => {
             this.showDebugGrid = !this.showDebugGrid;
             UI.toggleDebug();
         });
 
-        // Universal 'Exit to Menu' handler
         this.input.keyboard.on('keydown-ESC', () => {
             this.scene.start('TestMenuScene');
         });
     }
 
     update(time, delta) {
-        // 1. Draw/Clear the Blue Debug Grid Crosses
-        DebugLayerSystem(this);
+        // --- FIXED TIMESTEP LOOP ---
+        this.accumulator += delta;
 
-        // 2. Locate the Player and update the HTML HUD with current coords
+        while (this.accumulator >= PHYSICS.STEP) {
+            const dtSeconds = PHYSICS.STEP / 1000;
+
+            // 1. Game Logic Systems
+            MovementSystem(this.entities, this.inputManager, dtSeconds);
+            AttachmentSystem(this.entities, this.inputManager);
+            AbilityTargetingSystem(this.entities, this.inputManager);
+
+            // 2. Scene-Specific Logic Hook (Override this in child scenes)
+            this.fixedUpdate(time, PHYSICS.STEP);
+
+            // 3. Physics Integration
+            PhysicsSystem(this.entities, PHYSICS.STEP);
+
+            this.accumulator -= PHYSICS.STEP;
+        }
+
+        // --- RENDER LOOP (Every Frame) ---
+        TargetRenderSystem(this.entities, this);
+        CameraSystem(this.entities, this);
+        RenderSystem(this.entities, this);
+        DebugLayerSystem(this.entities, this);
+
+        this.updateDebugUI();
+    }
+
+    // Override this method in child scenes for custom logic (e.g. Orbit math)
+    fixedUpdate(time, dt) { }
+
+    updateDebugUI() {
         const player = this.entities.find(e => e.components.PlayerTag);
         if (player) {
             const p = player.components.Position;
+            const t = player.components.AbilityState?.currentTargetId
+                ? { id: player.components.AbilityState.currentTargetId }
+                : null;
+
             UI.updateDebug({
                 x: p.x.toFixed(0),
                 y: p.y.toFixed(0),
                 gx: (p.x / GRID.UNIT).toFixed(1),
                 gy: (p.y / GRID.UNIT).toFixed(1)
-            }, null);
+            }, t);
         }
-
-        // Return true so child scenes (CameraTest, etc.) know the base update finished
-        return true;
     }
 
-    /**
-     * Standard ECS Entity Spawner
-     * Converts an array of component objects into a keyed entity object.
-     */
     addEntity(componentsArray) {
+        const config = componentsArray.find(c => c.id && !c._type);
         const entity = {
-            id: crypto.randomUUID(),
+            id: config ? config.id : crypto.randomUUID(),
             components: {}
         };
-
         componentsArray.forEach(c => {
-            if (c && c._type) {
-                entity.components[c._type] = c;
-            }
+            if (c && c._type) entity.components[c._type] = c;
         });
-
         this.entities.push(entity);
         return entity;
     }

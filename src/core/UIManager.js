@@ -34,7 +34,6 @@ export class UIManager {
 
         this.overlay.appendChild(el);
 
-        // Trigger reflow for transition
         requestAnimationFrame(() => {
             el.style.opacity = '1';
         });
@@ -50,24 +49,25 @@ export class UIManager {
         if (!debugEl) {
             debugEl = document.createElement('div');
             debugEl.id = 'debug-console';
+            // UPDATED STYLING: Column layout, left aligned
             debugEl.style.cssText = `
-                position: absolute; top: 0; left: 0; width: 100%;
+                position: absolute; top: 0; left: 0; width: 300px;
                 background: rgba(0,0,0,0.8); padding: 20px;
-                display: flex; justify-content: space-between;
+                display: flex; flex-direction: column; align-items: flex-start;
                 font-size: 14px; color: #0f0; visibility: hidden;
-                border-bottom: 1px solid #0f0;
+                border-bottom: 1px solid #0f0; border-right: 1px solid #0f0;
             `;
             this.overlay.appendChild(debugEl);
         }
 
         debugEl.innerHTML = `
-            <div>
-                [ PLAYER ]<br>
+            <div style="margin-bottom: 10px;">
+                <strong style="color: #fff;">[ PLAYER ]</strong><br>
                 POS: ${playerData.x}, ${playerData.y}<br>
                 GRID: ${playerData.gx}, ${playerData.gy}
             </div>
-            <div style="color: #f0f; text-align: right;">
-                [ TARGET ]<br>
+            <div style="color: #f0f;">
+                <strong style="color: #fff;">[ TARGET ]</strong><br>
                 ${targetData ? `ID: ${targetData.id}` : 'NO TARGET'}
             </div>
         `;

@@ -1,22 +1,41 @@
 export const CameraSystem = (entities, scene) => {
-    const targets = entities.filter(e => e.components.CameraTarget && e.components.Position);
-    if (targets.length === 0) return;
-
     const cam = scene.cameras.main;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    const player = entities.find(e => e.components.PlayerTag && e.components.Position);
 
-    targets.forEach(t => {
-        const { x, y } = t.components.Position;
-        minX = Math.min(minX, x); minY = Math.min(minY, y);
-        maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
-    });
+    // 1. No Player? Look at 0,0
+    if (!player) {
+        cam.centerOn(0, 0); // Or pan smoothly: cam.pan(0, 0, 1000);
+        return;
+    }
 
-    const padding = 250;
-    const width = (maxX - minX) + padding;
-    const height = (maxY - minY) + padding;
+    const pPos = player.components.Position;
+    let targetX = pPos.x;
+    let targetY = pPos.y;
 
-    cam.centerOn((minX + maxX) / 2, (minY + maxY) / 2);
+    // 2. Check for Active Target (Midpoint Logic)
+    const abilityState = player.components.AbilityState;
+    if (abilityState && abilityState.currentTargetId) {
+        const target = entities.find(e => e.id === abilityState.currentTargetId);
 
-    const targetZoom = Math.min(cam.width / width, cam.height / height, 1.2);
-    cam.setZoom(targetZoom);
+        if (target && target.components.Position) {
+            const tPos = target.components.Position;
+            // Calculate Midpoint
+            targetX = (pPos.x + tPos.x) / 2;
+            targetY = (pPos.y + tPos.y) / 2;
+        }
+    }
+
+    // 3. Move Camera
+    // Lerp 0.1 gives a "spring" snap. Set to 1.0 for instant 1-frame snap.
+    const lerp = 0.1;
+
+    // Current camera center
+    const currentX = cam.scrollX + cam.width / 2;
+    const currentY = cam.scrollY + cam.height / 2;
+
+    // Interpolate
+    const newX = currentX + (targetX - currentX) * lerp;
+    const newY = currentY + (targetY - currentY) * lerp;
+
+    cam.centerOn(newX, newY);
 };

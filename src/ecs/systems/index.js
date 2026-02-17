@@ -3,5 +3,6 @@ export * from './PhysicsSystem';
 export * from './RenderSystem';
 export * from './CameraSystem';
 export * from './DebugLayerSystem';
-export * from './AbilityTargetingSystem'; // Corrected Name
-export * from './TargetRenderSystem';    // Corrected Name
+export * from './AbilityTargetingSystem';
+export * from './TargetRenderSystem';
+export * from './AttachmentSystem'; 

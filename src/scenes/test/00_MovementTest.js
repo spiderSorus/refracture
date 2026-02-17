@@ -1,33 +1,31 @@
 import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
-    MovementSystem,
-    PhysicsSystem,
-    RenderSystem,
-    CameraSystem
-} from '../../ecs/systems/index';
+    Position, Graphic, Collider, PlatformTag, Parent, AbilityState
+} from '../../ecs/components/index';
 
 export class MovementTest extends BaseTestScene {
     constructor() {
-        super('MovementTest', 'Basic Movement', 'Use Arrows/WASD or Left Stick to move.');
+        super('MovementTest', 'Restrained Movement', 'Player tethered. Hold X/Y to target.');
     }
 
     create() {
         super.create();
-        // createPlayer already includes PlayerTag and CameraTarget
-        this.addEntity([...createPlayer(400, 300)]);
-    }
 
-    update(time, delta) {
-        if (!super.update(time, delta)) return;
+        const cage = this.addEntity([
+            { id: 'cage_platform' },
+            Position(400, 300),
+            Graphic('circle', 0x333333, 100),
+            Collider('circle', 100),
+            PlatformTag()
+        ]);
 
-        // Core ECS Loop
-        MovementSystem(this.entities, this.inputManager);
-        PhysicsSystem(this.entities, delta);
+        this.addEntity([
+            ...createPlayer(400, 300),
+            AbilityState(),
+            Parent(cage.id, { x: 0, y: 0 })
+        ]);
 
-        // Essential for the camera to actually move!
-        CameraSystem(this.entities, this);
-
-        RenderSystem(this.entities, this);
+        this.cameras.main.centerOn(400, 300);
     }
 }
