@@ -1,8 +1,9 @@
 export const DebugLayerSystem = (entities, scene) => {
-    // Safety check: ensure scene exists and is a Phaser Scene
+    // Safety check: ensure scene exists
     if (!scene || !scene.add) return;
 
-    if (!scene.debugText) {
+    // 1. Create or Re-create if missing/destroyed
+    if (!scene.debugText || !scene.debugText.active) {
         scene.debugText = scene.add.text(10, 10, '', {
             font: '16px monospace',
             fill: '#00ff00',
@@ -25,7 +26,10 @@ export const DebugLayerSystem = (entities, scene) => {
 
     if (player) {
         const { Position: pos, Parent: parent } = player.components;
-        debugInfo += `POS: ${Math.round(pos.x)}, ${Math.round(pos.y)}\n`;
+        // Safety check for components
+        if (pos) {
+            debugInfo += `POS: ${Math.round(pos.x)}, ${Math.round(pos.y)}\n`;
+        }
 
         if (parent) {
             debugInfo += `STATUS: ATTACHED\n`;
@@ -36,5 +40,8 @@ export const DebugLayerSystem = (entities, scene) => {
         }
     }
 
-    scene.debugText.setText(debugInfo);
+    // 2. Only update text if the object has a valid texture frame
+    if (scene.debugText.frame) {
+        scene.debugText.setText(debugInfo);
+    }
 };

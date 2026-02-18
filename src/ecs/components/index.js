@@ -2,17 +2,12 @@ export const Position = (x = 0, y = 0) => ({ _type: 'Position', x, y });
 export const Velocity = (x = 0, y = 0) => ({ _type: 'Velocity', x, y });
 export const Rotation = (angle = 0) => ({ _type: 'Rotation', angle });
 
-// REMOVED: Old Graphic component
-// REPLACED BY: Renderable
 export const Renderable = (definitions = {}) => ({
     _type: 'Renderable',
-    // definitions: { 'LAYER_NAME': { type: 'sprite', texture: 'x', ... } }
     definitions,
-    // internal cache for Phaser GameObjects: { 'LAYER_NAME': GameObject }
     activeVisuals: {}
 });
 
-// Controls what the entity (usually Player) can SEE
 export const ViewLayers = (layers = ['BASE']) => ({
     _type: 'ViewLayers',
     layers
@@ -35,3 +30,26 @@ export const Collider = (type = 'circle', radius = 50, width = 100, height = 100
     type, radius, width, height
 });
 export const PlatformTag = () => ({ _type: 'PlatformTag' });
+
+export const ConnectionPoint = (x = 0, y = 0) => ({
+    _type: 'ConnectionPoint',
+    x, y
+});
+
+// --- NEW COMPONENTS ---
+
+// Active tether (Player -> Platform)
+export const WebTether = (platformId, anchorOffset = { x: 0, y: 0 }) => ({
+    _type: 'WebTether',
+    platformId,
+    anchorOffset
+});
+
+// Static connection (Platform A -> Platform B)
+export const WebConnection = (fromId, fromOffset, toId, toOffset) => ({
+    _type: 'WebConnection',
+    fromId,
+    fromOffset, // {x, y}
+    toId,
+    toOffset    // {x, y}
+});

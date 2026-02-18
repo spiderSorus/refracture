@@ -3,16 +3,17 @@ import { UI } from '../../core/UIManager';
 import { InputManager } from '../../core/Input';
 import { GRID, PHYSICS } from '../../core/Constants';
 
-// UPDATE IMPORTS
 import {
     MovementSystem,
     AttachmentSystem,
     AbilityTargetingSystem,
     PhysicsSystem,
     CameraSystem,
-    LayeredRenderSystem, // <--- NEW RENDERER
+    LayeredRenderSystem,
     TargetRenderSystem,
-    DebugLayerSystem
+    DebugLayerSystem,
+    WebRenderSystem,
+    WebSystem
 } from '../../ecs/systems/index';
 
 export class BaseTestScene extends Phaser.Scene {
@@ -30,6 +31,11 @@ export class BaseTestScene extends Phaser.Scene {
         const titleStr = this.testTitle || 'SCENE';
         UI.showTitle(titleStr, this.testSubtitle);
 
+        // --- CLEANUP HANDLER ---
+        // This ensures that when we switch scenes, everything resets
+        this.events.once('shutdown', this.shutdown, this);
+
+        // Inputs
         this.input.keyboard.on('keydown-TAB', () => {
             this.showDebugGrid = !this.showDebugGrid;
             UI.toggleDebug();
@@ -40,13 +46,36 @@ export class BaseTestScene extends Phaser.Scene {
         });
     }
 
+    // Called automatically when scene stops
+    shutdown() {
+        // 1. Clear Entities
+        this.entities = [];
+
+        // 2. Clear Input Listeners (Prevent double-triggering X or ESC)
+        this.input.keyboard.off('keydown-TAB');
+        this.input.keyboard.off('keydown-ESC');
+
+        // 3. Clear any UI text residue
+        if (this.debugText) {
+            this.debugText.destroy();
+            this.debugText = null;
+        }
+
+        // 4. Reset Accumulator
+        this.accumulator = 0;
+    }
+
     update(time, delta) {
+        // If scene is shutting down, stop updating to prevent crashes
+        if (!this.sys.isActive()) return;
+
         this.accumulator += delta;
 
+        // 1. FIXED UPDATE LOOP
         while (this.accumulator >= PHYSICS.STEP) {
             const dtSeconds = PHYSICS.STEP / 1000;
 
-            // Logic Systems
+            WebSystem(this.entities, this.inputManager);
             MovementSystem(this.entities, this.inputManager, dtSeconds);
             AttachmentSystem(this.entities, this.inputManager);
             AbilityTargetingSystem(this.entities, this.inputManager);
@@ -57,14 +86,13 @@ export class BaseTestScene extends Phaser.Scene {
             this.accumulator -= PHYSICS.STEP;
         }
 
-        // --- RENDER LOOP ---
+        // 2. RENDER LOOP
+        WebRenderSystem(this.entities, this);
         TargetRenderSystem(this.entities, this);
         CameraSystem(this.entities, this);
-
-        // CRITICAL FIX: Use LayeredRenderSystem instead of RenderSystem
         LayeredRenderSystem(this.entities, this);
-
         DebugLayerSystem(this.entities, this);
+
         this.updateDebugUI();
     }
 
@@ -74,16 +102,16 @@ export class BaseTestScene extends Phaser.Scene {
         const player = this.entities.find(e => e.components.PlayerTag);
         if (player) {
             const p = player.components.Position;
-            const t = player.components.AbilityState?.currentTargetId
-                ? { id: player.components.AbilityState.currentTargetId }
-                : null;
+            let tInfo = null;
+            if (player.components.WebTether) tInfo = { id: "ANCHORED" };
+            else if (player.components.AbilityState?.currentTargetId) tInfo = { id: "TARGETING" };
 
             UI.updateDebug({
                 x: p.x.toFixed(0),
                 y: p.y.toFixed(0),
                 gx: (p.x / GRID.UNIT).toFixed(1),
                 gy: (p.y / GRID.UNIT).toFixed(1)
-            }, t);
+            }, tInfo);
         }
     }
 

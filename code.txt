@@ -231,9 +231,14 @@ export const Collider = (type = 'circle', radius = 50, width = 100, height = 100
     type, radius, width, height
 });
 export const PlatformTag = () => ({ _type: 'PlatformTag' });
+
+export const ConnectionPoint = (x = 0, y = 0) => ({
+    _type: 'ConnectionPoint',
+    x, y
+});
 --- FILE: src/ecs/entities/player.js ---
 import {
-    Position, Velocity, Rotation, Renderable, // Changed from Graphic
+    Position, Velocity, Rotation, Renderable,
     PlayerTag, InputControlled, CameraTarget, ViewLayers
 } from '../components/index';
 
@@ -241,19 +246,16 @@ export const createPlayer = (x, y) => [
     Position(x, y),
     Velocity(0, 0),
     Rotation(0),
-    // Define the Player's visual. We use 'BASE' layer by default.
     Renderable({
         'BASE': {
-            type: 'sprite',
-            char: 'P',      // Or use a triangle shape logic in SpriteGraphic
-            color: '#00ffff',
-            size: 1.2
+            type: 'triangle',
+            color: '#ff8400',
+            size: 5.0 // 5 units radius = 10 units wide (100px total)
         }
     }),
     PlayerTag(),
     InputControlled(),
     CameraTarget(),
-    // Player needs to see things!
     ViewLayers(['BASE'])
 ];
 --- FILE: src/ecs/entities/target.js ---
@@ -311,7 +313,10 @@ export const AbilityTargetingSystem = (entities, inputManager) => {
 
     // 2. Filter Configuration
     const config = {
-        'X': { types: ['A', 'B'], range: 400 * GRID.UNIT },
+        'X': {
+            types: ['A', 'B', 'PLATFORM'],
+            range: 1900
+        },
         'Y': { types: ['C'], range: 1000 * GRID.UNIT }
     }[state.armed];
 
@@ -504,6 +509,7 @@ export * from './DebugLayerSystem';
 export * from './AbilityTargetingSystem';
 export * from './TargetRenderSystem';
 export * from './AttachmentSystem';
+export * from './WebRenderSystem';
 --- FILE: src/ecs/systems/LayeredRenderSystem.js ---
 import { RenderFactory } from './RenderFactory';
 
@@ -670,6 +676,7 @@ import { GlowGraphic } from '../../graphics/GlowGraphic';
 import { BubbleGraphic } from '../../graphics/BubbleGraphic';
 import { FairyGlowGraphic } from '../../graphics/FairyGlowGraphic';
 import { ChaosEmitterGraphic } from '../../graphics/ChaosEmitterGraphic';
+import { TriangleGraphic } from '../../graphics/TriangleGraphic'; // 1. Import it
 
 const REGISTRY = {
     'sprite': SpriteGraphic,
@@ -678,12 +685,15 @@ const REGISTRY = {
     'glow': GlowGraphic,
     'bubble': BubbleGraphic,
     'fairy_glow': FairyGlowGraphic,
-    'chaos_emitter': ChaosEmitterGraphic
+    'chaos_emitter': ChaosEmitterGraphic,
+    'triangle': TriangleGraphic // 2. Map it
 };
 
 export const RenderFactory = {
     createGraphic: (scene, config) => {
         const GraphicClass = REGISTRY[config.type];
+        // If config.type is 'triangle' but REGISTRY['triangle'] is undefined, 
+        // you get this purple circle fallback:
         if (!GraphicClass) return new CircleGraphic(scene, { radius: 10, color: 0xff00ff });
         return new GraphicClass(scene, config);
     }
@@ -755,24 +765,26 @@ export const TargetRenderSystem = (entities, scene) => {
     }
     scene.targetGfx.clear();
 
-    // Only draw if we are actively arming an ability
     if (!state || !state.armed) return;
 
     entities.forEach(e => {
         const pos = e.components.Position;
-        if (!pos || !e.components.EntityType) return;
+        // Check for EntityType OR PlatformTag
+        if (!pos || (!e.components.EntityType && !e.components.PlatformTag)) return;
 
         if (state.potentialTargets.includes(e.id)) {
             const isCurrent = state.currentTargetId === e.id;
 
             if (isCurrent) {
-                // Active Target: Green Ring
-                scene.targetGfx.lineStyle(2, 0x00ff00, 1.0);
-                scene.targetGfx.strokeCircle(pos.x, pos.y, 15);
+                // Active Web Target: Bright Orange Ring
+                scene.targetGfx.lineStyle(3, 0xffa500, 1.0);
+                const radius = e.components.Collider?.radius || 15;
+                scene.targetGfx.strokeCircle(pos.x, pos.y, radius + 5);
             } else {
-                // Potential Targets: Light Grey Square
-                scene.targetGfx.lineStyle(1, 0xaaaaaa, 0.4);
-                scene.targetGfx.strokeRect(pos.x - 8, pos.y - 8, 16, 16);
+                // Potential Web Target: Dark Orange / Brown
+                scene.targetGfx.lineStyle(2, 0x8b4513, 0.6);
+                const radius = e.components.Collider?.radius || 15;
+                scene.targetGfx.strokeCircle(pos.x, pos.y, radius + 2);
             }
         }
     });
@@ -830,6 +842,63 @@ export class TitleSystem {
         });
     }
 }
+--- FILE: src/ecs/systems/WebRenderSystem.js ---
+import Phaser from 'phaser';
+
+export const WebRenderSystem = (entities, scene) => {
+    if (!scene.webGfx) {
+        scene.webGfx = scene.add.graphics().setDepth(1100);
+    }
+    scene.webGfx.clear();
+
+    const player = entities.find(e => e.components.PlayerTag);
+    const state = player?.components.AbilityState;
+
+    if (!state || !state.currentTargetId) return;
+
+    const target = entities.find(e => e.id === state.currentTargetId);
+    if (!target) return;
+
+    const cam = scene.cameras.main;
+    const pPos = player.components.Position;
+    const pRot = player.components.Rotation?.angle || 0;
+    const tPos = target.components.Position;
+    const tRot = target.components.Rotation?.angle || 0;
+
+    const pOff = player.components.ConnectionPoint || { x: 0, y: 0 };
+    const tOff = target.components.ConnectionPoint || { x: 0, y: 0 };
+
+    // Connection point rotation math
+    const s = Math.sin(pRot);
+    const c = Math.cos(pRot);
+    const pWorldOffX = pOff.x * c - pOff.y * s;
+    const pWorldOffY = pOff.x * s + pOff.y * c;
+
+    const ts = Math.sin(tRot);
+    const tc = Math.cos(tRot);
+    const tWorldOffX = tOff.x * tc - tOff.y * ts;
+    const tWorldOffY = tOff.x * ts + tOff.y * tc;
+
+    const startX = pPos.x + pWorldOffX;
+    const startY = pPos.y + pWorldOffY;
+    const endX = tPos.x + tWorldOffX;
+    const endY = tPos.y + tWorldOffY;
+
+    // Line thickness adjusted for camera zoom
+    const thickness = 2 / cam.zoom;
+    const pulse = 0.6 + Math.sin(Date.now() / 100) * 0.2;
+
+    scene.webGfx.lineStyle(thickness, 0xffa500, pulse);
+    scene.webGfx.beginPath();
+    scene.webGfx.moveTo(startX, startY);
+    scene.webGfx.lineTo(endX, endY);
+    scene.webGfx.strokePath();
+
+    // Anchor points
+    scene.webGfx.fillStyle(0xffffff, 1);
+    scene.webGfx.fillCircle(startX, startY, 2 / cam.zoom);
+    scene.webGfx.fillCircle(endX, endY, 3 / cam.zoom);
+};
 --- FILE: src/graphics/BaseGraphic.js ---
 export class BaseGraphic {
     constructor(scene, config) {
@@ -915,7 +984,7 @@ import { BaseGraphic } from './BaseGraphic';
 
 export class ChaosEmitterGraphic extends BaseGraphic {
     create(config) {
-        this.gameObject = this.scene.add.circle(0, 0, (config.size || 1) * 10, config.coreColor || 0x00ffff);
+        this.gameObject = this.scene.add.circle(0, 0, (config.size || 1) * 10, config.coreColor || 0xffff00, 0.2);
         this.gameObject.setDepth(100);
 
         this.tracerGfx = this.scene.add.graphics().setDepth(90);
@@ -927,7 +996,6 @@ export class ChaosEmitterGraphic extends BaseGraphic {
     onUpdate(config) {
         if (!this.gameObject) return;
 
-        // Dynamic Spawning: higher intensity can spawn more/faster
         const intensity = config.intensity ?? 1.0;
         this.spawnTimer++;
 
@@ -944,7 +1012,7 @@ export class ChaosEmitterGraphic extends BaseGraphic {
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
 
-            // Jitter and Push scaled by the live intensity value
+            // Chaos Jitter
             p.vx += (Math.random() - 0.5) * (config.jitter ?? 0.8) * intensity;
             p.vy += (Math.random() - 0.5) * (config.jitter ?? 0.8) * intensity;
 
@@ -953,9 +1021,14 @@ export class ChaosEmitterGraphic extends BaseGraphic {
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             if (dist > 0) {
-                const push = (config.push ?? 0.15) * intensity;
-                p.vx += (dx / dist) * push;
-                p.vy += (dy / dist) * push;
+                const pushForce = (config.push ?? 0.15) * intensity;
+                p.vx += (dx / dist) * pushForce;
+                p.vy += (dy / dist) * pushForce;
+
+                // ABSORPTION KILL-ZONE: If push is negative, kill particle when it hits center
+                if (pushForce < 0 && dist < 8) {
+                    p.life = 0;
+                }
             }
 
             p.vx *= (config.friction ?? 0.92);
@@ -969,14 +1042,12 @@ export class ChaosEmitterGraphic extends BaseGraphic {
             if (p.history.length > (config.tailLen ?? 15)) p.history.shift();
 
             this.drawParticle(p, config, intensity);
-
             if (p.life <= 0) this.particles.splice(i, 1);
         }
     }
 
     drawParticle(p, config, intensity) {
-        const alpha = (p.life / p.maxLife) * (config.alphaMult ?? 1.0);
-
+        const alpha = (p.life / p.maxLife);
         if (p.history.length > 1) {
             this.tracerGfx.lineStyle(config.thickness ?? 1, config.tracerColor ?? 0xffa500, alpha);
             this.tracerGfx.beginPath();
@@ -984,21 +1055,30 @@ export class ChaosEmitterGraphic extends BaseGraphic {
             p.history.forEach(pos => this.tracerGfx.lineTo(pos.x, pos.y));
             this.tracerGfx.strokePath();
         }
-
         this.tracerGfx.fillStyle(config.headColor ?? 0x00ffff, alpha);
         this.tracerGfx.fillCircle(p.x, p.y, config.headSize ?? 2);
     }
 
     spawnParticle(config) {
-        const life = config.minLife ?? 40 + Math.random() * (config.lifeVar ?? 30);
+        const life = 40 + Math.random() * 40;
+        const push = config.push ?? 0.15;
+
+        let sx = this.gameObject.x;
+        let sy = this.gameObject.y;
+
+        // If push is negative (Absorb), spawn in a ring around the center
+        if (push < 0) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 50 + Math.random() * 30;
+            sx += Math.cos(angle) * dist;
+            sy += Math.sin(angle) * dist;
+        }
+
         this.particles.push({
-            x: this.gameObject.x,
-            y: this.gameObject.y,
-            vx: (Math.random() - 0.5) * (config.initialV ?? 2),
-            vy: (Math.random() - 0.5) * (config.initialV ?? 2),
-            history: [],
-            life: life,
-            maxLife: life
+            x: sx, y: sy,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 2,
+            history: [], life: life, maxLife: life
         });
     }
 
@@ -1045,25 +1125,17 @@ export class FairyGlowGraphic extends BaseGraphic {
             graphics.generateTexture('wisp_glow', 16, 16);
         }
 
-        this.gameObject = this.scene.add.circle(0, 0, radius, config.coreColor || 0x00ffff, 1);
+        this.gameObject = this.scene.add.circle(0, 0, radius, config.coreColor || 0xff0000, 1);
         this.gameObject.setDepth(100);
 
         this.emitter = this.scene.add.particles(0, 0, 'wisp_glow', {
-            // Data-driven physics
-            speed: {
-                min: (config.speedMin ?? 20),
-                max: (config.speedMax ?? 50)
-            },
-            lifespan: {
-                min: (config.lifeMin ?? 2000),
-                max: (config.lifeMax ?? 4000)
-            },
-            frequency: config.frequency ?? 60,
-
+            speed: { min: 20, max: 50 },
+            lifespan: { min: 2000, max: 4000 },
+            frequency: 60,
             angle: { min: 0, max: 360 },
-            scale: { start: config.particleScale ?? 0.4, end: 0 },
-            alpha: { start: config.particleAlpha ?? 0.6, end: 0 },
-            tint: config.tints ?? [0x00ffff, 0xffffff, 0xaaffff],
+            scale: { start: 0.4, end: 0 },
+            alpha: { start: 0.6, end: 0 },
+            tint: config.tints || [0xff0000, 0xffffff],
             blendMode: 'ADD',
             emitting: true
         });
@@ -1078,13 +1150,24 @@ export class FairyGlowGraphic extends BaseGraphic {
         const { x, y } = this.gameObject;
         this.emitter.setPosition(x, y);
 
-        // Intensity Multiplier: Scale the wander/push logic based on game state
         const intensity = config.intensity ?? 1.0;
         const time = Date.now() * 0.002;
 
+        const updateProp = (prop, min, max) => {
+            if (prop && typeof prop === 'object') {
+                if (prop.hasOwnProperty('min')) prop.min = min;
+                if (prop.hasOwnProperty('max')) prop.max = max;
+            }
+        };
+
+        const baseSpeed = 40 * intensity;
+        updateProp(this.emitter.speedX, -baseSpeed, baseSpeed);
+        updateProp(this.emitter.speedY, -baseSpeed, baseSpeed);
+
+        this.emitter.frequency = Math.max(5, 60 / intensity);
+
         this.emitter.forEachAlive((p) => {
             const noise = p.id || 0;
-            // Brownian wiggle scaled by intensity
             p.vx += Math.cos(time + noise) * (0.8 * intensity);
             p.vy += Math.sin(time + noise) * (0.8 * intensity);
 
@@ -1093,14 +1176,31 @@ export class FairyGlowGraphic extends BaseGraphic {
             const dist = Math.sqrt(dx * dx + dy * dy);
 
             if (dist > 0) {
-                // Outward push scaled by intensity
-                p.vx += (dx / dist) * (0.2 * intensity);
-                p.vy += (dy / dist) * (0.2 * intensity);
+                const pushForce = (config.push ?? 0.3) * intensity;
+                p.vx += (dx / dist) * pushForce;
+                p.vy += (dy / dist) * pushForce;
             }
         });
+
+        const baseRadius = (config.size || 1) * GRID.UNIT;
+        this.gameObject.setRadius(baseRadius * (0.8 + intensity * 0.4));
     }
 
-    // ... setVisible and destroy remain standard
+    setVisible(visible) {
+        super.setVisible(visible);
+        if (this.emitter) {
+            this.emitter.setVisible(visible);
+            this.emitter.paused = !visible;
+        }
+    }
+
+    destroy() {
+        if (this.emitter) {
+            this.emitter.destroy();
+            this.emitter = null;
+        }
+        super.destroy();
+    }
 }
 --- FILE: src/graphics/GlowGraphic.js ---
 import Phaser from 'phaser';
@@ -1195,6 +1295,41 @@ export class SpriteGraphic extends BaseGraphic {
         if (config.color) {
             this.gameObject.setColor(config.color);
         }
+    }
+}
+--- FILE: src/graphics/TriangleGraphic.js ---
+import { BaseGraphic } from './BaseGraphic';
+import { GRID } from '../core/Constants';
+import Phaser from 'phaser';
+
+export class TriangleGraphic extends BaseGraphic {
+    create(config) {
+        const unit = GRID.UNIT;
+        const s = (config.size || 1) * unit;
+
+        const color = Phaser.Display.Color.HexStringToColor(config.color || '#ff8400').color;
+
+        const points = [
+            s, 0,      // Tip
+            -s, -s,    // Back Top
+            -s, s      // Back Bottom
+        ];
+
+        const triangle = this.scene.add.polygon(0, 0, points, color);
+
+        // Pin the origin to the center of the bounding box
+        triangle.setOrigin(0.5, 0.5);
+        triangle.setStrokeStyle(2, 0xffffff);
+
+        return triangle;
+    }
+
+    onUpdate(config) {
+        if (!this.gameObject) return;
+        const cam = this.scene.cameras.main;
+        const thickness = 2 / cam.zoom;
+        this.gameObject.setStrokeStyle(thickness, 0xffffff);
+        this.gameObject.setScale(config.intensity ?? 1.0);
     }
 }
 --- FILE: src/main.js ---
@@ -1626,96 +1761,145 @@ import { LayeredRenderSystem } from '../../ecs/systems/LayeredRenderSystem';
 
 export class GardenTest extends BaseTestScene {
     constructor() {
-        super('GardenTest', 'Entity Garden', 'Proximity-based Intensity.');
-    }
-
-    preload() {
-        this.load.spritesheet('bubble_sheet', 'assets/95.jpg', {
-            frameWidth: 5834 / 4,
-            frameHeight: 3209 / 2
-        });
+        super('GardenTest', 'Contract Test', 'Player: Red Emit / Yellow Absorb. Grid: Random Emit.');
     }
 
     create() {
         super.create();
 
-        // 1. Red Player
-        this.addEntity([
+        // 1. PLAYER: Red Dot + Dual Emitter Signature
+        const player = this.addEntity([
             ...createPlayer(0, 0),
             AbilityState(),
             CameraTarget(),
-            ViewLayers(['BASE'])
+            ViewLayers(['BASE', 'FAIRY', 'CHAOS'])
         ]);
 
-        const player = this.entities.find(e => e.components.PlayerTag);
-        player.components.Renderable.definitions['BASE'] = {
-            type: 'circle', radius: 10, color: 0xff0000
+        player.components.Renderable.definitions = {
+            'BASE': { type: 'circle', radius: 5, color: 0xff0000 },
+            'FAIRY': {
+                type: 'fairy_glow',
+                size: 0.6, coreColor: 0xff0000,
+                intensity: 1.0, push: 0.5 // RED EMIT
+            },
+            'CHAOS': {
+                type: 'chaos_emitter',
+                size: 0.4, headColor: 0xffff00, tracerColor: 0xffaa00,
+                intensity: 1.2, push: -1.2, // YELLOW ABSORB
+                maxParticles: 40
+            }
         };
 
-        // 2. Animating Bubble
-        this.addEntity([
-            Position(120, 0),
-            Renderable({
-                'BASE': { type: 'bubble', size: 5, animate: true }
-            })
-        ]);
+        const gridSize = 11;
+        const spacing = 200;
+        const offset = 5 * spacing;
 
-        // 3. Fairy Glow (Reactive)
-        this.addEntity([
-            { id: 'reactive_fairy' },
-            Position(-120, 0),
-            Renderable({
-                'BASE': { type: 'fairy_glow', size: 1, intensity: 0.5 }
-            })
-        ]);
+        for (let x = 0; x < gridSize; x++) {
+            for (let y = 0; y < gridSize; y++) {
+                if (x === 5 && y === 5) continue;
 
-        // 4. Chaos Emitter (Reactive)
-        this.addEntity([
-            { id: 'reactive_chaos' },
-            Position(-120, 120),
-            Renderable({
-                'BASE': {
-                    type: 'chaos_emitter',
-                    size: 1,
-                    maxParticles: 40,
-                    intensity: 0.5
-                }
-            })
-        ]);
+                const posX = (x * spacing) - offset;
+                const posY = (y * spacing) - offset;
+                const isFairy = Math.random() > 0.5;
+                const randomColor = Phaser.Display.Color.RandomRGB().color;
 
-        this.cameras.main.centerOn(0, 0);
+                this.addEntity([
+                    Position(posX, posY),
+                    Renderable({
+                        'BASE': {
+                            type: isFairy ? 'fairy_glow' : 'chaos_emitter',
+                            size: 0.8,
+                            coreColor: randomColor,
+                            headColor: randomColor,
+                            tracerColor: randomColor,
+                            intensity: 0.1,
+                            push: 0.3 // ALL GRID ENTITIES PUSH OUT (EMIT)
+                        }
+                    })
+                ]);
+            }
+        }
+        this.cameras.main.setZoom(1.2);
     }
 
     update(time, delta) {
         super.update(time, delta);
-
         const player = this.entities.find(e => e.components.PlayerTag);
         if (!player) return;
 
         const pPos = player.components.Position;
-        const activationRange = 250; // Distance where effect starts growing
-
-        // Update all reactive emitters
         this.entities.forEach(entity => {
             const renderable = entity.components.Renderable;
-            if (!renderable || entity.components.PlayerTag) return;
+            const pos = entity.components.Position;
+            if (!renderable || !pos || entity.components.PlayerTag) return;
 
-            const config = renderable.definitions['BASE'];
-            if (config && (config.type === 'chaos_emitter' || config.type === 'fairy_glow')) {
-                const ePos = entity.components.Position;
-                const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, ePos.x, ePos.y);
-
-                // Map distance to intensity: 
-                // Close (0px) = 2.0 intensity
-                // Far (250px+) = 0.2 intensity
-                let intensity = Phaser.Math.Clamp(1 - (dist / activationRange), 0, 1);
-
-                // Scale it to a nice range (0.2 is calm, 2.0 is frantic)
-                config.intensity = 0.2 + (intensity * 1.8);
-            }
+            const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, pos.x, pos.y);
+            const intensity = dist < 300 ? 0.1 + (Math.pow(1 - (dist / 300), 1.5) * 2.5) : 0.1;
+            renderable.definitions['BASE'].intensity = intensity;
         });
 
         LayeredRenderSystem(this.entities, this);
+    }
+}
+--- FILE: src/scenes/test/08_WebTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import {
+    Position,
+    Renderable,
+    Collider,
+    PlatformTag,
+    Parent,
+    AbilityState,
+    EntityType,
+    ConnectionPoint
+} from '../../ecs/components/index';
+
+export class WebTest extends BaseTestScene {
+    constructor() {
+        super('WebTest', 'Web Mechanic Lab', 'Platforms at +/- 500. Hold X to target.');
+    }
+
+    create() {
+        super.create();
+
+        // 1. Left Platform (-500, 0)
+        const leftPlatform = this.addEntity([
+            { id: 'platform_left' },
+            Position(-500, 0),
+            Renderable({
+                'BASE': { type: 'circle', radius: 100, color: 0x222222 }
+            }),
+            Collider('circle', 100),
+            PlatformTag(),
+            EntityType('PLATFORM'),
+            ConnectionPoint(0, 0)
+        ]);
+
+        // 2. Right Platform (500, 0)
+        this.addEntity([
+            { id: 'platform_right' },
+            Position(500, 0),
+            Renderable({
+                'BASE': { type: 'circle', radius: 100, color: 0x222222 }
+            }),
+            Collider('circle', 100),
+            PlatformTag(),
+            EntityType('PLATFORM'),
+            ConnectionPoint(0, -100) // Top edge
+        ]);
+
+        // 3. Player: Starts in the center of the -500 platform
+        this.addEntity([
+            ...createPlayer(-500, 0),
+            AbilityState(),
+            Parent(leftPlatform.id, { x: 0, y: 0 }),
+            // ConnectionPoint at -50 ensures web attaches to the back edge (5 units back)
+            ConnectionPoint(-50, 0)
+        ]);
+
+        this.cameras.main.centerOn(0, 0);
+        this.cameras.main.setZoom(0.7);
     }
 }
 --- FILE: src/scenes/test/BaseTestScene.js ---
@@ -1731,9 +1915,10 @@ import {
     AbilityTargetingSystem,
     PhysicsSystem,
     CameraSystem,
-    LayeredRenderSystem, // <--- NEW RENDERER
+    LayeredRenderSystem,
     TargetRenderSystem,
-    DebugLayerSystem
+    DebugLayerSystem,
+    WebRenderSystem
 } from '../../ecs/systems/index';
 
 export class BaseTestScene extends Phaser.Scene {
@@ -1764,6 +1949,8 @@ export class BaseTestScene extends Phaser.Scene {
     update(time, delta) {
         this.accumulator += delta;
 
+        // 1. FIXED UPDATE LOOP (Physics & Hard Logic)
+        // Runs at 60fps regardless of monitor refresh rate
         while (this.accumulator >= PHYSICS.STEP) {
             const dtSeconds = PHYSICS.STEP / 1000;
 
@@ -1778,14 +1965,14 @@ export class BaseTestScene extends Phaser.Scene {
             this.accumulator -= PHYSICS.STEP;
         }
 
-        // --- RENDER LOOP ---
+        // 2. RENDER LOOP (Visuals & Camera)
+        // Runs once per browser frame
+        WebRenderSystem(this.entities, this);
         TargetRenderSystem(this.entities, this);
         CameraSystem(this.entities, this);
-
-        // CRITICAL FIX: Use LayeredRenderSystem instead of RenderSystem
         LayeredRenderSystem(this.entities, this);
-
         DebugLayerSystem(this.entities, this);
+
         this.updateDebugUI();
     }
 
@@ -1828,8 +2015,9 @@ import { CameraTest } from './02_CameraTest';
 import { AbilityTest } from './03_AbilityTest';
 import { PlatformTest } from './04_PlatformTest';
 import { OrbitTest } from './05_OrbitTest';
-import { LayerTest } from './06_LayerTest';   // NEW
-import { GardenTest } from './07_GardenTest'; // NEW
+import { LayerTest } from './06_LayerTest';
+import { GardenTest } from './07_GardenTest';
+import { WebTest } from './08_WebTest';
 
 export const TestScenes = [
     MovementTest,
@@ -1839,7 +2027,8 @@ export const TestScenes = [
     PlatformTest,
     OrbitTest,
     LayerTest,
-    GardenTest
+    GardenTest,
+    WebTest
 ];
 --- FILE: src/scenes/TestMenuScene.js ---
 import Phaser from 'phaser';

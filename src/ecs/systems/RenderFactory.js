@@ -5,6 +5,7 @@ import { GlowGraphic } from '../../graphics/GlowGraphic';
 import { BubbleGraphic } from '../../graphics/BubbleGraphic';
 import { FairyGlowGraphic } from '../../graphics/FairyGlowGraphic';
 import { ChaosEmitterGraphic } from '../../graphics/ChaosEmitterGraphic';
+import { TriangleGraphic } from '../../graphics/TriangleGraphic'; // 1. Import it
 
 const REGISTRY = {
     'sprite': SpriteGraphic,
@@ -13,12 +14,15 @@ const REGISTRY = {
     'glow': GlowGraphic,
     'bubble': BubbleGraphic,
     'fairy_glow': FairyGlowGraphic,
-    'chaos_emitter': ChaosEmitterGraphic
+    'chaos_emitter': ChaosEmitterGraphic,
+    'triangle': TriangleGraphic // 2. Map it
 };
 
 export const RenderFactory = {
     createGraphic: (scene, config) => {
         const GraphicClass = REGISTRY[config.type];
+        // If config.type is 'triangle' but REGISTRY['triangle'] is undefined, 
+        // you get this purple circle fallback:
         if (!GraphicClass) return new CircleGraphic(scene, { radius: 10, color: 0xff00ff });
         return new GraphicClass(scene, config);
     }

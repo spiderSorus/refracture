@@ -7,24 +7,26 @@ export const TargetRenderSystem = (entities, scene) => {
     }
     scene.targetGfx.clear();
 
-    // Only draw if we are actively arming an ability
     if (!state || !state.armed) return;
 
     entities.forEach(e => {
         const pos = e.components.Position;
-        if (!pos || !e.components.EntityType) return;
+        // Check for EntityType OR PlatformTag
+        if (!pos || (!e.components.EntityType && !e.components.PlatformTag)) return;
 
         if (state.potentialTargets.includes(e.id)) {
             const isCurrent = state.currentTargetId === e.id;
 
             if (isCurrent) {
-                // Active Target: Green Ring
-                scene.targetGfx.lineStyle(2, 0x00ff00, 1.0);
-                scene.targetGfx.strokeCircle(pos.x, pos.y, 15);
+                // Active Web Target: Bright Orange Ring
+                scene.targetGfx.lineStyle(3, 0xffa500, 1.0);
+                const radius = e.components.Collider?.radius || 15;
+                scene.targetGfx.strokeCircle(pos.x, pos.y, radius + 5);
             } else {
-                // Potential Targets: Light Grey Square
-                scene.targetGfx.lineStyle(1, 0xaaaaaa, 0.4);
-                scene.targetGfx.strokeRect(pos.x - 8, pos.y - 8, 16, 16);
+                // Potential Web Target: Dark Orange / Brown
+                scene.targetGfx.lineStyle(2, 0x8b4513, 0.6);
+                const radius = e.components.Collider?.radius || 15;
+                scene.targetGfx.strokeCircle(pos.x, pos.y, radius + 2);
             }
         }
     });

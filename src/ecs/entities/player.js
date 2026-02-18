@@ -1,5 +1,5 @@
 import {
-    Position, Velocity, Rotation, Renderable, // Changed from Graphic
+    Position, Velocity, Rotation, Renderable,
     PlayerTag, InputControlled, CameraTarget, ViewLayers
 } from '../components/index';
 
@@ -7,18 +7,17 @@ export const createPlayer = (x, y) => [
     Position(x, y),
     Velocity(0, 0),
     Rotation(0),
-    // Define the Player's visual. We use 'BASE' layer by default.
     Renderable({
         'BASE': {
-            type: 'sprite',
-            char: 'P',      // Or use a triangle shape logic in SpriteGraphic
-            color: '#00ffff',
-            size: 1.2
+            type: 'triangle',
+            color: '#ff8400',
+            // size: 5.0 -> Radius 50px (5 units) -> Total Width 100px (10 units)
+            // If this is still "Huge", try size: 2.5 (50px width) or size: 0.5 (10px width).
+            size: 1.0
         }
     }),
     PlayerTag(),
     InputControlled(),
     CameraTarget(),
-    // Player needs to see things!
     ViewLayers(['BASE'])
 ];
