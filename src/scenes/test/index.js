@@ -7,6 +7,7 @@ import { OrbitTest } from './05_OrbitTest';
 import { LayerTest } from './06_LayerTest';
 import { GardenTest } from './07_GardenTest';
 import { WebTest } from './08_WebTest';
+import { EnergySystems } from './09_EnergySystems';
 
 export const TestScenes = [
     MovementTest,
@@ -17,5 +18,6 @@ export const TestScenes = [
     OrbitTest,
     LayerTest,
     GardenTest,
-    WebTest
+    WebTest,
+    EnergySystems
 ];

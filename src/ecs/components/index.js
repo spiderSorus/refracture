@@ -53,3 +53,9 @@ export const WebConnection = (fromId, fromOffset, toId, toOffset) => ({
     toId,
     toOffset    // {x, y}
 });
+
+export const EnergySource = (strength = 100, type = 'EMIT') => ({
+    _type: 'EnergySource',
+    strength, // +100 or -100
+    type      // 'EMIT' or 'ABSORB'
+});
