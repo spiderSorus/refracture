@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GRID } from '../../core/Constants';
+import { GRID, PHYSICS } from '../../core/Constants';
 import { Parent } from '../components/index';
 
 export const MovementSystem = (entities, inputManager, dt) => {
@@ -73,12 +73,8 @@ export const MovementSystem = (entities, inputManager, dt) => {
                     if (dist > col.radius) {
                         // HIT EDGE
                         if (tether) {
-                            // JUMP!
-                            // We only jump if we are moving AWAY from the tether anchor?
-                            // Or just standard jump logic:
                             tether.jumpCooldown = now + 250;
                             delete entity.components.Parent;
-                            // Do NOT delete tether. We swing off it.
                             return;
                         } else {
                             // Clamp to edge
@@ -106,10 +102,7 @@ export const MovementSystem = (entities, inputManager, dt) => {
             const anchorY = aPos.y;
 
             // --- LANDING CHECK (Magnet) ---
-            // If we hit ANY platform (including Anchor), snap to it.
-            // But verify Cooldown first.
             if (!tether.jumpCooldown || now > tether.jumpCooldown) {
-
                 const platforms = entities.filter(e => e.components.PlatformTag && e.components.Collider);
 
                 for (const targetPlat of platforms) {
@@ -121,15 +114,10 @@ export const MovementSystem = (entities, inputManager, dt) => {
                     let isHit = false;
 
                     if (tCol.type === 'circle') isHit = dist <= tCol.radius;
-                    // (add rect check if needed)
 
                     if (isHit) {
                         console.log("Magnet Landing!");
-                        // 1. PARENT to the new platform
                         entity.components.Parent = Parent(targetPlat.id, { x: dx, y: dy });
-
-                        // 2. DO NOT DELETE TETHER
-                        // We keep the web attached so we can walk around "leashed".
                         return;
                     }
                 }
@@ -171,15 +159,18 @@ export const MovementSystem = (entities, inputManager, dt) => {
         }
 
         // ----------------------------------------------------------
-        // MODE C: FREE FALL
+        // MODE C: FREE FALL (Now with Gravity!)
         // ----------------------------------------------------------
         else {
             const force = calculateEnergyForce(pos.x, pos.y);
             if (vel) {
                 vel.x += force.x * dt;
-                vel.y += force.y * dt;
+
+                // --- NEW: Applying Gravity from Constants ---
+                vel.y += (force.y + (PHYSICS.GRAVITY || 980)) * dt;
+
                 vel.x *= 0.98;
-                vel.y *= 0.98;
+                vel.y *= 0.99; // Slightly less friction on Y so gravity pulls harder
             }
         }
     });

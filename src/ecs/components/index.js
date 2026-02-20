@@ -59,3 +59,12 @@ export const EnergySource = (strength = 100, type = 'EMIT') => ({
     strength, // +100 or -100
     type      // 'EMIT' or 'ABSORB'
 });
+
+// --- SLINGSHOT MECHANIC ---
+export const SlingshotJump = (maxForce = 1500) => ({
+    _type: 'SlingshotJump',
+    isCharging: false,
+    vector: { x: 0, y: 0 },
+    chargeRatio: 0, // 0.0 to 1.0
+    maxForce
+});

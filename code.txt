@@ -24,7 +24,7 @@ new Phaser.Game(config);
 export const GRID = {
     UNIT: 10,        // 1 Grid Unit = 10px
     PLAYER_SIZE: 1,  // 1 Unit wide/high
-    SPEED: 5,        // 5 Units per second
+    SPEED: 10,       // CHANGED: 10 Units per second (was 5)
 };
 
 export const PHYSICS = {
@@ -44,9 +44,10 @@ export class InputManager {
             esc: Phaser.Input.Keyboard.KeyCodes.ESC,
             x: Phaser.Input.Keyboard.KeyCodes.X,
             y: Phaser.Input.Keyboard.KeyCodes.Y,
+            b: Phaser.Input.Keyboard.KeyCodes.B,
             tab: Phaser.Input.Keyboard.KeyCodes.TAB,
-            next: Phaser.Input.Keyboard.KeyCodes.E,
-            prev: Phaser.Input.Keyboard.KeyCodes.Q
+            shorten: Phaser.Input.Keyboard.KeyCodes.Q, // LB equivalent
+            lengthen: Phaser.Input.Keyboard.KeyCodes.E // RB equivalent
         });
 
         this.pad = null;
@@ -61,34 +62,71 @@ export class InputManager {
         });
     }
 
+    // Used for continuous states (holding a button)
     isButtonDown(action) {
+        // GAMEPLAY ACTIONS
         if (action === 'X' && this.keys.x.isDown) return true;
         if (action === 'Y' && this.keys.y.isDown) return true;
+        if (action === 'B' && (this.keys.b.isDown || this.keys.esc.isDown)) return true;
+
+        // WINCH CONTROLS (New)
+        if (action === 'SHORTEN') {
+            if (this.keys.shorten.isDown) return true;
+            if (this.pad && (this.pad.L1 || this.pad.buttons[4].pressed)) return true;
+        }
+        if (action === 'LENGTHEN') {
+            if (this.keys.lengthen.isDown) return true;
+            if (this.pad && (this.pad.R1 || this.pad.buttons[5].pressed)) return true;
+        }
+
+        // GAMEPAD FALLBACKS
         if (this.pad) {
-            if (action === 'X' && this.pad.X) return true;
-            if (action === 'Y' && this.pad.Y) return true;
+            if (action === 'X' && (this.pad.X || this.pad.buttons[2].pressed)) return true;
+            if (action === 'Y' && (this.pad.Y || this.pad.buttons[3].pressed)) return true;
+            if (action === 'B' && (this.pad.B || this.pad.buttons[1].pressed)) return true;
         }
         return false;
     }
 
+    // Used for "Just Pressed" events (Menu Navigation)
     getAction(action) {
         const justDown = (key) => Phaser.Input.Keyboard.JustDown(key);
 
-        if (action === 'NEXT_TARGET') return justDown(this.keys.next) || this.isButtonPressed('R1');
-        if (action === 'PREV_TARGET') return justDown(this.keys.prev) || this.isButtonPressed('L1');
         if (action === 'UP') return justDown(this.cursors.up) || this.isButtonPressed('up');
         if (action === 'DOWN') return justDown(this.cursors.down) || this.isButtonPressed('down');
         if (action === 'SELECT') return justDown(this.keys.enter) || this.isButtonPressed('A');
         if (action === 'BACK') return justDown(this.keys.esc) || this.isButtonPressed('B');
 
+        // Debug / Cycle Targets
+        if (action === 'NEXT_TARGET') return justDown(this.keys.lengthen) || this.isButtonPressed('R1');
+        if (action === 'PREV_TARGET') return justDown(this.keys.shorten) || this.isButtonPressed('L1');
+
         return false;
     }
 
+    // Helper for Gamepad "Just Pressed" logic
     isButtonPressed(button) {
         if (!this.pad) return false;
-        const isDown = this.pad[button];
+
+        // Map abstract names to properties if needed, or rely on Phaser's pad properties
+        // Phaser Pad Buttons: A=0, B=1, X=2, Y=3, L1=4, R1=5
+        let isDown = false;
+
+        if (button === 'up') isDown = this.pad.up;
+        else if (button === 'down') isDown = this.pad.down;
+        else if (button === 'left') isDown = this.pad.left;
+        else if (button === 'right') isDown = this.pad.right;
+        else if (button === 'A') isDown = this.pad.A;
+        else if (button === 'B') isDown = this.pad.B;
+        else if (button === 'X') isDown = this.pad.X;
+        else if (button === 'Y') isDown = this.pad.Y;
+        else if (button === 'L1') isDown = this.pad.L1;
+        else if (button === 'R1') isDown = this.pad.R1;
+        else if (this.pad[button]) isDown = this.pad[button];
+
         const wasDown = this.prevPadState[button] || false;
-        this.prevPadState[button] = isDown;
+        this.prevPadState[button] = isDown; // Store for next frame
+
         return isDown && !wasDown;
     }
 
@@ -198,17 +236,12 @@ export const Position = (x = 0, y = 0) => ({ _type: 'Position', x, y });
 export const Velocity = (x = 0, y = 0) => ({ _type: 'Velocity', x, y });
 export const Rotation = (angle = 0) => ({ _type: 'Rotation', angle });
 
-// REMOVED: Old Graphic component
-// REPLACED BY: Renderable
 export const Renderable = (definitions = {}) => ({
     _type: 'Renderable',
-    // definitions: { 'LAYER_NAME': { type: 'sprite', texture: 'x', ... } }
     definitions,
-    // internal cache for Phaser GameObjects: { 'LAYER_NAME': GameObject }
     activeVisuals: {}
 });
 
-// Controls what the entity (usually Player) can SEE
 export const ViewLayers = (layers = ['BASE']) => ({
     _type: 'ViewLayers',
     layers
@@ -236,6 +269,30 @@ export const ConnectionPoint = (x = 0, y = 0) => ({
     _type: 'ConnectionPoint',
     x, y
 });
+
+// --- NEW COMPONENTS ---
+
+// Active tether (Player -> Platform)
+export const WebTether = (platformId, anchorOffset = { x: 0, y: 0 }) => ({
+    _type: 'WebTether',
+    platformId,
+    anchorOffset
+});
+
+// Static connection (Platform A -> Platform B)
+export const WebConnection = (fromId, fromOffset, toId, toOffset) => ({
+    _type: 'WebConnection',
+    fromId,
+    fromOffset, // {x, y}
+    toId,
+    toOffset    // {x, y}
+});
+
+export const EnergySource = (strength = 100, type = 'EMIT') => ({
+    _type: 'EnergySource',
+    strength, // +100 or -100
+    type      // 'EMIT' or 'ABSORB'
+});
 --- FILE: src/ecs/entities/player.js ---
 import {
     Position, Velocity, Rotation, Renderable,
@@ -250,7 +307,9 @@ export const createPlayer = (x, y) => [
         'BASE': {
             type: 'triangle',
             color: '#ff8400',
-            size: 5.0 // 5 units radius = 10 units wide (100px total)
+            // size: 5.0 -> Radius 50px (5 units) -> Total Width 100px (10 units)
+            // If this is still "Huge", try size: 2.5 (50px width) or size: 0.5 (10px width).
+            size: 1.0
         }
     }),
     PlayerTag(),
@@ -292,16 +351,13 @@ export const AbilityTargetingSystem = (entities, inputManager) => {
 
     const state = player.components.AbilityState;
     const pPos = player.components.Position;
-    const pRot = player.components.Rotation.angle; // Current heading in radians
+    const pRot = player.components.Rotation.angle;
 
-    // 1. Armed State Logic
-    const holdX = inputManager.isButtonDown('X');
+    // --- CHANGED: Removed X button logic ---
     const holdY = inputManager.isButtonDown('Y');
     const prevArmed = state.armed;
 
-    if (holdX && holdY) state.armed = null;
-    else if (holdX) state.armed = 'X';
-    else if (holdY) state.armed = 'Y';
+    if (holdY) state.armed = 'Y';
     else state.armed = null;
 
     if (prevArmed !== state.armed) {
@@ -313,16 +369,14 @@ export const AbilityTargetingSystem = (entities, inputManager) => {
 
     // 2. Filter Configuration
     const config = {
-        'X': {
-            types: ['A', 'B', 'PLATFORM'],
-            range: 1900
-        },
         'Y': { types: ['C'], range: 1000 * GRID.UNIT }
     }[state.armed];
 
+    if (!config) return;
+
     // 3. The 90-Degree Cone Filter
-    const FOV = Math.PI / 2; // 90 degrees total
-    const HALF_FOV = FOV / 2; // 45 degrees in either direction
+    const FOV = Math.PI / 2;
+    const HALF_FOV = FOV / 2;
 
     const validTargets = entities.filter(e => {
         if (e === player || !e.components.EntityType) return false;
@@ -332,25 +386,16 @@ export const AbilityTargetingSystem = (entities, inputManager) => {
 
         if (!typeMatch || dist > config.range) return false;
 
-        // --- CONE LOGIC ---
-        // 1. Find the angle from player to target
         const angleToTarget = Phaser.Math.Angle.Between(pPos.x, pPos.y, e.components.Position.x, e.components.Position.y);
-
-        // 2. Find the difference between player heading and target angle
-        // wrapAngle ensures the difference is always between -PI and PI
         const angleDiff = Phaser.Math.Angle.Wrap(angleToTarget - pRot);
 
-        // 3. Check if the target is within the 45-degree offset
         return Math.abs(angleDiff) <= HALF_FOV;
     }).sort((a, b) => {
-        // Spiral Sort (Rings of 50px + Clockwise Angle)
         const d1 = Phaser.Math.Distance.Between(pPos.x, pPos.y, a.components.Position.x, a.components.Position.y);
         const d2 = Phaser.Math.Distance.Between(pPos.x, pPos.y, b.components.Position.x, b.components.Position.y);
-
         const r1 = Math.floor(d1 / 50);
         const r2 = Math.floor(d2 / 50);
         if (r1 !== r2) return r1 - r2;
-
         const a1 = Math.atan2(a.components.Position.y - pPos.y, a.components.Position.x - pPos.x);
         const a2 = Math.atan2(b.components.Position.y - pPos.y, b.components.Position.x - pPos.x);
         return a1 - a2;
@@ -460,10 +505,11 @@ export const CameraSystem = (entities, scene) => {
 };
 --- FILE: src/ecs/systems/DebugLayerSystem.js ---
 export const DebugLayerSystem = (entities, scene) => {
-    // Safety check: ensure scene exists and is a Phaser Scene
+    // Safety check: ensure scene exists
     if (!scene || !scene.add) return;
 
-    if (!scene.debugText) {
+    // 1. Create or Re-create if missing/destroyed
+    if (!scene.debugText || !scene.debugText.active) {
         scene.debugText = scene.add.text(10, 10, '', {
             font: '16px monospace',
             fill: '#00ff00',
@@ -486,7 +532,10 @@ export const DebugLayerSystem = (entities, scene) => {
 
     if (player) {
         const { Position: pos, Parent: parent } = player.components;
-        debugInfo += `POS: ${Math.round(pos.x)}, ${Math.round(pos.y)}\n`;
+        // Safety check for components
+        if (pos) {
+            debugInfo += `POS: ${Math.round(pos.x)}, ${Math.round(pos.y)}\n`;
+        }
 
         if (parent) {
             debugInfo += `STATUS: ATTACHED\n`;
@@ -497,7 +546,10 @@ export const DebugLayerSystem = (entities, scene) => {
         }
     }
 
-    scene.debugText.setText(debugInfo);
+    // 2. Only update text if the object has a valid texture frame
+    if (scene.debugText.frame) {
+        scene.debugText.setText(debugInfo);
+    }
 };
 --- FILE: src/ecs/systems/index.js ---
 export * from './MovementSystem';
@@ -510,6 +562,7 @@ export * from './AbilityTargetingSystem';
 export * from './TargetRenderSystem';
 export * from './AttachmentSystem';
 export * from './WebRenderSystem';
+export * from './WebSystem'; 
 --- FILE: src/ecs/systems/LayeredRenderSystem.js ---
 import { RenderFactory } from './RenderFactory';
 
@@ -564,79 +617,188 @@ export const LayeredRenderSystem = (entities, scene) => {
     });
 };
 --- FILE: src/ecs/systems/MovementSystem.js ---
+import Phaser from 'phaser';
 import { GRID } from '../../core/Constants';
+import { Parent } from '../components/index';
 
-export const MovementSystem = (entities, inputManager) => {
+export const MovementSystem = (entities, inputManager, dt) => {
     if (!inputManager) return;
 
-    const speed = GRID.SPEED * GRID.UNIT;
+    const walkSpeed = GRID.SPEED * GRID.UNIT * 2;
     const move = inputManager.getMovement();
+    const now = Date.now();
+    const RETRACT_SPEED = walkSpeed * 1.5;
+
+    // Helper: Calculate net energy force
+    const calculateEnergyForce = (x, y) => {
+        let forceX = 0;
+        let forceY = 0;
+
+        entities.forEach(e => {
+            if (e.components.EnergySource && e.components.Position) {
+                const sourcePos = e.components.Position;
+                const energy = e.components.EnergySource;
+
+                // VOID CHECK
+                const col = e.components.Collider;
+                const dx = x - sourcePos.x;
+                const dy = y - sourcePos.y;
+                let dist = Math.sqrt(dx * dx + dy * dy);
+                let isOver = false;
+
+                if (col) {
+                    if (col.type === 'circle') isOver = dist <= col.radius;
+                    else {
+                        const w = col.width / 2, h = col.height / 2;
+                        isOver = (Math.abs(dx) <= w && Math.abs(dy) <= h);
+                    }
+                }
+
+                if (isOver && energy.strength < 0) return; // Ignore absorber pull inside void
+
+                if (dist < 10) dist = 10;
+                const magnitude = energy.strength / (dist * 0.02);
+
+                forceX += (dx / dist) * magnitude;
+                forceY += (dy / dist) * magnitude;
+            }
+        });
+        return { x: forceX, y: forceY };
+    };
 
     entities.forEach(entity => {
-        const { Position: pos, Velocity: vel, Rotation: rot, Parent: parent, InputControlled: input } = entity.components;
+        const { Position: pos, Velocity: vel, Rotation: rot, Parent: parent, InputControlled: input, WebTether: tether } = entity.components;
+        if (!input || !pos) return;
 
-        if (input && pos) {
-            // 1. Heading Rotation (Standard Twin-stick style: Left Stick moves & rotates)
-            // Note: For true Twin-stick, we'd read Right Stick here separately.
+        // ----------------------------------------------------------
+        // MODE A: PARENTED (Walking on Platform)
+        // ----------------------------------------------------------
+        if (parent) {
+            // 1. Rotation
             if (rot && (move.x !== 0 || move.y !== 0)) {
                 rot.angle = Math.atan2(move.y, move.x);
             }
 
-            // 2. Attached Movement (Locked to Bounds)
-            if (parent) {
-                const plat = entities.find(e => e.id === parent.id);
-                const col = plat?.components.Collider;
+            const plat = entities.find(e => e.id === parent.id);
+            const col = plat?.components.Collider;
 
-                if (col) {
-                    // Calculate potential new offset
-                    // Note: We use fixed step logic in the scene, so '1.0' represents one tick here usually,
-                    // but since we are multiplying by speed, we assume the caller handles the time step 
-                    // or we normalize speed. For now, we assume simple accumulation.
-                    let nextX = parent.offset.x + (move.x * speed * 0.016);
-                    let nextY = parent.offset.y + (move.y * speed * 0.016);
+            if (col) {
+                let nextX = parent.offset.x + (move.x * walkSpeed * dt);
+                let nextY = parent.offset.y + (move.y * walkSpeed * dt);
 
-                    let hitEdge = false;
-
-                    // Clamp to Circular Platform
-                    if (col.type === 'circle') {
-                        const dist = Math.sqrt(nextX * nextX + nextY * nextY);
-                        if (dist > col.radius) {
-                            // Normalize the vector and multiply by radius to snap to edge
+                // Collision Logic
+                if (col.type === 'circle') {
+                    const dist = Math.sqrt(nextX * nextX + nextY * nextY);
+                    if (dist > col.radius) {
+                        // HIT EDGE
+                        if (tether) {
+                            // JUMP!
+                            // We only jump if we are moving AWAY from the tether anchor?
+                            // Or just standard jump logic:
+                            tether.jumpCooldown = now + 250;
+                            delete entity.components.Parent;
+                            // Do NOT delete tether. We swing off it.
+                            return;
+                        } else {
+                            // Clamp to edge
                             const angle = Math.atan2(nextY, nextX);
                             nextX = Math.cos(angle) * col.radius;
                             nextY = Math.sin(angle) * col.radius;
-                            hitEdge = true;
                         }
                     }
-                    // Clamp to Rectangular Platform
-                    else {
-                        const halfW = col.width / 2;
-                        const halfH = col.height / 2;
+                }
+                parent.offset.x = nextX;
+                parent.offset.y = nextY;
+            }
+            if (vel) { vel.x = 0; vel.y = 0; }
+        }
 
-                        if (nextX < -halfW || nextX > halfW) hitEdge = true;
-                        if (nextY < -halfH || nextY > halfH) hitEdge = true;
+        // ----------------------------------------------------------
+        // MODE B: TETHERED FLIGHT (Energy Driven)
+        // ----------------------------------------------------------
+        else if (tether && !parent) {
+            const anchorPlat = entities.find(e => e.id === tether.platformId);
+            if (!anchorPlat) return;
 
-                        nextX = Math.max(-halfW, Math.min(halfW, nextX));
-                        nextY = Math.max(-halfH, Math.min(halfH, nextY));
-                    }
+            const aPos = anchorPlat.components.Position;
+            const anchorX = aPos.x;
+            const anchorY = aPos.y;
 
-                    parent.offset.x = nextX;
-                    parent.offset.y = nextY;
+            // --- LANDING CHECK (Magnet) ---
+            // If we hit ANY platform (including Anchor), snap to it.
+            // But verify Cooldown first.
+            if (!tether.jumpCooldown || now > tether.jumpCooldown) {
 
-                    // --- CONSTRAINT REACTION ---
-                    if (hitEdge && plat.components.Graphic) {
-                        // Randomize color to indicate "Struggling against barrier"
-                        plat.components.Graphic.color = Math.random() * 0xffffff;
+                const platforms = entities.filter(e => e.components.PlatformTag && e.components.Collider);
+
+                for (const targetPlat of platforms) {
+                    const tPos = targetPlat.components.Position;
+                    const tCol = targetPlat.components.Collider;
+                    const dx = pos.x - tPos.x;
+                    const dy = pos.y - tPos.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    let isHit = false;
+
+                    if (tCol.type === 'circle') isHit = dist <= tCol.radius;
+                    // (add rect check if needed)
+
+                    if (isHit) {
+                        console.log("Magnet Landing!");
+                        // 1. PARENT to the new platform
+                        entity.components.Parent = Parent(targetPlat.id, { x: dx, y: dy });
+
+                        // 2. DO NOT DELETE TETHER
+                        // We keep the web attached so we can walk around "leashed".
+                        return;
                     }
                 }
-
-                // Zero out velocity so PhysicsSystem doesn't double-move
-                if (vel) { vel.x = 0; vel.y = 0; }
             }
-            // 3. Free Movement (Fallback if not parented)
-            else if (vel) {
-                vel.x = move.x * speed;
-                vel.y = move.y * speed;
+
+            // --- PHYSICS ---
+            const dx = pos.x - anchorX;
+            const dy = pos.y - anchorY;
+            let currentRadius = Math.sqrt(dx * dx + dy * dy);
+            let currentAngle = Math.atan2(dy, dx);
+
+            const force = calculateEnergyForce(pos.x, pos.y);
+            const dirX = dx / currentRadius;
+            const dirY = dy / currentRadius;
+            const tanX = -dirY;
+            const tanY = dirX;
+
+            const radialForce = (force.x * dirX) + (force.y * dirY);
+            const tangentialForce = (force.x * tanX) + (force.y * tanY);
+
+            // Radius Update
+            if (inputManager.isButtonDown('SHORTEN')) {
+                currentRadius -= RETRACT_SPEED * dt;
+            } else if (radialForce > 0) {
+                currentRadius += radialForce * dt;
+            }
+            if (currentRadius < 50) currentRadius = 50;
+
+            // Angle Update
+            const angularAccel = tangentialForce / currentRadius;
+            currentAngle += angularAccel * dt * 5.0;
+
+            // Resolve
+            pos.x = anchorX + Math.cos(currentAngle) * currentRadius;
+            pos.y = anchorY + Math.sin(currentAngle) * currentRadius;
+
+            if (rot) rot.angle = currentAngle + (Math.PI / 2);
+            if (vel) { vel.x = 0; vel.y = 0; }
+        }
+
+        // ----------------------------------------------------------
+        // MODE C: FREE FALL
+        // ----------------------------------------------------------
+        else {
+            const force = calculateEnergyForce(pos.x, pos.y);
+            if (vel) {
+                vel.x += force.x * dt;
+                vel.y += force.y * dt;
+                vel.x *= 0.98;
+                vel.y *= 0.98;
             }
         }
     });
@@ -850,54 +1012,177 @@ export const WebRenderSystem = (entities, scene) => {
         scene.webGfx = scene.add.graphics().setDepth(1100);
     }
     scene.webGfx.clear();
-
-    const player = entities.find(e => e.components.PlayerTag);
-    const state = player?.components.AbilityState;
-
-    if (!state || !state.currentTargetId) return;
-
-    const target = entities.find(e => e.id === state.currentTargetId);
-    if (!target) return;
-
     const cam = scene.cameras.main;
-    const pPos = player.components.Position;
-    const pRot = player.components.Rotation?.angle || 0;
-    const tPos = target.components.Position;
-    const tRot = target.components.Rotation?.angle || 0;
-
-    const pOff = player.components.ConnectionPoint || { x: 0, y: 0 };
-    const tOff = target.components.ConnectionPoint || { x: 0, y: 0 };
-
-    // Connection point rotation math
-    const s = Math.sin(pRot);
-    const c = Math.cos(pRot);
-    const pWorldOffX = pOff.x * c - pOff.y * s;
-    const pWorldOffY = pOff.x * s + pOff.y * c;
-
-    const ts = Math.sin(tRot);
-    const tc = Math.cos(tRot);
-    const tWorldOffX = tOff.x * tc - tOff.y * ts;
-    const tWorldOffY = tOff.x * ts + tOff.y * tc;
-
-    const startX = pPos.x + pWorldOffX;
-    const startY = pPos.y + pWorldOffY;
-    const endX = tPos.x + tWorldOffX;
-    const endY = tPos.y + tWorldOffY;
-
-    // Line thickness adjusted for camera zoom
     const thickness = 2 / cam.zoom;
-    const pulse = 0.6 + Math.sin(Date.now() / 100) * 0.2;
 
-    scene.webGfx.lineStyle(thickness, 0xffa500, pulse);
-    scene.webGfx.beginPath();
-    scene.webGfx.moveTo(startX, startY);
-    scene.webGfx.lineTo(endX, endY);
-    scene.webGfx.strokePath();
+    // --- PART 1: DRAW COMPLETED WEBS (Static) ---
+    entities.forEach(e => {
+        const conn = e.components.WebConnection;
+        if (conn) {
+            const fromEnt = entities.find(ent => ent.id === conn.fromId);
+            const toEnt = entities.find(ent => ent.id === conn.toId);
 
-    // Anchor points
-    scene.webGfx.fillStyle(0xffffff, 1);
-    scene.webGfx.fillCircle(startX, startY, 2 / cam.zoom);
-    scene.webGfx.fillCircle(endX, endY, 3 / cam.zoom);
+            // Only draw if both platforms still exist
+            if (fromEnt && toEnt) {
+                const fPos = fromEnt.components.Position;
+                const tPos = toEnt.components.Position;
+
+                const x1 = fPos.x + conn.fromOffset.x;
+                const y1 = fPos.y + conn.fromOffset.y;
+                const x2 = tPos.x + conn.toOffset.x;
+                const y2 = tPos.y + conn.toOffset.y;
+
+                // Static webs are Silver/Grey
+                scene.webGfx.lineStyle(thickness, 0xaaaaaa, 0.8);
+                scene.webGfx.beginPath();
+                scene.webGfx.moveTo(x1, y1);
+                scene.webGfx.lineTo(x2, y2);
+                scene.webGfx.strokePath();
+
+                // Draw Anchor Dots
+                scene.webGfx.fillStyle(0xaaaaaa, 1);
+                scene.webGfx.fillCircle(x1, y1, 3 / cam.zoom);
+                scene.webGfx.fillCircle(x2, y2, 3 / cam.zoom);
+            }
+        }
+    });
+
+    // --- PART 2: DRAW ACTIVE TETHER (Dynamic) ---
+    const player = entities.find(e => e.components.PlayerTag);
+    if (!player) return;
+
+    const tether = player.components.WebTether;
+
+    if (tether) {
+        const platform = entities.find(e => e.id === tether.platformId);
+        if (platform) {
+            const platPos = platform.components.Position;
+            const anchorX = platPos.x + tether.anchorOffset.x;
+            const anchorY = platPos.y + tether.anchorOffset.y;
+
+            const pPos = player.components.Position;
+
+            // Active web is Orange
+            scene.webGfx.lineStyle(thickness, 0xffa500, 1.0);
+            scene.webGfx.beginPath();
+            scene.webGfx.moveTo(anchorX, anchorY);
+            scene.webGfx.lineTo(pPos.x, pPos.y);
+            scene.webGfx.strokePath();
+
+            // Anchor point
+            scene.webGfx.fillStyle(0xffa500, 1);
+            scene.webGfx.fillCircle(anchorX, anchorY, 4 / cam.zoom);
+        }
+    }
+};
+--- FILE: src/ecs/systems/WebSystem.js ---
+import Phaser from 'phaser';
+import { WebTether, WebConnection, Parent } from '../components/index';
+
+export const WebSystem = (entities, inputManager) => {
+    const player = entities.find(e => e.components.PlayerTag);
+    if (!player) return;
+
+    // --- INPUTS ---
+    // Change to isButtonDown so "Holding" the extend button 
+    // automatically grabs the platform when you enter it.
+    const attachHeld = inputManager.isButtonDown('LENGTHEN'); // E or RB
+
+    // Detach (B Button)
+    const bJustPressed = Phaser.Input.Keyboard.JustDown(inputManager.keys.esc) || inputManager.isButtonPressed('B');
+
+    const tether = player.components.WebTether;
+    const currentParent = player.components.Parent;
+    const pPos = player.components.Position;
+
+    // 1. MID-AIR DETACH
+    if (bJustPressed && tether && !currentParent) {
+        console.log("Mid-Air Detach!");
+        delete player.components.WebTether;
+        return;
+    }
+
+    // 2. LANDING & BRIDGING
+    if (attachHeld && tether && !currentParent) {
+        const platforms = entities.filter(e => e.components.PlatformTag && e.components.Collider);
+        let landingPlatform = null;
+
+        // Check intersection
+        for (const plat of platforms) {
+            const platPos = plat.components.Position;
+            const col = plat.components.Collider;
+            let isOver = false;
+
+            if (col.type === 'circle') {
+                const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, platPos.x, platPos.y);
+                isOver = dist <= col.radius;
+            } else {
+                // Rect check
+                const w = col.width, h = col.height;
+                isOver = (pPos.x >= platPos.x - w / 2 && pPos.x <= platPos.x + w / 2 &&
+                    pPos.y >= platPos.y - h / 2 && pPos.y <= platPos.y + h / 2);
+            }
+
+            if (isOver) {
+                landingPlatform = plat;
+                break;
+            }
+        }
+
+        if (landingPlatform) {
+            // A. BRIDGING LOGIC (Only if different platform)
+            if (landingPlatform.id !== tether.platformId) {
+                const startId = tether.platformId;
+                const endId = landingPlatform.id;
+
+                // Check if connection already exists
+                const connectionExists = entities.some(e => {
+                    const c = e.components.WebConnection;
+                    if (!c) return false;
+                    return (c.fromId === startId && c.toId === endId) ||
+                        (c.fromId === endId && c.toId === startId);
+                });
+
+                if (!connectionExists) {
+                    console.log("Bridging!");
+                    const newWeb = {
+                        id: crypto.randomUUID(),
+                        components: {
+                            WebConnection: WebConnection(
+                                startId, tether.anchorOffset,
+                                endId, { x: 0, y: 0 }
+                            )
+                        }
+                    };
+                    entities.push(newWeb);
+                }
+            }
+            else {
+                console.log("Manual Re-entry to Start Platform");
+            }
+
+            // B. SNAP TO PLATFORM (Always happens if we have a valid platform + button held)
+            // This fixes the "Can't re-enter" bug.
+            player.components.Parent = Parent(landingPlatform.id, {
+                x: pPos.x - landingPlatform.components.Position.x,
+                y: pPos.y - landingPlatform.components.Position.y
+            });
+            delete player.components.WebTether;
+        }
+    }
+
+    // 3. LAUNCHING (Only on fresh press to avoid accidental immediate detach)
+    // We check JustDown here specifically so you don't detach immediately after attaching if you hold the button.
+    else if (currentParent && !tether) {
+        // We need to re-check JustDown for the specific key because we used isButtonDown above
+        const kE = inputManager.keys.lengthen;
+        let launchJustPressed = Phaser.Input.Keyboard.JustDown(kE) || inputManager.isButtonPressed('R1');
+
+        if (launchJustPressed) {
+            console.log("Anchor Dropped! Move to edge to jump.");
+            player.components.WebTether = WebTether(currentParent.id, { x: 0, y: 0 });
+        }
+    }
 };
 --- FILE: src/graphics/BaseGraphic.js ---
 export class BaseGraphic {
@@ -1304,32 +1589,45 @@ import Phaser from 'phaser';
 
 export class TriangleGraphic extends BaseGraphic {
     create(config) {
-        const unit = GRID.UNIT;
-        const s = (config.size || 1) * unit;
-
-        const color = Phaser.Display.Color.HexStringToColor(config.color || '#ff8400').color;
-
-        const points = [
-            s, 0,      // Tip
-            -s, -s,    // Back Top
-            -s, s      // Back Bottom
-        ];
-
-        const triangle = this.scene.add.polygon(0, 0, points, color);
-
-        // Pin the origin to the center of the bounding box
-        triangle.setOrigin(0.5, 0.5);
-        triangle.setStrokeStyle(2, 0xffffff);
-
-        return triangle;
+        // Use a Graphics object instead of a Polygon Shape.
+        // Graphics pivot exactly at (0,0) by default, ensuring a perfect "spin".
+        return this.scene.add.graphics();
     }
 
     onUpdate(config) {
-        if (!this.gameObject) return;
+        const gfx = this.gameObject;
+        if (!gfx) return;
+
+        // 1. CLEAR previous frame (essential for dynamic zoom thickness)
+        gfx.clear();
+
+        // 2. CONFIGURATION
         const cam = this.scene.cameras.main;
+        // Stroke stays 2px thick regardless of zoom
         const thickness = 2 / cam.zoom;
-        this.gameObject.setStrokeStyle(thickness, 0xffffff);
-        this.gameObject.setScale(config.intensity ?? 1.0);
+        const colorVal = Phaser.Display.Color.HexStringToColor(config.color || '#ff8400').color;
+        const intensity = config.intensity ?? 1.0;
+
+        // 3. SIZE CALCULATION
+        // "10x10 World Units" means 10 * GRID.UNIT (10px) = 100px total span.
+        // To span 100px centered at 0, radius 's' must be 50.
+        // config.size of 5.0 * 10 = 50.
+        const unit = GRID.UNIT;
+        const s = (config.size || 1) * unit * intensity;
+
+        // 4. DRAW
+        // We draw relative to local (0,0), which BaseGraphic has already moved to the Player's position.
+        gfx.fillStyle(colorVal, 1);
+        gfx.lineStyle(thickness, 0xffffff);
+
+        gfx.beginPath();
+        gfx.moveTo(s, 0);       // Tip (Right)
+        gfx.lineTo(-s, -s);     // Top Back
+        gfx.lineTo(-s, s);      // Bottom Back
+        gfx.closePath();
+
+        gfx.fillPath();
+        gfx.strokePath();
     }
 }
 --- FILE: src/main.js ---
@@ -1886,7 +2184,7 @@ export class WebTest extends BaseTestScene {
             Collider('circle', 100),
             PlatformTag(),
             EntityType('PLATFORM'),
-            ConnectionPoint(0, -100) // Top edge
+            ConnectionPoint(0, 0) // Top edge
         ]);
 
         // 3. Player: Starts in the center of the -500 platform
@@ -1895,11 +2193,83 @@ export class WebTest extends BaseTestScene {
             AbilityState(),
             Parent(leftPlatform.id, { x: 0, y: 0 }),
             // ConnectionPoint at -50 ensures web attaches to the back edge (5 units back)
-            ConnectionPoint(-50, 0)
+            ConnectionPoint(0, 0)
         ]);
 
         this.cameras.main.centerOn(0, 0);
         this.cameras.main.setZoom(0.7);
+    }
+}
+--- FILE: src/scenes/test/09_EnergySystems.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import {
+    Position,
+    Renderable,
+    Collider,
+    PlatformTag,
+    Parent,
+    AbilityState,
+    EntityType,
+    ConnectionPoint,
+    EnergySource // Import this
+} from '../../ecs/components/index';
+
+export class EnergySystems extends BaseTestScene {
+    constructor() {
+        super('EnergySystems', 'Energy Systems', 'Energy Fields Drive You. RB to Attach.');
+    }
+
+    create() {
+        super.create();
+
+        const radius = 400;
+        const platformRadius = 60;
+        const platforms = [];
+
+        // 1. Create 5 Platforms
+        for (let i = 0; i < 5; i++) {
+            const angleDeg = (i * 72) - 90;
+            const angleRad = angleDeg * (Math.PI / 180);
+
+            const px = Math.cos(angleRad) * radius;
+            const py = Math.sin(angleRad) * radius;
+
+            // Platform 0 (Top) is the EMITTER. Others are ABSORBERS.
+            // Absorbers have negative strength (Pull). Emitters have positive (Push).
+            const isEmitter = (i === 0);
+            const strength = isEmitter ? 500 : -300;
+            const type = isEmitter ? 'EMIT' : 'ABSORB';
+            const color = isEmitter ? 0xff4400 : 0x0044ff; // Red push, Blue pull
+
+            const platform = this.addEntity([
+                { id: `platform_${i}` },
+                Position(px, py),
+                Renderable({
+                    'BASE': { type: 'circle', radius: platformRadius, color: color }
+                }),
+                Collider('circle', platformRadius),
+                PlatformTag(),
+                EntityType('PLATFORM'),
+                ConnectionPoint(0, 0),
+                EnergySource(strength, type) // Add Energy Source
+            ]);
+            platforms.push(platform);
+        }
+
+        // 2. Create Player
+        const startPlat = platforms[0];
+        const startPos = startPlat.components.Position;
+
+        this.addEntity([
+            ...createPlayer(startPos.x, startPos.y),
+            AbilityState(),
+            Parent(startPlat.id, { x: 0, y: 0 }),
+            ConnectionPoint(0, 0)
+        ]);
+
+        this.cameras.main.centerOn(0, 0);
+        this.cameras.main.setZoom(0.6);
     }
 }
 --- FILE: src/scenes/test/BaseTestScene.js ---
@@ -1908,7 +2278,6 @@ import { UI } from '../../core/UIManager';
 import { InputManager } from '../../core/Input';
 import { GRID, PHYSICS } from '../../core/Constants';
 
-// UPDATE IMPORTS
 import {
     MovementSystem,
     AttachmentSystem,
@@ -1918,7 +2287,8 @@ import {
     LayeredRenderSystem,
     TargetRenderSystem,
     DebugLayerSystem,
-    WebRenderSystem
+    WebRenderSystem,
+    WebSystem
 } from '../../ecs/systems/index';
 
 export class BaseTestScene extends Phaser.Scene {
@@ -1936,6 +2306,11 @@ export class BaseTestScene extends Phaser.Scene {
         const titleStr = this.testTitle || 'SCENE';
         UI.showTitle(titleStr, this.testSubtitle);
 
+        // --- CLEANUP HANDLER ---
+        // This ensures that when we switch scenes, everything resets
+        this.events.once('shutdown', this.shutdown, this);
+
+        // Inputs
         this.input.keyboard.on('keydown-TAB', () => {
             this.showDebugGrid = !this.showDebugGrid;
             UI.toggleDebug();
@@ -1946,15 +2321,36 @@ export class BaseTestScene extends Phaser.Scene {
         });
     }
 
+    // Called automatically when scene stops
+    shutdown() {
+        // 1. Clear Entities
+        this.entities = [];
+
+        // 2. Clear Input Listeners (Prevent double-triggering X or ESC)
+        this.input.keyboard.off('keydown-TAB');
+        this.input.keyboard.off('keydown-ESC');
+
+        // 3. Clear any UI text residue
+        if (this.debugText) {
+            this.debugText.destroy();
+            this.debugText = null;
+        }
+
+        // 4. Reset Accumulator
+        this.accumulator = 0;
+    }
+
     update(time, delta) {
+        // If scene is shutting down, stop updating to prevent crashes
+        if (!this.sys.isActive()) return;
+
         this.accumulator += delta;
 
-        // 1. FIXED UPDATE LOOP (Physics & Hard Logic)
-        // Runs at 60fps regardless of monitor refresh rate
+        // 1. FIXED UPDATE LOOP
         while (this.accumulator >= PHYSICS.STEP) {
             const dtSeconds = PHYSICS.STEP / 1000;
 
-            // Logic Systems
+            WebSystem(this.entities, this.inputManager);
             MovementSystem(this.entities, this.inputManager, dtSeconds);
             AttachmentSystem(this.entities, this.inputManager);
             AbilityTargetingSystem(this.entities, this.inputManager);
@@ -1965,8 +2361,7 @@ export class BaseTestScene extends Phaser.Scene {
             this.accumulator -= PHYSICS.STEP;
         }
 
-        // 2. RENDER LOOP (Visuals & Camera)
-        // Runs once per browser frame
+        // 2. RENDER LOOP
         WebRenderSystem(this.entities, this);
         TargetRenderSystem(this.entities, this);
         CameraSystem(this.entities, this);
@@ -1982,16 +2377,16 @@ export class BaseTestScene extends Phaser.Scene {
         const player = this.entities.find(e => e.components.PlayerTag);
         if (player) {
             const p = player.components.Position;
-            const t = player.components.AbilityState?.currentTargetId
-                ? { id: player.components.AbilityState.currentTargetId }
-                : null;
+            let tInfo = null;
+            if (player.components.WebTether) tInfo = { id: "ANCHORED" };
+            else if (player.components.AbilityState?.currentTargetId) tInfo = { id: "TARGETING" };
 
             UI.updateDebug({
                 x: p.x.toFixed(0),
                 y: p.y.toFixed(0),
                 gx: (p.x / GRID.UNIT).toFixed(1),
                 gy: (p.y / GRID.UNIT).toFixed(1)
-            }, t);
+            }, tInfo);
         }
     }
 
@@ -2018,6 +2413,7 @@ import { OrbitTest } from './05_OrbitTest';
 import { LayerTest } from './06_LayerTest';
 import { GardenTest } from './07_GardenTest';
 import { WebTest } from './08_WebTest';
+import { EnergySystems } from './09_EnergySystems';
 
 export const TestScenes = [
     MovementTest,
@@ -2028,7 +2424,8 @@ export const TestScenes = [
     OrbitTest,
     LayerTest,
     GardenTest,
-    WebTest
+    WebTest,
+    EnergySystems
 ];
 --- FILE: src/scenes/TestMenuScene.js ---
 import Phaser from 'phaser';

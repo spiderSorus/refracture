@@ -8,6 +8,7 @@ import { LayerTest } from './06_LayerTest';
 import { GardenTest } from './07_GardenTest';
 import { WebTest } from './08_WebTest';
 import { EnergySystems } from './09_EnergySystems';
+import { VerticalSlice } from './10_VerticalSlice'; // Add this
 
 export const TestScenes = [
     MovementTest,
@@ -19,5 +20,6 @@ export const TestScenes = [
     LayerTest,
     GardenTest,
     WebTest,
-    EnergySystems
+    EnergySystems,
+    VerticalSlice
 ];

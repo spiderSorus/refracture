@@ -8,4 +8,6 @@ export * from './AbilityTargetingSystem';
 export * from './TargetRenderSystem';
 export * from './AttachmentSystem';
 export * from './WebRenderSystem';
-export * from './WebSystem'; 
+export * from './WebSystem';
+export * from './SlingshotSystem';         // --- ADDED ---
+export * from './SlingshotRenderSystem';   // --- ADDED ---

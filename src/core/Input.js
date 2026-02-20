@@ -74,8 +74,6 @@ export class InputManager {
     isButtonPressed(button) {
         if (!this.pad) return false;
 
-        // Map abstract names to properties if needed, or rely on Phaser's pad properties
-        // Phaser Pad Buttons: A=0, B=1, X=2, Y=3, L1=4, R1=5
         let isDown = false;
 
         if (button === 'up') isDown = this.pad.up;
@@ -108,6 +106,23 @@ export class InputManager {
             if (Math.abs(this.pad.leftStick.x) > t) x = this.pad.leftStick.x;
             if (Math.abs(this.pad.leftStick.y) > t) y = this.pad.leftStick.y;
         }
+        return { x, y };
+    }
+
+    // --- NEW: Gets precise analog data for Slingshot jumping ---
+    getLeftStickRaw() {
+        let x = 0, y = 0;
+
+        if (this.pad) {
+            x = this.pad.leftStick.x;
+            y = this.pad.leftStick.y;
+        } else {
+            if (this.cursors.left.isDown) x = -1;
+            else if (this.cursors.right.isDown) x = 1;
+            if (this.cursors.up.isDown) y = -1;
+            else if (this.cursors.down.isDown) y = 1;
+        }
+
         return { x, y };
     }
 }

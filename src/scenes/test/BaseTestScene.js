@@ -13,7 +13,9 @@ import {
     TargetRenderSystem,
     DebugLayerSystem,
     WebRenderSystem,
-    WebSystem
+    WebSystem,
+    SlingshotSystem,       // --- NEW ---
+    SlingshotRenderSystem  // --- NEW ---
 } from '../../ecs/systems/index';
 
 export class BaseTestScene extends Phaser.Scene {
@@ -31,11 +33,8 @@ export class BaseTestScene extends Phaser.Scene {
         const titleStr = this.testTitle || 'SCENE';
         UI.showTitle(titleStr, this.testSubtitle);
 
-        // --- CLEANUP HANDLER ---
-        // This ensures that when we switch scenes, everything resets
         this.events.once('shutdown', this.shutdown, this);
 
-        // Inputs
         this.input.keyboard.on('keydown-TAB', () => {
             this.showDebugGrid = !this.showDebugGrid;
             UI.toggleDebug();
@@ -46,27 +45,18 @@ export class BaseTestScene extends Phaser.Scene {
         });
     }
 
-    // Called automatically when scene stops
     shutdown() {
-        // 1. Clear Entities
         this.entities = [];
-
-        // 2. Clear Input Listeners (Prevent double-triggering X or ESC)
         this.input.keyboard.off('keydown-TAB');
         this.input.keyboard.off('keydown-ESC');
-
-        // 3. Clear any UI text residue
         if (this.debugText) {
             this.debugText.destroy();
             this.debugText = null;
         }
-
-        // 4. Reset Accumulator
         this.accumulator = 0;
     }
 
     update(time, delta) {
-        // If scene is shutting down, stop updating to prevent crashes
         if (!this.sys.isActive()) return;
 
         this.accumulator += delta;
@@ -76,6 +66,10 @@ export class BaseTestScene extends Phaser.Scene {
             const dtSeconds = PHYSICS.STEP / 1000;
 
             WebSystem(this.entities, this.inputManager);
+
+            // --- NEW: Slingshot logic applied before movement ---
+            SlingshotSystem(this.entities, this.inputManager);
+
             MovementSystem(this.entities, this.inputManager, dtSeconds);
             AttachmentSystem(this.entities, this.inputManager);
             AbilityTargetingSystem(this.entities, this.inputManager);
@@ -89,6 +83,10 @@ export class BaseTestScene extends Phaser.Scene {
         // 2. RENDER LOOP
         WebRenderSystem(this.entities, this);
         TargetRenderSystem(this.entities, this);
+
+        // --- NEW: Slingshot aim line rendering ---
+        SlingshotRenderSystem(this.entities, this);
+
         CameraSystem(this.entities, this);
         LayeredRenderSystem(this.entities, this);
         DebugLayerSystem(this.entities, this);
