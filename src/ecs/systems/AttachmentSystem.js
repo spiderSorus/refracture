@@ -1,44 +1,80 @@
-export const AttachmentSystem = (entities, inputManager) => {
+// src/ecs/systems/AttachmentSystem.js
+import Phaser from 'phaser';
+
+export const AttachmentSystem = (entities) => {
     const player = entities.find(e => e.components.PlayerTag);
-    if (!player) return;
+    if (!player || player.components.Parent) return;
 
     const pPos = player.components.Position;
-    const parentComp = player.components.Parent;
-    const bPressed = inputManager.getAction('BACK');
+    const sling = player.components.SlingshotJump;
 
-    // 1. If currently ATTACHED and B is pressed: DETACH
-    if (parentComp && bPressed) {
-        delete player.components.Parent;
+    // Hard Floor check (Logical Floor is 0)
+    if (pPos.y >= -2) {
+        if (sling) {
+            sling.dwellFrames = 0;
+            sling.potentialPlatformId = null;
+        }
         return;
     }
 
-    // 2. If currently UNATTACHED and B is pressed: ATTEMPT ATTACH
-    if (!parentComp && bPressed) {
-        const platforms = entities.filter(e => e.components.PlatformTag && e.components.Collider);
+    const platforms = entities.filter(e => e.components.PlatformTag && e.components.Collider);
+    const catchBuffer = 15;
+    let currentlyOverId = null;
 
-        for (const plat of platforms) {
-            const platPos = plat.components.Position;
-            const col = plat.components.Collider;
-            let isOver = false;
+    // 1. Check for area overlap
+    for (const plat of platforms) {
+        if (sling && sling.lastPlatformId === plat.id) continue;
 
-            // Check if player center is within platform bounds
-            if (col.type === 'circle') {
-                const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, platPos.x, platPos.y);
-                isOver = dist <= col.radius;
-            } else {
-                isOver = (pPos.x >= platPos.x - col.width / 2 && pPos.x <= platPos.x + col.width / 2 &&
-                    pPos.y >= platPos.y - col.height / 2 && pPos.y <= platPos.y + col.height / 2);
-            }
+        const platPos = plat.components.Position;
+        const col = plat.components.Collider;
+        let isInside = false;
 
-            if (isOver) {
-                // LOCK: Store the current relative offset
-                player.components.Parent = {
-                    _type: 'Parent',
-                    id: plat.id,
-                    offset: { x: pPos.x - platPos.x, y: pPos.y - platPos.y }
-                };
-                break; // Only attach to one platform at a time
-            }
+        if (col.type === 'circle') {
+            isInside = Phaser.Math.Distance.Between(pPos.x, pPos.y, platPos.x, platPos.y) <= (col.radius + catchBuffer);
+        } else {
+            const hw = (col.width / 2) + catchBuffer;
+            const hh = (col.height / 2) + catchBuffer;
+            isInside = (pPos.x >= platPos.x - hw && pPos.x <= platPos.x + hw &&
+                pPos.y >= platPos.y - hh && pPos.y <= platPos.y + hh);
         }
+
+        if (isInside) {
+            currentlyOverId = plat.id;
+            break;
+        }
+    }
+
+    // 2. The 2-Frame Verification
+    if (currentlyOverId) {
+        if (sling.potentialPlatformId === currentlyOverId) {
+            sling.dwellFrames++;
+        } else {
+            sling.potentialPlatformId = currentlyOverId;
+            sling.dwellFrames = 1;
+        }
+
+        // Trigger snap on frame 2
+        if (sling.dwellFrames >= 2) {
+            const plat = entities.find(e => e.id === currentlyOverId);
+
+            player.components.Parent = {
+                _type: 'Parent',
+                id: currentlyOverId,
+                offset: { x: pPos.x - plat.components.Position.x, y: pPos.y - plat.components.Position.y }
+            };
+
+            if (player.components.Velocity) {
+                player.components.Velocity.x = 0;
+                player.components.Velocity.y = 0;
+            }
+
+            sling.lastPlatformId = null;
+            sling.canJump = true;
+            sling.dwellFrames = 0;
+            sling.potentialPlatformId = null;
+        }
+    } else {
+        sling.dwellFrames = 0;
+        sling.potentialPlatformId = null;
     }
 };

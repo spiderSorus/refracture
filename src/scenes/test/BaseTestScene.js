@@ -1,28 +1,29 @@
+// src/scenes/test/BaseTestScene.js
 import Phaser from 'phaser';
 import { UI } from '../../core/UIManager';
 import { InputManager } from '../../core/Input';
 import { GRID, PHYSICS } from '../../core/Constants';
 
-import {
-    MovementSystem,
-    AttachmentSystem,
-    AbilityTargetingSystem,
-    PhysicsSystem,
-    CameraSystem,
-    LayeredRenderSystem,
-    TargetRenderSystem,
-    DebugLayerSystem,
-    WebRenderSystem,
-    WebSystem,
-    SlingshotSystem,       // --- NEW ---
-    SlingshotRenderSystem  // --- NEW ---
-} from '../../ecs/systems/index';
+// We import systems directly from their files to bypass the index.js conflict 
+// and get you back to a working state immediately.
+import { MovementSystem } from '../../ecs/systems/MovementSystem';
+import { AttachmentSystem } from '../../ecs/systems/AttachmentSystem';
+import { AbilityTargetingSystem } from '../../ecs/systems/AbilityTargetingSystem';
+import { PhysicsSystem } from '../../ecs/systems/PhysicsSystem';
+import { CameraSystem } from '../../ecs/systems/CameraSystem';
+import { LayeredRenderSystem } from '../../ecs/systems/LayeredRenderSystem';
+import { TargetRenderSystem } from '../../ecs/systems/TargetRenderSystem';
+import { DebugLayerSystem } from '../../ecs/systems/DebugLayerSystem';
+import { WebRenderSystem } from '../../ecs/systems/WebRenderSystem';
+import { WebSystem } from '../../ecs/systems/WebSystem';
+import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
+import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
 
 export class BaseTestScene extends Phaser.Scene {
     constructor(key, title, subtitle) {
-        super(key);
-        this.testTitle = title || "Test Scene";
-        this.testSubtitle = subtitle || "No description provided.";
+        super(key || 'BaseTestScene');
+        this.testTitle = title || "Slingshot Lab";
+        this.testSubtitle = subtitle || "State & Render Sync Debug";
         this.accumulator = 0;
     }
 
@@ -30,67 +31,77 @@ export class BaseTestScene extends Phaser.Scene {
         this.entities = [];
         this.inputManager = new InputManager(this);
 
-        const titleStr = this.testTitle || 'SCENE';
-        UI.showTitle(titleStr, this.testSubtitle);
+        // Initialize UI Overlay
+        UI.showTitle(this.testTitle, this.testSubtitle);
+
+        // Global Key Listeners
+        this.input.keyboard.on('keydown-TAB', () => UI.toggleDebug());
+        this.input.keyboard.on('keydown-ESC', () => this.scene.start('TestMenuScene'));
 
         this.events.once('shutdown', this.shutdown, this);
 
-        this.input.keyboard.on('keydown-TAB', () => {
-            this.showDebugGrid = !this.showDebugGrid;
-            UI.toggleDebug();
-        });
+        // Run sub-scene specific setup
+        this.setupScene();
+    }
 
-        this.input.keyboard.on('keydown-ESC', () => {
-            this.scene.start('TestMenuScene');
-        });
+    setupScene() {
+        // Default implementation - override this in child classes
     }
 
     shutdown() {
         this.entities = [];
         this.input.keyboard.off('keydown-TAB');
         this.input.keyboard.off('keydown-ESC');
-        if (this.debugText) {
-            this.debugText.destroy();
-            this.debugText = null;
-        }
         this.accumulator = 0;
     }
 
+    /**
+     * The Heart of the ECS: The Game Loop
+     */
     update(time, delta) {
         if (!this.sys.isActive()) return;
 
         this.accumulator += delta;
 
-        // 1. FIXED UPDATE LOOP
+        // --- STEP 1: THE SIMULATION (Fixed Timestep) ---
+        // We run these at 60Hz to ensure slingshot math is consistent.
         while (this.accumulator >= PHYSICS.STEP) {
             const dtSeconds = PHYSICS.STEP / 1000;
 
-            WebSystem(this.entities, this.inputManager);
-
-            // --- NEW: Slingshot logic applied before movement ---
+            // Intent Systems (Capture Stick/Buttons)
             SlingshotSystem(this.entities, this.inputManager);
-
-            MovementSystem(this.entities, this.inputManager, dtSeconds);
-            AttachmentSystem(this.entities, this.inputManager);
+            WebSystem(this.entities, this.inputManager);
             AbilityTargetingSystem(this.entities, this.inputManager);
 
-            this.fixedUpdate(time, PHYSICS.STEP);
+            // Constraint Systems (Parenting & Dwell)
+            AttachmentSystem(this.entities);
+
+            // Motion Systems (Walking & Gravity)
+            MovementSystem(this.entities, this.inputManager, dtSeconds);
+
+            // Integration System (Calculates final X/Y based on Parents/Floor)
             PhysicsSystem(this.entities, PHYSICS.STEP);
 
+            this.fixedUpdate(time, PHYSICS.STEP);
             this.accumulator -= PHYSICS.STEP;
         }
 
-        // 2. RENDER LOOP
+        // --- STEP 2: THE RENDER PASS ---
+        // CRITICAL ORDER: Sync Phaser Sprites to ECS Position *before* drawing overlays.
+
+        // 1. Sync Sprites/Triangles to their new ECS Positions
+        LayeredRenderSystem(this.entities, this);
+
+        // 2. Draw procedural graphics (Indicator/Webs/Targets) on top of the synced sprites
+        SlingshotRenderSystem(this.entities, this);
         WebRenderSystem(this.entities, this);
         TargetRenderSystem(this.entities, this);
 
-        // --- NEW: Slingshot aim line rendering ---
-        SlingshotRenderSystem(this.entities, this);
-
+        // 3. Update Camera and HUD
         CameraSystem(this.entities, this);
-        LayeredRenderSystem(this.entities, this);
         DebugLayerSystem(this.entities, this);
 
+        // 4. Update the Telemetry UI
         this.updateDebugUI();
     }
 
@@ -99,17 +110,24 @@ export class BaseTestScene extends Phaser.Scene {
     updateDebugUI() {
         const player = this.entities.find(e => e.components.PlayerTag);
         if (player) {
-            const p = player.components.Position;
-            let tInfo = null;
-            if (player.components.WebTether) tInfo = { id: "ANCHORED" };
-            else if (player.components.AbilityState?.currentTargetId) tInfo = { id: "TARGETING" };
+            const pos = player.components.Position;
+            const sling = player.components.SlingshotJump || {};
+            const parent = player.components.Parent;
+            const stick = this.inputManager.getRightStickRaw();
 
             UI.updateDebug({
-                x: p.x.toFixed(0),
-                y: p.y.toFixed(0),
-                gx: (p.x / GRID.UNIT).toFixed(1),
-                gy: (p.y / GRID.UNIT).toFixed(1)
-            }, tInfo);
+                x: Math.round(pos.x),
+                y: Math.round(pos.y)
+            }, {
+                status: parent ? `ATTACHED: ${parent.id}` : "FREEFALL",
+                sling: {
+                    isCharging: sling.isCharging || false,
+                    stickX: stick.x,
+                    stickY: stick.y,
+                    vecX: sling.vector ? sling.vector.x : 0,
+                    vecY: sling.vector ? sling.vector.y : 0
+                }
+            });
         }
     }
 
@@ -119,9 +137,13 @@ export class BaseTestScene extends Phaser.Scene {
             id: config ? config.id : crypto.randomUUID(),
             components: {}
         };
+
         componentsArray.forEach(c => {
-            if (c && c._type) entity.components[c._type] = c;
+            if (c && c._type) {
+                entity.components[c._type] = c;
+            }
         });
+
         this.entities.push(entity);
         return entity;
     }

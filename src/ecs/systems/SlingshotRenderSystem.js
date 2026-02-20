@@ -1,6 +1,7 @@
+// src/ecs/systems/SlingshotRenderSystem.js
 export const SlingshotRenderSystem = (entities, scene) => {
     if (!scene.slingGfx) {
-        scene.slingGfx = scene.add.graphics().setDepth(1500);
+        scene.slingGfx = scene.add.graphics().setDepth(2000);
     }
     scene.slingGfx.clear();
 
@@ -10,26 +11,21 @@ export const SlingshotRenderSystem = (entities, scene) => {
     const sling = player.components.SlingshotJump;
     const pos = player.components.Position;
 
-    if (sling.isCharging && pos) {
-        // Visual length of the line maxes out at 150 pixels
-        const drawLen = sling.chargeRatio * 150;
+    // Use isCharging to determine visibility
+    if (sling.isCharging && sling.vector && (sling.vector.x !== 0 || sling.vector.y !== 0)) {
+        const indicatorLen = 80;
 
-        const mag = Math.sqrt(sling.vector.x * sling.vector.x + sling.vector.y * sling.vector.y);
-        const dirX = -sling.vector.x / mag;
-        const dirY = -sling.vector.y / mag;
+        // Direction is the inverse of the pull
+        const endX = pos.x + (-sling.vector.x * indicatorLen);
+        const endY = pos.y + (-sling.vector.y * indicatorLen);
 
-        const endX = pos.x + dirX * drawLen;
-        const endY = pos.y + dirY * drawLen;
-
-        // Draw Line
-        scene.slingGfx.lineStyle(4, 0xffffff, 0.8);
+        scene.slingGfx.lineStyle(3, 0x00ffff, 0.6);
         scene.slingGfx.beginPath();
         scene.slingGfx.moveTo(pos.x, pos.y);
         scene.slingGfx.lineTo(endX, endY);
         scene.slingGfx.strokePath();
 
-        // Draw Aim Dot
-        scene.slingGfx.fillStyle(0xff8400, 1.0);
-        scene.slingGfx.fillCircle(endX, endY, 6);
+        scene.slingGfx.fillStyle(0x00ffff, 1);
+        scene.slingGfx.fillCircle(endX, endY, 5);
     }
 };

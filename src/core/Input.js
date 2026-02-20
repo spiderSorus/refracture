@@ -13,7 +13,12 @@ export class InputManager {
             b: Phaser.Input.Keyboard.KeyCodes.B,
             tab: Phaser.Input.Keyboard.KeyCodes.TAB,
             shorten: Phaser.Input.Keyboard.KeyCodes.Q, // LB equivalent
-            lengthen: Phaser.Input.Keyboard.KeyCodes.E // RB equivalent
+            lengthen: Phaser.Input.Keyboard.KeyCodes.E, // RB equivalent
+            // --- NEW: WASD for twin-stick keyboard fallback ---
+            w: Phaser.Input.Keyboard.KeyCodes.W,
+            a: Phaser.Input.Keyboard.KeyCodes.A,
+            s: Phaser.Input.Keyboard.KeyCodes.S,
+            d: Phaser.Input.Keyboard.KeyCodes.D
         });
 
         this.pad = null;
@@ -28,14 +33,11 @@ export class InputManager {
         });
     }
 
-    // Used for continuous states (holding a button)
     isButtonDown(action) {
-        // GAMEPLAY ACTIONS
         if (action === 'X' && this.keys.x.isDown) return true;
         if (action === 'Y' && this.keys.y.isDown) return true;
         if (action === 'B' && (this.keys.b.isDown || this.keys.esc.isDown)) return true;
 
-        // WINCH CONTROLS (New)
         if (action === 'SHORTEN') {
             if (this.keys.shorten.isDown) return true;
             if (this.pad && (this.pad.L1 || this.pad.buttons[4].pressed)) return true;
@@ -45,7 +47,6 @@ export class InputManager {
             if (this.pad && (this.pad.R1 || this.pad.buttons[5].pressed)) return true;
         }
 
-        // GAMEPAD FALLBACKS
         if (this.pad) {
             if (action === 'X' && (this.pad.X || this.pad.buttons[2].pressed)) return true;
             if (action === 'Y' && (this.pad.Y || this.pad.buttons[3].pressed)) return true;
@@ -54,7 +55,6 @@ export class InputManager {
         return false;
     }
 
-    // Used for "Just Pressed" events (Menu Navigation)
     getAction(action) {
         const justDown = (key) => Phaser.Input.Keyboard.JustDown(key);
 
@@ -63,14 +63,12 @@ export class InputManager {
         if (action === 'SELECT') return justDown(this.keys.enter) || this.isButtonPressed('A');
         if (action === 'BACK') return justDown(this.keys.esc) || this.isButtonPressed('B');
 
-        // Debug / Cycle Targets
         if (action === 'NEXT_TARGET') return justDown(this.keys.lengthen) || this.isButtonPressed('R1');
         if (action === 'PREV_TARGET') return justDown(this.keys.shorten) || this.isButtonPressed('L1');
 
         return false;
     }
 
-    // Helper for Gamepad "Just Pressed" logic
     isButtonPressed(button) {
         if (!this.pad) return false;
 
@@ -89,17 +87,19 @@ export class InputManager {
         else if (this.pad[button]) isDown = this.pad[button];
 
         const wasDown = this.prevPadState[button] || false;
-        this.prevPadState[button] = isDown; // Store for next frame
+        this.prevPadState[button] = isDown;
 
         return isDown && !wasDown;
     }
 
+    // --- UPDATED: Left Stick / WASD ---
     getMovement() {
         let x = 0, y = 0;
-        if (this.cursors.left.isDown) x = -1;
-        else if (this.cursors.right.isDown) x = 1;
-        if (this.cursors.up.isDown) y = -1;
-        else if (this.cursors.down.isDown) y = 1;
+
+        if (this.keys.a.isDown) x = -1;
+        else if (this.keys.d.isDown) x = 1;
+        if (this.keys.w.isDown) y = -1;
+        else if (this.keys.s.isDown) y = 1;
 
         if (this.pad) {
             const t = 0.15;
@@ -109,13 +109,13 @@ export class InputManager {
         return { x, y };
     }
 
-    // --- NEW: Gets precise analog data for Slingshot jumping ---
-    getLeftStickRaw() {
+    // --- NEW: Right Stick / Arrows ---
+    getRightStickRaw() {
         let x = 0, y = 0;
 
         if (this.pad) {
-            x = this.pad.leftStick.x;
-            y = this.pad.leftStick.y;
+            x = this.pad.rightStick.x;
+            y = this.pad.rightStick.y;
         } else {
             if (this.cursors.left.isDown) x = -1;
             else if (this.cursors.right.isDown) x = 1;
