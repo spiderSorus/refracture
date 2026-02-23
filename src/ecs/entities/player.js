@@ -21,3 +21,5 @@ export const createPlayer = (x, y) => [
     CameraTarget(),
     ViewLayers(['BASE'])
 ];
+
+export const findPlayer = (entities) => entities.find(e => e.components.PlayerTag);

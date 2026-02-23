@@ -31,6 +31,9 @@ export const RaycastPlatformSystem = {
         platforms.forEach(plat => {
             const pPos = plat.components.Position;
             const col = plat.components.Collider;
+
+            if (!pPos) return;
+
             let intersectionPoints = [];
 
             // 1. Circle Intersection Logic

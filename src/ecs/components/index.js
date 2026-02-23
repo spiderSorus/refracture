@@ -64,13 +64,28 @@ export const EnergySource = (strength = 100, type = 'EMIT') => ({
     type      // 'EMIT' or 'ABSORB'
 });
 
+export const BugTag = () => ({ _type: 'BugTag' });
+export const WebTag = () => ({ _type: 'WebTag' });
+export const GravityExempt = () => ({ _type: 'GravityExempt' });
+export const BugAI = () => ({
+    _type: 'BugAI',
+    timer: 0,
+    changeInterval: 1000,
+    speed: 150
+});
+
 // --- SLINGSHOT MECHANIC ---
 export const SlingshotJump = (maxForce = 1500) => ({
     _type: 'SlingshotJump',
     isCharging: false,
     vector: { x: 0, y: 0 },
+    lockedAim: null,      // Normalized direction of the pull
+    peakMagnitude: 0,     // Highest magnitude reached during this charge
     chargeRatio: 0,
     maxForce,
-    canJump: false // Tracks if we are touching a surface
+    canJump: false,       // Tracks if we are touching a surface
+    dwellFrames: 0,       // Frame counter for attachment logic
+    potentialPlatformId: null,
+    lastPlatformId: null
 });
 

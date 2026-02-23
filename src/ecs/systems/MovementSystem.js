@@ -1,6 +1,6 @@
 // src/ecs/systems/MovementSystem.js
-import Phaser from 'phaser';
-import { GRID, PHYSICS } from '../../core/Constants';
+import { GRID } from '../../core/Constants';
+import { isPointInside, pointToSegmentDist } from '../../utils/CollisionUtils';
 
 export const MovementSystem = (entities, inputManager, dt) => {
     if (!inputManager) return;
@@ -8,13 +8,12 @@ export const MovementSystem = (entities, inputManager, dt) => {
     const walkSpeed = GRID.SPEED * GRID.UNIT * 2;
 
     entities.forEach(entity => {
-        // ADDED WebTether to the destructured components
         const { Position: pos, Velocity: vel, Parent: parent, Rotation: rot, SlingshotJump: sling, WebTether: tether } = entity.components;
         if (!pos || !rot) return;
 
-        // --- 1. ROTATION LOGIC (PRIORITY: JUMP VECTOR -> MOVEMENT) ---
-        if (sling && sling.isCharging && sling.vector && (sling.vector.x !== 0 || sling.vector.y !== 0)) {
-            rot.angle = Math.atan2(-sling.vector.y, -sling.vector.x);
+        // --- 1. ROTATION LOGIC ---
+        if (sling && sling.isCharging && sling.lockedAim) {
+            rot.angle = Math.atan2(-sling.lockedAim.y, -sling.lockedAim.x);
         }
         else if (Math.abs(move.x) > 0.1 || Math.abs(move.y) > 0.1) {
             rot.angle = Math.atan2(move.y, move.x);
@@ -23,57 +22,71 @@ export const MovementSystem = (entities, inputManager, dt) => {
             rot.angle = Math.atan2(vel.y, vel.x);
         }
 
-        // --- 2. POSITION LOGIC ---
+        // --- 2. PARENT EXIT LOGIC ---
         if (parent) {
-            // Player is attached to a platform
-            parent.offset.x += (move.x * walkSpeed * dt);
-            parent.offset.y += (move.y * walkSpeed * dt);
-
             const plat = entities.find(e => e.id === parent.id);
-            if (plat) {
+            if (!plat) {
+                delete entity.components.Parent;
+                return;
+            }
+
+            if (parent.isWeb) {
+                // SPECIAL WEB MOVEMENT
                 const col = plat.components.Collider;
-                const exitBuffer = 25;
-                let exited = false;
+                if (col && col.webData) {
+                    const { x1, y1, x2, y2 } = col.webData;
+                    const dx = x2 - x1;
+                    const dy = y2 - y1;
+                    const len = Math.sqrt(dx * dx + dy * dy);
+                    const nx = dx / len;
+                    const ny = dy / len;
 
-                if (col.type === 'circle') {
-                    const distSq = (parent.offset.x ** 2) + (parent.offset.y ** 2);
-                    const limit = col.radius + exitBuffer;
-                    if (distSq > limit * limit) exited = true;
-                } else {
-                    const hw = col.width / 2 + exitBuffer;
-                    const hh = col.height / 2 + exitBuffer;
-                    if (Math.abs(parent.offset.x) > hw || Math.abs(parent.offset.y) > hh) exited = true;
+                    // Move along the line based on input projected onto web vector
+                    // We also allow vertical stick to contribute if it's diagonal
+                    const moveMag = (move.x * nx + move.y * ny) * walkSpeed * dt;
+                    
+                    pos.x += nx * moveMag;
+                    pos.y += ny * moveMag;
+
+                    // Keep player snapped to the line
+                    // Calculate current t (projection factor)
+                    let t = ((pos.x - x1) * nx + (pos.y - y1) * ny) / len;
+                    
+                    // Exit if off ends
+                    if (t < -0.01 || t > 1.01) {
+                        delete entity.components.Parent;
+                    } else {
+                        // Snap exactly to the line segment
+                        pos.x = x1 + t * dx;
+                        pos.y = y1 + t * dy;
+                    }
                 }
+            } else {
+                // NORMAL PLATFORM MOVEMENT
+                parent.offset.x += (move.x * walkSpeed * dt);
+                parent.offset.y += (move.y * walkSpeed * dt);
 
-                if (exited) {
+                const exitBuffer = 25;
+                const isStillInside = isPointInside(parent.offset, { x: 0, y: 0 }, plat.components.Collider, exitBuffer);
+
+                if (!isStillInside) {
                     if (sling) sling.lastPlatformId = parent.id;
                     delete entity.components.Parent;
                 }
             }
-        } else if (vel) {
-            // Player is in freefall or dangling
+        } 
+        // --- 3. FREEFALL FRICTION LOGIC ---
+        else if (vel) {
             const isGrounded = pos.y >= 0;
 
             if (isGrounded) {
-                // Walking on the hard floor (y >= 0)
                 vel.x += (move.x * walkSpeed * 10) * dt;
                 vel.x *= 0.85;
             } else {
-                // --- THE FIX: TETHER BYPASS ---
-                if (!tether) {
-                    // Normal Freefall: apply standard slingshot air friction
-                    vel.x *= 0.95;
-                    vel.y *= 0.99;
-                } else {
-                    // On a Rope: DO NOT kill the momentum! Let the pendulum swing!
-                    // Apply only a micro-fraction of air resistance so the swing lasts.
-                    vel.x *= 0.999;
-                    vel.y *= 0.999;
-                }
+                const friction = tether ? 0.999 : 0.95;
+                vel.x *= friction;
+                vel.y *= (tether ? 0.999 : 0.99);
             }
-
-            // Always apply gravity when not parented
-            vel.y += (PHYSICS.GRAVITY || 980) * dt;
         }
     });
 };

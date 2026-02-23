@@ -1,85 +1,63 @@
 // src/ecs/systems/AttachmentSystem.js
-import Phaser from 'phaser';
+import { isPointInside } from '../../utils/CollisionUtils';
+import { findPlayer } from '../entities/player';
+import { getAnchorWorldPos } from '../../utils/WebUtils';
 
 /**
  * AttachmentSystem
- * Handles the 2-frame dwell logic for snapping the player to platforms.
- * Works in tandem with SlingshotSystem's raycast exit to allow re-attachment.
+ * Handles immediate snapping of the player to platforms or webs upon overlap.
  */
 export const AttachmentSystem = (entities) => {
-    const player = entities.find(e => e.components.PlayerTag);
+    const player = findPlayer(entities);
     // If no player or already attached, we don't need to check for new attachments
     if (!player || player.components.Parent) return;
 
     const pPos = player.components.Position;
     const sling = player.components.SlingshotJump;
 
+    // --- 0. SYNC WEB COLLIDER DATA ---
+    entities.forEach(e => {
+        const conn = e.components.WebConnection;
+        const col = e.components.Collider;
+        if (conn && col && col.type === 'web') {
+            const p1 = getAnchorWorldPos(entities, conn.fromId, conn.fromOffset);
+            const p2 = getAnchorWorldPos(entities, conn.toId, conn.toOffset);
+            if (p1 && p2) {
+                col.webData = {
+                    x1: p1.x,
+                    y1: p1.y,
+                    x2: p2.x,
+                    y2: p2.y
+                };
+            }
+        }
+    });
+
     // 1. Hard Floor check (Logical Floor is 0)
-    // If the player is on the ground, reset the dwell timer
+    // If on ground, we are technically "attached" to the floor, so we don't look for platforms.
     if (pPos.y >= -2) {
         if (sling) {
-            sling.dwellFrames = 0;
-            sling.potentialPlatformId = null;
+            sling.canJump = true;
+            sling.lastPlatformId = null;
         }
         return;
     }
 
     const platforms = entities.filter(e => e.components.PlatformTag && e.components.Collider);
-    const catchBuffer = 15; // Extra padding to make grabbing feel "generous"
-    let currentlyOverId = null;
+    const catchBuffer = 15;
 
-    // 2. Collision Detection Pass
+    // 2. Collision Detection Pass (Immediate Attachment)
     for (const plat of platforms) {
-        // NOTE: lastPlatformId check removed to allow re-attachment to the same platform
+        if (isPointInside(pPos, plat.components.Position || { x: 0, y: 0 }, plat.components.Collider, catchBuffer)) {
+            const isWeb = !!plat.components.WebTag;
 
-        const platPos = plat.components.Position;
-        const col = plat.components.Collider;
-        let isInside = false;
-
-        // Circle Collider Logic
-        if (col.type === 'circle') {
-            const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, platPos.x, platPos.y);
-            isInside = dist <= (col.radius + catchBuffer);
-        }
-        // Rectangle/Box Collider Logic
-        else {
-            const hw = (col.width / 2) + catchBuffer;
-            const hh = (col.height / 2) + catchBuffer;
-            isInside = (
-                pPos.x >= platPos.x - hw && pPos.x <= platPos.x + hw &&
-                pPos.y >= platPos.y - hh && pPos.y <= platPos.y + hh
-            );
-        }
-
-        if (isInside) {
-            currentlyOverId = plat.id;
-            break; // Found a platform, stop looking
-        }
-    }
-
-    // 3. The 2-Frame Dwell Verification
-    // This prevents "flicker" attachments and ensures the player intended to land
-    if (currentlyOverId) {
-        if (sling.potentialPlatformId === currentlyOverId) {
-            sling.dwellFrames++;
-        } else {
-            // First frame overlapping this specific platform
-            sling.potentialPlatformId = currentlyOverId;
-            sling.dwellFrames = 1;
-        }
-
-        // Trigger the "Snap" on the second consistent frame
-        if (sling.dwellFrames >= 2) {
-            const plat = entities.find(e => e.id === currentlyOverId);
-
-            // Create the Parent component to lock the player to the platform
             player.components.Parent = {
                 _type: 'Parent',
-                id: currentlyOverId,
-                // Store relative distance so the player stays at the same spot on the platform
+                id: plat.id,
+                isWeb: isWeb,
                 offset: {
-                    x: pPos.x - plat.components.Position.x,
-                    y: pPos.y - plat.components.Position.y
+                    x: pPos.x - (plat.components.Position?.x || 0),
+                    y: pPos.y - (plat.components.Position?.y || 0)
                 }
             };
 
@@ -89,18 +67,14 @@ export const AttachmentSystem = (entities) => {
                 player.components.Velocity.y = 0;
             }
 
-            // Reset Slingshot State for a new jump
-            sling.canJump = true;
-            sling.dwellFrames = 0;
-            sling.potentialPlatformId = null;
+            // Reset Slingshot State
+            if (sling) {
+                sling.canJump = true;
+                sling.isCharging = false;
+            }
 
-            console.log(`[ATTACH] Snapped to Platform: ${currentlyOverId}`);
-        }
-    } else {
-        // Not overlapping any platform; clear the dwell progress
-        if (sling) {
-            sling.dwellFrames = 0;
-            sling.potentialPlatformId = null;
+            console.log(`[ATTACH] Immediate Snap to: ${plat.id} (Web: ${isWeb})`);
+            return; // Attached, stop searching
         }
     }
 };

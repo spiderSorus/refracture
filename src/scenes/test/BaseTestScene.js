@@ -13,6 +13,7 @@ import { TargetRenderSystem } from '../../ecs/systems/TargetRenderSystem';
 import { DebugLayerSystem } from '../../ecs/systems/DebugLayerSystem';
 import { WebRenderSystem } from '../../ecs/systems/WebRenderSystem';
 import { WebSystem } from '../../ecs/systems/WebSystem';
+import { BugAISystem } from '../../ecs/systems/BugAISystem';
 import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
 import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
 import { RecordingSystem } from '../../ecs/systems/RecordingSystem'; // Ensure this exists
@@ -65,9 +66,23 @@ export class BaseTestScene extends Phaser.Scene {
             SlingshotSystem(this.entities, this.inputManager);
             WebSystem(this.entities, this.inputManager);
             AbilityTargetingSystem(this.entities, this.inputManager);
+            BugAISystem(this.entities, dtSeconds);
             AttachmentSystem(this.entities);
             MovementSystem(this.entities, this.inputManager, dtSeconds);
             PhysicsSystem(this.entities, PHYSICS.STEP);
+
+            // Cleanup destroyed entities
+            this.entities = this.entities.filter(e => {
+                if (e.toDestroy) {
+                    // Cleanup visual components if they exist
+                    const renderable = e.components.Renderable;
+                    if (renderable && renderable.activeVisuals) {
+                        Object.values(renderable.activeVisuals).forEach(v => v.destroy());
+                    }
+                    return false;
+                }
+                return true;
+            });
 
             this.fixedUpdate(time, PHYSICS.STEP);
             this.accumulator -= PHYSICS.STEP;

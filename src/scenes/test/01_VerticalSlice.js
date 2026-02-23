@@ -8,7 +8,7 @@ import Phaser from 'phaser';
 
 export class VerticalSlice extends BaseTestScene {
     constructor() {
-        super('VerticalSlice', 'Vertical Slice', 'Hard Floor at 0. Climb to -10,000.');
+        super('VerticalSlice', 'Vertical Slice 01', 'Climb to the summit.');
     }
 
     create() {
