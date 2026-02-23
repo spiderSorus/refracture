@@ -35,6 +35,8 @@ export class TestMenuScene extends Phaser.Scene {
     }
 
     update() {
+        this.inputManager.update();
+
         // Navigation
         if (this.inputManager.getAction('UP')) {
             this.selected = (this.selected - 1 + TestScenes.length) % TestScenes.length;

@@ -3,6 +3,7 @@ import { getImmediateGfx } from '../../utils/RenderUtils';
 export const TargetRenderSystem = (entities, scene) => {
     const player = entities.find(e => e.components.PlayerTag);
     const state = player?.components.AbilityState;
+    const currentLevel = player?.components.MeditationState?.currentLevel || 0;
 
     const gfx = getImmediateGfx(scene, 'targetGfx', 1400);
 
@@ -12,6 +13,10 @@ export const TargetRenderSystem = (entities, scene) => {
         const pos = e.components.Position;
         // Check for EntityType OR PlatformTag
         if (!pos || (!e.components.EntityType && !e.components.PlatformTag)) return;
+
+        // REALITY FILTER: Only show target rings for entities on the current level
+        const entLevel = e.components.RealityLevel?.level || 0;
+        if (entLevel !== currentLevel) return;
 
         if (state.potentialTargets.includes(e.id)) {
             const isCurrent = state.currentTargetId === e.id;

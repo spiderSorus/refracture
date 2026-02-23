@@ -3,13 +3,14 @@ import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, AbilityState, EntityType, SlingshotJump,
-    Velocity, BugTag, BugAI, GravityExempt
+    Velocity, BugTag, BugAI, GravityExempt, SpawnTag, RealityLevel
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
 export class ForestSlice extends BaseTestScene {
     constructor() {
         super('ForestSlice', 'Forest Slice', 'The dense canopy.');
+        this.meditationEnabled = false;
     }
 
     create() {
@@ -35,8 +36,31 @@ export class ForestSlice extends BaseTestScene {
         floorGfx.lineStyle(10, 0x228b22, 1);
         floorGfx.lineBetween(0, 5, WORLD_WIDTH, 5);
 
+        // --- 0. SPAWN PLATFORM ---
+        const spawnX = WORLD_WIDTH / 2;
+        const spawnY = -150;
+        this.addEntity([
+            Position(spawnX, spawnY),
+            PlatformTag(),
+            SpawnTag(),
+            RealityLevel([0], [0]),
+            EntityType('PLATFORM'),
+            Renderable({ 'BASE': { type: 'circle', radius: 50, color: 0x228b22 } }),
+            Collider('circle', 50)
+        ]);
+
+        // --- 1. CENTER FLOATER ---
+        this.addEntity([
+            Position(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2),
+            PlatformTag(),
+            RealityLevel([0], [0]),
+            EntityType('PLATFORM'),
+            Renderable({ 'BASE': { type: 'circle', radius: 120, color: 0xff00ff } }),
+            Collider('circle', 120)
+        ]);
+
         // Forest-like procedural generation
-        let lastPos = { x: WORLD_WIDTH / 2, y: -200 };
+        let lastPos = { x: spawnX, y: spawnY };
         const platformCount = 60;
 
         for (let i = 0; i < platformCount; i++) {
@@ -49,11 +73,12 @@ export class ForestSlice extends BaseTestScene {
             nextX = Phaser.Math.Clamp(nextX, 400, WORLD_WIDTH - 400);
 
             const size = Phaser.Math.Between(60, 120);
-            const color = 0x556b2f; // DarkOliveGreen
+            const color = 0x556b2f; 
 
             this.addEntity([
                 Position(nextX, nextY),
                 PlatformTag(),
+                RealityLevel([0], [0]),
                 EntityType('PLATFORM'),
                 Renderable({ 'BASE': { type: 'circle', radius: size, color: color } }),
                 Collider('circle', size)
@@ -69,6 +94,7 @@ export class ForestSlice extends BaseTestScene {
                 Position(bx, by),
                 Velocity(0, 0),
                 BugTag(),
+                RealityLevel([0], [0]),
                 GravityExempt(),
                 BugAI(),
                 Renderable({
@@ -77,13 +103,11 @@ export class ForestSlice extends BaseTestScene {
             ]);
         }
 
-        const spawnX = WORLD_WIDTH / 2;
-        const spawnY = 0;
-
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
             AbilityState(),
-            SlingshotJump(3000)
+            SlingshotJump(3000),
+            RealityLevel([0], [0])
         ]);
 
         this.cameras.main.centerOn(spawnX, spawnY);

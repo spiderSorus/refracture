@@ -11,6 +11,7 @@ export const WebSystem = (entities, inputManager) => {
     const currentParent = player.components.Parent;
     const pPos = player.components.Position;
     const pVel = player.components.Velocity;
+    const currentLevel = player.components.MeditationState?.currentLevel || 0;
 
     const MAX_SPOOL_LENGTH = 1000;
     const MIN_SPOOL_LENGTH = 10;
@@ -18,7 +19,10 @@ export const WebSystem = (entities, inputManager) => {
     // --- 1. WINCH & DANGLE PHYSICS ---
     if (tether) {
         const platform = entities.find(e => e.id === tether.platformId);
-        if (platform && platform.components.Position) {
+        // Interaction Check for Physics
+        const canInteract = platform && (platform.components.RealityLevel ? platform.components.RealityLevel.interact.includes(currentLevel) : currentLevel === 0);
+
+        if (platform && platform.components.Position && canInteract) {
             const anchorX = platform.components.Position.x + tether.anchorOffset.x;
             const anchorY = platform.components.Position.y + tether.anchorOffset.y;
 
@@ -43,6 +47,22 @@ export const WebSystem = (entities, inputManager) => {
                     pVel.y -= outwardVel * ny;
                 }
             }
+
+            // --- NEW: ON-PLATFORM CONSTRAINT ---
+            // If we are WALKING on the platform we are tethered to, 
+            // don't let our offset exceed the tether length.
+            if (currentParent && currentParent.id === tether.platformId) {
+                const dx = currentParent.offset.x - tether.anchorOffset.x;
+                const dy = currentParent.offset.y - tether.anchorOffset.y;
+                const localDist = Math.sqrt(dx * dx + dy * dy);
+
+                if (localDist > tether.maxLength) {
+                    const nx = dx / localDist;
+                    const ny = dy / localDist;
+                    currentParent.offset.x = tether.anchorOffset.x + (nx * tether.maxLength);
+                    currentParent.offset.y = tether.anchorOffset.y + (ny * tether.maxLength);
+                }
+            }
         }
     }
 
@@ -53,6 +73,7 @@ export const WebSystem = (entities, inputManager) => {
     // CREATE TETHER (Y button only)
     if (yJustPressed && !tether && currentParent) {
         const plat = entities.find(e => e.id === currentParent.id);
+        // No extra check needed as currentParent implies we already passed attachment interaction check
         if (plat && plat.components.Position) {
             const snappedOffset = snapOffsetInside(currentParent.offset, plat.components.Collider, 10);
             player.components.WebTether = WebTether(currentParent.id, snappedOffset);
@@ -79,27 +100,33 @@ export const WebSystem = (entities, inputManager) => {
             const platB = entities.find(e => e.id === currentParent.id);
             
             if (platA && platB && platA.components.Position && platB.components.Position) {
-                const snappedOffsetB = snapOffsetInside(currentParent.offset, platB.components.Collider, 10);
+                // Determine if both platforms are currently interactive
+                const canA = platA.components.RealityLevel ? platA.components.RealityLevel.interact.includes(currentLevel) : currentLevel === 0;
+                const canB = platB.components.RealityLevel ? platB.components.RealityLevel.interact.includes(currentLevel) : currentLevel === 0;
 
-                const x1 = platA.components.Position.x + tether.anchorOffset.x;
-                const y1 = platA.components.Position.y + tether.anchorOffset.y;
-                const x2 = platB.components.Position.x + snappedOffsetB.x;
-                const y2 = platB.components.Position.y + snappedOffsetB.y;
-                
-                const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
-                const conn = WebConnection(
-                    tether.platformId, { ...tether.anchorOffset }, 
-                    currentParent.id, snappedOffsetB
-                );
-                
-                conn.fixedLength = dist * 1.15;
-                
-                entities.push({
-                    id: crypto.randomUUID(),
-                    components: { 
-                        WebConnection: conn
-                    }
-                });
+                if (canA && canB) {
+                    const snappedOffsetB = snapOffsetInside(currentParent.offset, platB.components.Collider, 10);
+
+                    const x1 = platA.components.Position.x + tether.anchorOffset.x;
+                    const y1 = platA.components.Position.y + tether.anchorOffset.y;
+                    const x2 = platB.components.Position.x + snappedOffsetB.x;
+                    const y2 = platB.components.Position.y + snappedOffsetB.y;
+                    
+                    const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
+                    const conn = WebConnection(
+                        tether.platformId, { ...tether.anchorOffset }, 
+                        currentParent.id, snappedOffsetB
+                    );
+                    
+                    conn.fixedLength = dist * 1.15;
+                    
+                    entities.push({
+                        id: crypto.randomUUID(),
+                        components: { 
+                            WebConnection: conn
+                        }
+                    });
+                }
             }
         }
         delete player.components.WebTether;

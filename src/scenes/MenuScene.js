@@ -32,6 +32,8 @@ export class MenuScene extends Phaser.Scene {
     }
 
     update() {
+        this.inputManager.update();
+
         if (this.inputManager.getAction('UP')) {
             this.selected = (this.selected - 1 + this.options.length) % this.options.length;
             this.updateSelection();

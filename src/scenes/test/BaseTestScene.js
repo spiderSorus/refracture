@@ -14,9 +14,10 @@ import { DebugLayerSystem } from '../../ecs/systems/DebugLayerSystem';
 import { WebRenderSystem } from '../../ecs/systems/WebRenderSystem';
 import { WebSystem } from '../../ecs/systems/WebSystem';
 import { BugAISystem } from '../../ecs/systems/BugAISystem';
+import { MeditationSystem } from '../../ecs/systems/MeditationSystem';
 import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
 import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
-import { RecordingSystem } from '../../ecs/systems/RecordingSystem'; // Ensure this exists
+import { RecordingSystem } from '../../ecs/systems/RecordingSystem'; 
 
 export class BaseTestScene extends Phaser.Scene {
     constructor(key, title, subtitle) {
@@ -24,6 +25,10 @@ export class BaseTestScene extends Phaser.Scene {
         this.testTitle = title || "Slingshot Lab";
         this.testSubtitle = subtitle || "State & Render Sync Debug";
         this.accumulator = 0;
+        this.initialized = false;
+        
+        // MEDITATION CONFIG
+        this.meditationEnabled = false; 
     }
 
     create() {
@@ -46,10 +51,42 @@ export class BaseTestScene extends Phaser.Scene {
         this.input.keyboard.off('keydown-TAB');
         this.input.keyboard.off('keydown-ESC');
         this.accumulator = 0;
+        this.initialized = false;
     }
 
     update(time, delta) {
         if (!this.sys.isActive()) return;
+
+        // ON FIRST FRAME: VALIDATE & ENFORCE MEDITATION RULES
+        if (!this.initialized) {
+            const spawnPoint = this.entities.find(e => e.components.SpawnTag);
+            if (!spawnPoint) {
+                console.error("no spawnpoint detected:");
+                this.scene.start('TestMenuScene');
+                return;
+            }
+
+            // Enforce Spawnpoint rules: always level 0
+            if (spawnPoint.components.RealityLevel) {
+                spawnPoint.components.RealityLevel.visible = [0];
+                spawnPoint.components.RealityLevel.interact = [0];
+            }
+
+            // If meditation is disabled, snap EVERYTHING to level 0
+            if (!this.meditationEnabled) {
+                this.entities.forEach(e => {
+                    if (e.components.RealityLevel) {
+                        e.components.RealityLevel.visible = [0];
+                        // Interact stays as-is but player will be locked to 0
+                    }
+                    if (e.components.MeditationState) {
+                        e.components.MeditationState.currentLevel = 0;
+                    }
+                });
+            }
+
+            this.initialized = true;
+        }
 
         // 1. Refresh Input Manager Polling
         this.inputManager.update();
@@ -66,6 +103,12 @@ export class BaseTestScene extends Phaser.Scene {
             SlingshotSystem(this.entities, this.inputManager);
             WebSystem(this.entities, this.inputManager);
             AbilityTargetingSystem(this.entities, this.inputManager);
+            
+            // Only load MeditationSystem if enabled
+            if (this.meditationEnabled) {
+                MeditationSystem(this.entities, this.inputManager, dtSeconds);
+            }
+
             BugAISystem(this.entities, dtSeconds);
             AttachmentSystem(this.entities);
             MovementSystem(this.entities, this.inputManager, dtSeconds);
@@ -74,7 +117,6 @@ export class BaseTestScene extends Phaser.Scene {
             // Cleanup destroyed entities
             this.entities = this.entities.filter(e => {
                 if (e.toDestroy) {
-                    // Cleanup visual components if they exist
                     const renderable = e.components.Renderable;
                     if (renderable && renderable.activeVisuals) {
                         Object.values(renderable.activeVisuals).forEach(v => v.destroy());
@@ -105,12 +147,14 @@ export class BaseTestScene extends Phaser.Scene {
         const player = this.entities.find(e => e.components.PlayerTag);
         if (player) {
             const sling = player.components.SlingshotJump || {};
+            const meditation = player.components.MeditationState || {};
             const rawStick = this.inputManager.getRightStickRaw();
 
             UI.updateDebug({
                 x: Math.round(player.components.Position.x),
                 y: Math.round(player.components.Position.y)
             }, {
+                reality: meditation.currentLevel || 0,
                 status: player.components.Parent ? "ATTACHED" : "FREE",
                 sling: {
                     isCharging: sling.isCharging,

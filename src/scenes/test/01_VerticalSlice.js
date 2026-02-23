@@ -1,14 +1,16 @@
-// src/scenes/test/10_VerticalSlice.js
+// src/scenes/test/01_VerticalSlice.js
 import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
-    Position, Renderable, Collider, PlatformTag, AbilityState, EntityType, SlingshotJump
+    Position, Renderable, Collider, PlatformTag, AbilityState, EntityType, SlingshotJump,
+    SpawnTag, RealityLevel
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
 export class VerticalSlice extends BaseTestScene {
     constructor() {
         super('VerticalSlice', 'Vertical Slice 01', 'Climb to the summit.');
+        this.meditationEnabled = false;
     }
 
     create() {
@@ -17,7 +19,6 @@ export class VerticalSlice extends BaseTestScene {
         const WORLD_WIDTH = 3000;
         const WORLD_HEIGHT = 10000;
 
-        // Set bounds so 0 is the floor and height is negative
         this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setZoom(0.6);
 
@@ -28,22 +29,42 @@ export class VerticalSlice extends BaseTestScene {
             gfx.generateTexture('bg_grid', 100, 100);
         }
 
-        // Tile background covers the negative space
         const bg = this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid');
         bg.setDepth(0);
 
-        // Visual Floor (Just for the player's eyes)
         const floorGfx = this.add.graphics();
         floorGfx.lineStyle(10, 0x00ff00, 1);
         floorGfx.lineBetween(0, 5, WORLD_WIDTH, 5);
 
+        // --- 0. SPAWN PLATFORM ---
+        const spawnX = WORLD_WIDTH / 2;
+        const spawnY = -150;
+        this.addEntity([
+            Position(spawnX, spawnY),
+            PlatformTag(),
+            SpawnTag(),
+            RealityLevel([0], [0]),
+            EntityType('PLATFORM'),
+            Renderable({ 'BASE': { type: 'rect', width: 100, height: 20, color: 0x00ff00 } }),
+            Collider('rect', 0, 100, 20)
+        ]);
+
+        // --- 1. CENTER FLOATER ---
+        this.addEntity([
+            Position(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2),
+            PlatformTag(),
+            RealityLevel([0], [0]),
+            EntityType('PLATFORM'),
+            Renderable({ 'BASE': { type: 'circle', radius: 120, color: 0xff00ff } }),
+            Collider('circle', 120)
+        ]);
+
         // Procedural Platforms
-        let lastPos = { x: WORLD_WIDTH / 2, y: -200 };
+        let lastPos = { x: spawnX, y: spawnY };
         const platformCount = 75;
         const jumpDistance = 850;
 
         for (let i = 0; i < platformCount; i++) {
-            // Random upward angle (Phaser negative Y is UP)
             const angle = Phaser.Math.FloatBetween(Math.PI, Math.PI * 2);
             const dist = Phaser.Math.Between(450, jumpDistance);
 
@@ -59,6 +80,7 @@ export class VerticalSlice extends BaseTestScene {
             const components = [
                 Position(nextX, nextY),
                 PlatformTag(),
+                RealityLevel([0], [0]),
                 EntityType('PLATFORM')
             ];
 
@@ -76,14 +98,11 @@ export class VerticalSlice extends BaseTestScene {
             lastPos = { x: nextX, y: nextY };
         }
 
-        // Spawn Player directly on the hard floor
-        const spawnX = WORLD_WIDTH / 2;
-        const spawnY = 0;
-
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
             AbilityState(),
-            SlingshotJump(3000)
+            SlingshotJump(3000),
+            RealityLevel([0], [0])
         ]);
 
         this.cameras.main.centerOn(spawnX, spawnY);

@@ -7,6 +7,9 @@ export const SlingshotRenderSystem = (entities, scene) => {
     const player = entities.find(e => e.components.PlayerTag && e.components.SlingshotJump);
     if (!player) return;
 
+    // REALITY FILTER: Player only sees their own slingshot if they are visible
+    // (Player is always visible to self in LayeredRenderSystem, so we show this too)
+
     const sling = player.components.SlingshotJump;
     const pos = player.components.Position;
 

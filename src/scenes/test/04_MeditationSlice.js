@@ -1,0 +1,123 @@
+// src/scenes/test/04_MeditationSlice.js
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import {
+    Position, Renderable, Collider, PlatformTag, AbilityState, EntityType, SlingshotJump,
+    Velocity, BugTag, BugAI, GravityExempt, Mass, RealityLevel, MeditationState,
+    SpawnTag
+} from '../../ecs/components/index';
+import Phaser from 'phaser';
+
+export class MeditationSlice extends BaseTestScene {
+    constructor() {
+        super('MeditationSlice', 'Meditation Slice', 'Reality Levels 0-64. R2 Up, L2 Down.');
+        this.meditationEnabled = true;
+    }
+
+    create() {
+        super.create();
+
+        const WORLD_WIDTH = 4000;
+        const WORLD_HEIGHT = 8000;
+        
+        this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
+        this.cameras.main.setZoom(0.5);
+
+        if (!this.textures.exists('bg_grid')) {
+            const gfx = this.make.graphics({ x: 0, y: 0, add: false });
+            gfx.lineStyle(2, 0x1a1a1a, 1);
+            gfx.strokeRect(0, 0, 100, 100);
+            gfx.generateTexture('bg_grid', 100, 100);
+        }
+
+        const bg = this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid');
+        bg.setDepth(0);
+
+        const floorGfx = this.add.graphics();
+        floorGfx.lineStyle(10, 0x00ff00, 1);
+        floorGfx.lineBetween(0, 5, WORLD_WIDTH, 5);
+
+        // --- 0. SPAWN PLATFORM ---
+        const spawnX = WORLD_WIDTH / 2;
+        const spawnY = -150;
+        this.addEntity([
+            Position(spawnX, spawnY),
+            PlatformTag(),
+            SpawnTag(),
+            RealityLevel([0], [0]),
+            EntityType('PLATFORM'),
+            Mass(10),
+            Renderable({ 'BASE': { type: 'circle', radius: 50, color: 0x00ff00 } }),
+            Collider('circle', 50)
+        ]);
+
+        // --- 1. CENTER FLOATER ---
+        this.addEntity([
+            Position(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2),
+            PlatformTag(),
+            GravityExempt(),
+            RealityLevel([0], [0]),
+            Mass(5),
+            EntityType('PLATFORM'),
+            Renderable({ 'BASE': { type: 'circle', radius: 120, color: 0xff00ff } }),
+            Collider('circle', 120)
+        ]);
+
+        // --- 2. SPAWN FLOATERS ---
+        const platformCount = 100;
+        const margin = 200;
+        for (let i = 0; i < platformCount; i++) {
+            const fx = Phaser.Math.Between(margin, WORLD_WIDTH - margin);
+            const fy = Phaser.Math.Between(-WORLD_HEIGHT + margin, -200);
+            
+            const size = Phaser.Math.Between(80, 220);
+            const level = i % 65; 
+            
+            const visibleLayers = [level];
+            const interactLayers = [level, Math.max(0, level - 1)];
+
+            const color = Phaser.Display.Color.HSLToColor(level / 65, 0.7, 0.5).color;
+
+            this.addEntity([
+                Position(fx, fy),
+                Velocity(Phaser.Math.Between(-50, 50), Phaser.Math.Between(-50, 50)),
+                PlatformTag(),
+                GravityExempt(),
+                RealityLevel(visibleLayers, interactLayers),
+                Mass(size / 40),
+                EntityType('PLATFORM'),
+                Renderable({ 'BASE': { type: 'circle', radius: size, color: color } }),
+                Collider('circle', size)
+            ]);
+        }
+
+        // --- 3. SPAWN BUGS ---
+        for (let level = 0; level <= 64; level++) {
+            for (let j = 0; j < 3; j++) {
+                const bx = Phaser.Math.Between(0, WORLD_WIDTH);
+                const by = Phaser.Math.Between(-WORLD_HEIGHT, -100);
+                this.addEntity([
+                    Position(bx, by),
+                    Velocity(0, 0),
+                    BugTag(),
+                    RealityLevel([level], [level]),
+                    GravityExempt(),
+                    BugAI(),
+                    Renderable({
+                        'BASE': { type: 'circle', radius: 6, color: 0xffff00 }
+                    })
+                ]);
+            }
+        }
+
+        this.addEntity([
+            ...createPlayer(spawnX, spawnY),
+            AbilityState(),
+            SlingshotJump(3500),
+            MeditationState(),
+            RealityLevel([0], [0])
+        ]);
+
+        this.cameras.main.centerOn(spawnX, spawnY);
+    }
+}

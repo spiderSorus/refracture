@@ -6,23 +6,33 @@ export const WebRenderSystem = (entities, scene) => {
     const cam = scene.cameras.main;
     const thickness = 2 / cam.zoom;
 
+    const player = entities.find(e => e.components.PlayerTag);
+    const currentLevel = player?.components.MeditationState?.currentLevel || 0;
+
     // --- PART 1: COMPLETED SLACK WEBS ---
     entities.forEach(e => {
         const conn = e.components.WebConnection;
         if (conn) {
-            const fromEnt = entities.find(ent => ent.id === conn.fromId);
-            const toEnt = entities.find(ent => ent.id === conn.toId);
+            const entA = entities.find(ent => ent.id === conn.fromId);
+            const entB = entities.find(ent => ent.id === conn.toId);
 
-            if (fromEnt && toEnt && fromEnt.components.Position && toEnt.components.Position) {
-                const x1 = fromEnt.components.Position.x + conn.fromOffset.x;
-                const y1 = fromEnt.components.Position.y + conn.fromOffset.y;
-                const x2 = toEnt.components.Position.x + conn.toOffset.x;
-                const y2 = toEnt.components.Position.y + conn.toOffset.y;
+            if (entA && entB && entA.components.Position && entB.components.Position) {
+                // REALITY FILTER: Only show if both platforms are VISIBLE on current level
+                const visA = entA.components.RealityLevel ? entA.components.RealityLevel.visible.includes(currentLevel) : (currentLevel === 0);
+                const visB = entB.components.RealityLevel ? entB.components.RealityLevel.visible.includes(currentLevel) : (currentLevel === 0);
+                
+                if (!visA || !visB) return;
+
+                const x1 = entA.components.Position.x + conn.fromOffset.x;
+                const y1 = entA.components.Position.y + conn.fromOffset.y;
+                const x2 = entB.components.Position.x + conn.toOffset.x;
+                const y2 = entB.components.Position.y + conn.toOffset.y;
 
                 const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
                 const ropeLength = conn.fixedLength || dist;
 
-                gfx.lineStyle(thickness, 0xaaaaaa, 0.8);
+                // FORCE WHITE FOR ALL WEBS
+                gfx.lineStyle(thickness, 0xffffff, 0.8);
                 gfx.beginPath();
                 gfx.moveTo(x1, y1);
 
@@ -41,8 +51,8 @@ export const WebRenderSystem = (entities, scene) => {
                 }
                 gfx.strokePath();
 
-                // Draw end bolts
-                gfx.fillStyle(0xaaaaaa, 1);
+                // Draw end bolts (also white)
+                gfx.fillStyle(0xffffff, 1);
                 gfx.fillCircle(x1, y1, 2 / cam.zoom);
                 gfx.fillCircle(x2, y2, 2 / cam.zoom);
             }
@@ -50,7 +60,6 @@ export const WebRenderSystem = (entities, scene) => {
     });
 
     // --- PART 2: ACTIVE WHITE TETHER ---
-    const player = entities.find(e => e.components.PlayerTag);
     if (!player) return;
     const tether = player.components.WebTether;
     const pPos = player.components.Position;
@@ -58,6 +67,10 @@ export const WebRenderSystem = (entities, scene) => {
     if (tether && pPos) {
         const platform = entities.find(e => e.id === tether.platformId);
         if (platform && platform.components.Position) {
+            // REALITY FILTER: Only show if platform is VISIBLE on current level
+            const visPlat = platform.components.RealityLevel ? platform.components.RealityLevel.visible.includes(currentLevel) : (currentLevel === 0);
+            if (!visPlat) return;
+
             const ax = platform.components.Position.x + tether.anchorOffset.x;
             const ay = platform.components.Position.y + tether.anchorOffset.y;
             const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, ax, ay);

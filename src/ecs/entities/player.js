@@ -13,13 +13,19 @@ export const createPlayer = (x, y) => [
             type: 'spider',
             color: 0x222222,
             size: 1.0
+        },
+        'GLOW': {
+            type: 'fairy_glow',
+            color: 0xffffff,
+            scale: 2.0,
+            depth: -1
         }
     }),
     PlayerTag(),
     Mass(1.5),
     InputControlled(),
     CameraTarget(),
-    ViewLayers(['BASE'])
+    ViewLayers(['BASE', 'GLOW'])
 ];
 
 export const findPlayer = (entities) => entities.find(e => e.components.PlayerTag);

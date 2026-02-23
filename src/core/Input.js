@@ -24,11 +24,11 @@ export class InputManager {
         this.prevPadState = {};
 
         this.scene.input.gamepad.on('connected', (pad) => {
+            console.log(`Gamepad connected: ${pad.id}`);
             this.pad = pad;
         });
     }
 
-    // CRITICAL: Call this at the start of your Scene's update()
     update() {
         if (this.scene.input.gamepad.total > 0) {
             this.pad = this.scene.input.gamepad.getPad(0);
@@ -49,6 +49,29 @@ export class InputManager {
             if (this.pad && (this.pad.R1 || this.pad.buttons[5].pressed)) return true;
         }
 
+        // --- MEDITATION TRIGGERS ---
+        if (action === 'ELEVATE') {
+            // Check Keyboard (E)
+            if (this.keys.lengthen.isDown) return true;
+            // Check Gamepad R2 (Button 7)
+            if (this.pad) {
+                const btn = this.pad.buttons[7];
+                if (btn && (btn.pressed || btn.value > 0.1)) return true;
+                // Some pads map R2 differently
+                if (this.pad.R2 > 0.1) return true;
+            }
+        }
+        if (action === 'DECLINE') {
+            // Check Keyboard (Q)
+            if (this.keys.shorten.isDown) return true;
+            // Check Gamepad L2 (Button 6)
+            if (this.pad) {
+                const btn = this.pad.buttons[6];
+                if (btn && (btn.pressed || btn.value > 0.1)) return true;
+                if (this.pad.L2 > 0.1) return true;
+            }
+        }
+
         if (this.pad) {
             if (action === 'X' && (this.pad.X || this.pad.buttons[2].pressed)) return true;
             if (action === 'Y' && (this.pad.Y || this.pad.buttons[3].pressed)) return true;
@@ -65,8 +88,8 @@ export class InputManager {
         if (action === 'LEFT') return justDown(this.cursors.left) || justDown(this.keys.a) || this.isButtonPressed('left');
         if (action === 'RIGHT') return justDown(this.cursors.right) || justDown(this.keys.d) || this.isButtonPressed('right');
         
-        if (action === 'SELECT') return justDown(this.keys.enter) || this.isButtonPressed('A');
-        if (action === 'BACK') return justDown(this.keys.esc) || this.isButtonPressed('B');
+        if (action === 'SELECT') return justDown(this.keys.enter) || justDown(this.keys.x) || this.isButtonPressed('A') || this.isButtonPressed('X');
+        if (action === 'BACK') return justDown(this.keys.esc) || justDown(this.keys.b) || this.isButtonPressed('B');
 
         if (action === 'NEXT_TARGET') return justDown(this.keys.lengthen) || this.isButtonPressed('R1');
         if (action === 'PREV_TARGET') return justDown(this.keys.shorten) || this.isButtonPressed('L1');

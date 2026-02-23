@@ -7,7 +7,6 @@ export const PhysicsSystem = (entities, delta, scene) => {
     const FLOOR_Y = 0;
     const GRAVITY = PHYSICS.GRAVITY || 980;
 
-    // Use camera bounds if scene is provided, else fallback to very large defaults
     const bounds = scene?.cameras.main.getBounds() || { x: -5000, y: -10000, width: 10000, height: 10000 };
     const minX = bounds.x;
     const maxX = bounds.x + bounds.width;
@@ -40,15 +39,11 @@ export const PhysicsSystem = (entities, delta, scene) => {
                     const force = overlap * tether.stiffness * 500;
                     tether.tension = force;
 
+                    // Apply force to player ONLY (Effective Mass 0 for the Platform)
                     pVel.x += (nx * force / pMass) * dt;
                     pVel.y += (ny * force / pMass) * dt;
 
-                    const platVel = platform.components.Velocity;
-                    const platMass = platform.components.Mass?.value || 10;
-                    if (platVel) {
-                        platVel.x -= (nx * force / platMass) * dt;
-                        platVel.y -= (ny * force / platMass) * dt;
-                    }
+                    // NO reciprocal force to platform from tether
                 } else {
                     tether.tension = 0;
                 }
@@ -56,6 +51,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
         }
 
         // --- B. Static Connections (Platform A -> Platform B) ---
+        // These REMAIN interactive as they are platform-to-platform
         const conn = entity.components.WebConnection;
         if (conn) {
             const entA = entities.find(e => e.id === conn.fromId);
@@ -119,7 +115,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
             pos.x += vel.x * dt;
             pos.y += vel.y * dt;
 
-            // Player Floor Collision (Logical 0)
+            // Player Floor Collision
             if (entity.components.PlayerTag && pos.y >= FLOOR_Y) {
                 pos.y = FLOOR_Y;
                 if (vel.y > 0) vel.y = 0;
@@ -165,6 +161,11 @@ export const PhysicsSystem = (entities, delta, scene) => {
             const posB = B.components.Position;
             const colA = A.components.Collider;
             const colB = B.components.Collider;
+
+            const levelA = A.components.RealityLevel?.interact || [0];
+            const levelB = B.components.RealityLevel?.interact || [0];
+            const canInteract = levelA.some(lvl => levelB.includes(lvl));
+            if (!canInteract) continue;
 
             const dist = Phaser.Math.Distance.Between(posA.x, posA.y, posB.x, posB.y);
             const radiusA = colA.type === 'circle' ? colA.radius : Math.max(colA.width, colA.height) / 2;
