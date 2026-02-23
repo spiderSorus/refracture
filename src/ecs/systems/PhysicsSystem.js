@@ -6,12 +6,26 @@ export const PhysicsSystem = (entities, delta, scene) => {
     const dt = delta / 1000;
     const FLOOR_Y = 0;
     const GRAVITY = PHYSICS.GRAVITY || 980;
+    
+    // Independent gravity for floaters if specified by the scene
+    const FLOATER_GRAVITY = scene?.floaterGravity !== undefined ? scene.floaterGravity : 0;
 
     const bounds = scene?.cameras.main.getBounds() || { x: -5000, y: -10000, width: 10000, height: 10000 };
     const minX = bounds.x;
     const maxX = bounds.x + bounds.width;
     const minY = bounds.y;
     const maxY = bounds.y + bounds.height;
+
+    // --- 0. TRACK PLATFORMS CONNECTED TO EACH OTHER ---
+    const connectedPlatformIds = new Set();
+    entities.forEach(e => {
+        const conn = e.components.WebConnection;
+        if (conn) {
+            connectedPlatformIds.add(conn.fromId);
+            connectedPlatformIds.add(conn.toId);
+        }
+        // NOTE: WebTether (Player->Platform) intentionally EXCLUDED here
+    });
 
     // 1. RESOLVE WEB TENSION FORCES
     entities.forEach(entity => {
@@ -35,15 +49,20 @@ export const PhysicsSystem = (entities, delta, scene) => {
                     const overlap = dist - tether.maxLength;
                     const nx = dx / dist;
                     const ny = dy / dist;
-                    
                     const force = overlap * tether.stiffness * 500;
                     tether.tension = force;
 
-                    // Apply force to player ONLY (Effective Mass 0 for the Platform)
+                    // Pull Player
                     pVel.x += (nx * force / pMass) * dt;
                     pVel.y += (ny * force / pMass) * dt;
 
-                    // NO reciprocal force to platform from tether
+                    // Pull Platform ONLY if it is dynamic (connected to another platform)
+                    const platVel = platform.components.Velocity;
+                    if (platVel && !platform.components.SpawnTag && connectedPlatformIds.has(platform.id)) {
+                        const platMass = platform.components.Mass?.value || 10;
+                        platVel.x -= (nx * force / platMass) * dt;
+                        platVel.y -= (ny * force / platMass) * dt;
+                    }
                 } else {
                     tether.tension = 0;
                 }
@@ -51,7 +70,6 @@ export const PhysicsSystem = (entities, delta, scene) => {
         }
 
         // --- B. Static Connections (Platform A -> Platform B) ---
-        // These REMAIN interactive as they are platform-to-platform
         const conn = entity.components.WebConnection;
         if (conn) {
             const entA = entities.find(e => e.id === conn.fromId);
@@ -77,11 +95,12 @@ export const PhysicsSystem = (entities, delta, scene) => {
                     const massA = entA.components.Mass?.value || 10;
                     const massB = entB.components.Mass?.value || 10;
 
-                    if (entA.components.Velocity) {
+                    // Connections ALWAYS apply force to both ends because they ARE the trigger for being dynamic
+                    if (entA.components.Velocity && !entA.components.SpawnTag) {
                         entA.components.Velocity.x += (nx * force / massA) * dt;
                         entA.components.Velocity.y += (ny * force / massA) * dt;
                     }
-                    if (entB.components.Velocity) {
+                    if (entB.components.Velocity && !entB.components.SpawnTag) {
                         entB.components.Velocity.x -= (nx * force / massB) * dt;
                         entB.components.Velocity.y -= (ny * force / massB) * dt;
                     }
@@ -108,26 +127,49 @@ export const PhysicsSystem = (entities, delta, scene) => {
         }
 
         if (vel) {
-            if (!entity.components.GravityExempt) {
+            const isPlayer = !!entity.components.PlayerTag;
+            const isPlatform = !!entity.components.PlatformTag;
+            const isSpawn = !!entity.components.SpawnTag;
+            const isDynamic = connectedPlatformIds.has(entity.id);
+
+            // GRAVITY RULES
+            if (isPlayer) {
+                vel.y += GRAVITY * dt;
+            } else if (isPlatform && !isSpawn) {
+                if (isDynamic) {
+                    vel.y += FLOATER_GRAVITY * dt;
+                } else {
+                    // Force Static
+                    vel.x = 0;
+                    vel.y = 0;
+                }
+            } else if (!entity.components.GravityExempt) {
                 vel.y += GRAVITY * dt;
             }
 
             pos.x += vel.x * dt;
             pos.y += vel.y * dt;
 
-            // Player Floor Collision
-            if (entity.components.PlayerTag && pos.y >= FLOOR_Y) {
-                pos.y = FLOOR_Y;
-                if (vel.y > 0) vel.y = 0;
-                const sling = entity.components.SlingshotJump;
-                if (sling) {
-                    sling.canJump = true;
-                    sling.lastPlatformId = null;
+            // Player Floor Respawn
+            if (isPlayer && pos.y >= FLOOR_Y) {
+                const spawnPoint = entities.find(e => e.components.SpawnTag);
+                if (spawnPoint && spawnPoint.components.Position) {
+                    pos.x = spawnPoint.components.Position.x;
+                    pos.y = spawnPoint.components.Position.y;
+                    if (vel) { vel.x = 0; vel.y = 0; }
+                    delete entity.components.Parent;
+                    delete entity.components.WebTether;
+                    const sling = entity.components.SlingshotJump;
+                    if (sling) {
+                        sling.canJump = true;
+                        sling.lastPlatformId = null;
+                        sling.isCharging = false;
+                    }
                 }
             }
 
-            // Floater World Boundary Bouncing
-            if (entity.components.PlatformTag && entity.components.Collider) {
+            // Platform World Boundary Bouncing
+            if (isPlatform && entity.components.Collider) {
                 const col = entity.components.Collider;
                 const radius = col.type === 'circle' ? col.radius : Math.max(col.width, col.height) / 2;
                 const damping = 0.8;
@@ -177,10 +219,21 @@ export const PhysicsSystem = (entities, delta, scene) => {
                 const nx = (posB.x - posA.x) / dist;
                 const ny = (posB.y - posA.y) / dist;
 
-                posA.x -= nx * overlap * 0.5;
-                posA.y -= ny * overlap * 0.5;
-                posB.x += nx * overlap * 0.5;
-                posB.y += ny * overlap * 0.5;
+                const canMoveA = !A.components.SpawnTag && connectedPlatformIds.has(A.id);
+                const canMoveB = !B.components.SpawnTag && connectedPlatformIds.has(B.id);
+
+                if (canMoveA && canMoveB) {
+                    posA.x -= nx * overlap * 0.5;
+                    posA.y -= ny * overlap * 0.5;
+                    posB.x += nx * overlap * 0.5;
+                    posB.y += ny * overlap * 0.5;
+                } else if (canMoveA) {
+                    posA.x -= nx * overlap;
+                    posA.y -= ny * overlap;
+                } else if (canMoveB) {
+                    posB.x += nx * overlap;
+                    posB.y += ny * overlap;
+                }
 
                 const velA = A.components.Velocity;
                 const velB = B.components.Velocity;
@@ -199,10 +252,14 @@ export const PhysicsSystem = (entities, delta, scene) => {
                         const impulseX = j * nx;
                         const impulseY = j * ny;
 
-                        velA.x -= 1 / massA * impulseX;
-                        velA.y -= 1 / massA * impulseY;
-                        velB.x += 1 / massB * impulseX;
-                        velB.y += 1 / massB * impulseY;
+                        if (canMoveA) {
+                            velA.x -= 1 / massA * impulseX;
+                            velA.y -= 1 / massA * impulseY;
+                        }
+                        if (canMoveB) {
+                            velB.x += 1 / massB * impulseX;
+                            velB.y += 1 / massB * impulseY;
+                        }
                     }
                 }
             }

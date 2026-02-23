@@ -3,7 +3,7 @@ import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, AbilityState, EntityType, SlingshotJump,
-    SpawnTag, RealityLevel, MeditationState, Mass
+    SpawnTag, RealityLevel, MeditationState, Mass, Velocity
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -11,6 +11,7 @@ export class EnergySystems0 extends BaseTestScene {
     constructor() {
         super('EnergySystems0', 'Energy Systems 0', 'Basic Energy Transfer Test.');
         this.meditationEnabled = false;
+        this.floaterGravity = 980; // Gravity kicks in when connected
     }
 
     create() {
@@ -56,6 +57,7 @@ export class EnergySystems0 extends BaseTestScene {
         // 2. LEFT PLATFORM (Top Left Vertex)
         this.addEntity([
             Position(centerX - (sideLen / 2), centerY - (height / 2)),
+            Velocity(0, 0),
             PlatformTag(),
             RealityLevel([0], [0]),
             EntityType('PLATFORM'),
@@ -67,6 +69,7 @@ export class EnergySystems0 extends BaseTestScene {
         // 3. RIGHT PLATFORM (Top Right Vertex)
         this.addEntity([
             Position(centerX + (sideLen / 2), centerY - (height / 2)),
+            Velocity(0, 0),
             PlatformTag(),
             RealityLevel([0], [0]),
             EntityType('PLATFORM'),
