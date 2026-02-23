@@ -20,11 +20,10 @@ export const RecordingSystem = (scene, inputManager) => {
         scene.recIndicator.setPosition(10 * uiScale, 40 * uiScale);
     }
 
-    // 2. Robust Input Check: Action (D-Pad) OR Keyboard Down Arrow
-    const dpadAction = inputManager.getAction('DOWN');
-    const keyboardDown = inputManager.cursors?.down && Phaser.Input.Keyboard.JustDown(inputManager.cursors.down);
+    // 2. Change Trigger to BACK (B / ESC) to avoid conflict with stick movement
+    const triggerPressed = inputManager.getAction('BACK');
 
-    if (dpadAction || keyboardDown) {
+    if (triggerPressed) {
         if (!isRecording) {
             // --- START RECORDING ---
             const canvas = scene.game.canvas;

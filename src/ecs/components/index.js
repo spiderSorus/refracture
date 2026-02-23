@@ -30,6 +30,7 @@ export const Collider = (type = 'circle', radius = 50, width = 100, height = 100
     type, radius, width, height
 });
 export const PlatformTag = () => ({ _type: 'PlatformTag' });
+export const Mass = (value = 1) => ({ _type: 'Mass', value });
 
 export const ConnectionPoint = (x = 0, y = 0) => ({
     _type: 'ConnectionPoint',
@@ -43,19 +44,25 @@ export const WebTether = (platformId, anchorOffset = { x: 0, y: 0 }) => ({
     _type: 'WebTether',
     platformId,
     anchorOffset,
-    maxLength: 1000, // Hard limit as requested
-    currentLength: 50, // Calculated dynamically
-    stiffness: 0.015, // Tension strength
-    damping: 0.095   // Prevents infinite bouncing
+    maxLength: 1000,
+    currentLength: 50,
+    stiffness: 0.05, // Increased for snappier tension
+    damping: 0.05,
+    maxForce: 5000,  // Breaking point
+    tension: 0
 });
 
 // Static connection (Platform A -> Platform B)
 export const WebConnection = (fromId, fromOffset, toId, toOffset) => ({
     _type: 'WebConnection',
     fromId,
-    fromOffset, // {x, y}
+    fromOffset,
     toId,
-    toOffset    // {x, y}
+    toOffset,
+    fixedLength: 100,
+    stiffness: 0.05,
+    maxForce: 8000, // Stronger than tethers
+    tension: 0
 });
 
 export const EnergySource = (strength = 100, type = 'EMIT') => ({
@@ -65,7 +72,6 @@ export const EnergySource = (strength = 100, type = 'EMIT') => ({
 });
 
 export const BugTag = () => ({ _type: 'BugTag' });
-export const WebTag = () => ({ _type: 'WebTag' });
 export const GravityExempt = () => ({ _type: 'GravityExempt' });
 export const BugAI = () => ({
     _type: 'BugAI',

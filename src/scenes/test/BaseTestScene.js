@@ -69,7 +69,7 @@ export class BaseTestScene extends Phaser.Scene {
             BugAISystem(this.entities, dtSeconds);
             AttachmentSystem(this.entities);
             MovementSystem(this.entities, this.inputManager, dtSeconds);
-            PhysicsSystem(this.entities, PHYSICS.STEP);
+            PhysicsSystem(this.entities, PHYSICS.STEP, this);
 
             // Cleanup destroyed entities
             this.entities = this.entities.filter(e => {

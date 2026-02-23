@@ -16,7 +16,7 @@ export const pointToSegmentDist = (px, py, x1, y1, x2, y2) => {
  * Checks if a point is inside a collider.
  * @param {Object} point - {x, y}
  * @param {Object} colliderPos - {x, y}
- * @param {Object} collider - {type, radius, width, height, webData}
+ * @param {Object} collider - {type, radius, width, height}
  * @param {number} buffer - Extra padding
  */
 export const isPointInside = (point, colliderPos, collider, buffer = 0) => {
@@ -32,11 +32,6 @@ export const isPointInside = (point, colliderPos, collider, buffer = 0) => {
             point.x >= colliderPos.x - hw && point.x <= colliderPos.x + hw &&
             point.y >= colliderPos.y - hh && point.y <= colliderPos.y + hh
         );
-    }
-    else if (collider.type === 'web' && collider.webData) {
-        // Special case for webs
-        const { x1, y1, x2, y2 } = collider.webData;
-        return pointToSegmentDist(point.x, point.y, x1, y1, x2, y2) <= (10 + buffer);
     }
     return false;
 };

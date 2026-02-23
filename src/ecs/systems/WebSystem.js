@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
-import { WebTether, WebConnection, WebTag, PlatformTag, Collider } from '../components/index';
+import { WebTether, WebConnection } from '../components/index';
 import { findPlayer } from '../entities/player';
 import { snapOffsetInside } from '../../utils/CollisionUtils';
-import { getAnchorWorldPos } from '../../utils/WebUtils';
 
 export const WebSystem = (entities, inputManager) => {
     const player = findPlayer(entities);
@@ -18,9 +17,12 @@ export const WebSystem = (entities, inputManager) => {
 
     // --- 1. WINCH & DANGLE PHYSICS ---
     if (tether) {
-        const anchor = getAnchorWorldPos(entities, tether.platformId, tether.anchorOffset);
-        if (anchor) {
-            const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, anchor.x, anchor.y);
+        const platform = entities.find(e => e.id === tether.platformId);
+        if (platform && platform.components.Position) {
+            const anchorX = platform.components.Position.x + tether.anchorOffset.x;
+            const anchorY = platform.components.Position.y + tether.anchorOffset.y;
+
+            const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, anchorX, anchorY);
             tether.currentLength = dist;
 
             const lb = inputManager.isButtonDown('SHORTEN');
@@ -31,10 +33,10 @@ export const WebSystem = (entities, inputManager) => {
             if (rb) tether.maxLength = Math.min(MAX_SPOOL_LENGTH, tether.maxLength + winchSpeed);
 
             if (!currentParent && pVel && dist > tether.maxLength) {
-                const nx = (pPos.x - anchor.x) / dist;
-                const ny = (pPos.y - anchor.y) / dist;
-                pPos.x = anchor.x + (nx * tether.maxLength);
-                pPos.y = anchor.y + (ny * tether.maxLength);
+                const nx = (pPos.x - anchorX) / dist;
+                const ny = (pPos.y - anchorY) / dist;
+                pPos.x = anchorX + (nx * tether.maxLength);
+                pPos.y = anchorY + (ny * tether.maxLength);
                 const outwardVel = (pVel.x * nx) + (pVel.y * ny);
                 if (outwardVel > 0) {
                     pVel.x -= outwardVel * nx;
@@ -51,15 +53,9 @@ export const WebSystem = (entities, inputManager) => {
     // CREATE TETHER (Y button only)
     if (yJustPressed && !tether && currentParent) {
         const plat = entities.find(e => e.id === currentParent.id);
-        if (plat) {
-            let anchorOffset;
-            if (currentParent.isWeb) {
-                anchorOffset = { x: 0, y: 0 };
-            } else {
-                anchorOffset = snapOffsetInside(currentParent.offset, plat.components.Collider, 10);
-            }
-            
-            player.components.WebTether = WebTether(currentParent.id, anchorOffset);
+        if (plat && plat.components.Position) {
+            const snappedOffset = snapOffsetInside(currentParent.offset, plat.components.Collider, 10);
+            player.components.WebTether = WebTether(currentParent.id, snappedOffset);
             player.components.WebTether.maxLength = MAX_SPOOL_LENGTH; 
             return;
         }
@@ -79,45 +75,47 @@ export const WebSystem = (entities, inputManager) => {
         });
 
         if (!exists) {
+            const platA = entities.find(e => e.id === tether.platformId);
             const platB = entities.find(e => e.id === currentParent.id);
-            if (platB) {
-                const p1 = getAnchorWorldPos(entities, tether.platformId, tether.anchorOffset);
-                
-                let snappedOffsetB;
-                let p2;
+            
+            if (platA && platB && platA.components.Position && platB.components.Position) {
+                const snappedOffsetB = snapOffsetInside(currentParent.offset, platB.components.Collider, 10);
 
-                if (currentParent.isWeb) {
-                    snappedOffsetB = { x: 0, y: 0 };
-                    p2 = getAnchorWorldPos(entities, currentParent.id, snappedOffsetB);
-                } else {
-                    snappedOffsetB = snapOffsetInside(currentParent.offset, platB.components.Collider, 10);
-                    p2 = {
-                        x: platB.components.Position.x + snappedOffsetB.x,
-                        y: platB.components.Position.y + snappedOffsetB.y
-                    };
-                }
+                const x1 = platA.components.Position.x + tether.anchorOffset.x;
+                const y1 = platA.components.Position.y + tether.anchorOffset.y;
+                const x2 = platB.components.Position.x + snappedOffsetB.x;
+                const y2 = platB.components.Position.y + snappedOffsetB.y;
                 
-                if (p1 && p2) {
-                    const dist = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y);
-                    const conn = WebConnection(
-                        tether.platformId, { ...tether.anchorOffset }, 
-                        currentParent.id, snappedOffsetB
-                    );
-                    
-                    conn.fixedLength = dist * 1.15;
-                    
-                    entities.push({
-                        id: crypto.randomUUID(),
-                        components: { 
-                            WebConnection: conn,
-                            WebTag: WebTag(),
-                            PlatformTag: PlatformTag(),
-                            Collider: Collider('web')
-                        }
-                    });
-                }
+                const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
+                const conn = WebConnection(
+                    tether.platformId, { ...tether.anchorOffset }, 
+                    currentParent.id, snappedOffsetB
+                );
+                
+                conn.fixedLength = dist * 1.15;
+                
+                entities.push({
+                    id: crypto.randomUUID(),
+                    components: { 
+                        WebConnection: conn
+                    }
+                });
             }
         }
         delete player.components.WebTether;
     }
+
+    // --- 3. BREAKING LOGIC ---
+    if (tether && tether.tension > tether.maxForce) {
+        console.log("💥 Tether Snap!");
+        delete player.components.WebTether;
+    }
+
+    entities.forEach(e => {
+        const conn = e.components.WebConnection;
+        if (conn && conn.tension > conn.maxForce) {
+            console.log("💥 Web Connection Snap!");
+            e.toDestroy = true; // Handled by BaseTestScene cleanup
+        }
+    });
 };

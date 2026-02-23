@@ -36,8 +36,8 @@ export class InputManager {
     }
 
     isButtonDown(action) {
-        if (action === 'X' && this.keys.x.isDown) return true;
-        if (action === 'Y' && this.keys.y.isDown) return true;
+        if (action === 'X' && (this.keys.x.isDown)) return true;
+        if (action === 'Y' && (this.keys.y.isDown)) return true;
         if (action === 'B' && (this.keys.b.isDown || this.keys.esc.isDown)) return true;
 
         if (action === 'SHORTEN') {
@@ -60,8 +60,11 @@ export class InputManager {
     getAction(action) {
         const justDown = (key) => Phaser.Input.Keyboard.JustDown(key);
 
-        if (action === 'UP') return justDown(this.cursors.up) || this.isButtonPressed('up');
-        if (action === 'DOWN') return justDown(this.cursors.down) || this.isButtonPressed('down');
+        if (action === 'UP') return justDown(this.cursors.up) || justDown(this.keys.w) || this.isButtonPressed('up');
+        if (action === 'DOWN') return justDown(this.cursors.down) || justDown(this.keys.s) || this.isButtonPressed('down');
+        if (action === 'LEFT') return justDown(this.cursors.left) || justDown(this.keys.a) || this.isButtonPressed('left');
+        if (action === 'RIGHT') return justDown(this.cursors.right) || justDown(this.keys.d) || this.isButtonPressed('right');
+        
         if (action === 'SELECT') return justDown(this.keys.enter) || this.isButtonPressed('A');
         if (action === 'BACK') return justDown(this.keys.esc) || this.isButtonPressed('B');
 
@@ -75,10 +78,20 @@ export class InputManager {
         if (!this.pad) return false;
 
         let isDown = false;
-        if (button === 'up') isDown = this.pad.up || this.pad.buttons[12].pressed;
-        else if (button === 'down') isDown = this.pad.down || this.pad.buttons[13].pressed;
-        else if (button === 'left') isDown = this.pad.left || this.pad.buttons[14].pressed;
-        else if (button === 'right') isDown = this.pad.right || this.pad.buttons[15].pressed;
+        const stickThreshold = 0.5;
+
+        if (button === 'up') {
+            isDown = this.pad.up || this.pad.buttons[12].pressed || this.pad.leftStick.y < -stickThreshold;
+        }
+        else if (button === 'down') {
+            isDown = this.pad.down || this.pad.buttons[13].pressed || this.pad.leftStick.y > stickThreshold;
+        }
+        else if (button === 'left') {
+            isDown = this.pad.left || this.pad.buttons[14].pressed || this.pad.leftStick.x < -stickThreshold;
+        }
+        else if (button === 'right') {
+            isDown = this.pad.right || this.pad.buttons[15].pressed || this.pad.leftStick.x > stickThreshold;
+        }
         else if (button === 'A') isDown = this.pad.A || this.pad.buttons[0].pressed;
         else if (button === 'B') isDown = this.pad.B || this.pad.buttons[1].pressed;
         else if (button === 'X') isDown = this.pad.X || this.pad.buttons[2].pressed;

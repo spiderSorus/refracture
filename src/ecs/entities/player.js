@@ -1,6 +1,7 @@
 import {
     Position, Velocity, Rotation, Renderable,
-    PlayerTag, InputControlled, CameraTarget, ViewLayers
+    PlayerTag, InputControlled, CameraTarget, ViewLayers,
+    Mass
 } from '../components/index';
 
 export const createPlayer = (x, y) => [
@@ -9,14 +10,13 @@ export const createPlayer = (x, y) => [
     Rotation(0),
     Renderable({
         'BASE': {
-            type: 'triangle',
-            color: '#ff8400',
-            // size: 5.0 -> Radius 50px (5 units) -> Total Width 100px (10 units)
-            // If this is still "Huge", try size: 2.5 (50px width) or size: 0.5 (10px width).
+            type: 'spider',
+            color: 0x222222,
             size: 1.0
         }
     }),
     PlayerTag(),
+    Mass(1.5),
     InputControlled(),
     CameraTarget(),
     ViewLayers(['BASE'])

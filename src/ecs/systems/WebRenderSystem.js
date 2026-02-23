@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import { getImmediateGfx } from '../../utils/RenderUtils';
-import { getAnchorWorldPos } from '../../utils/WebUtils';
 
 export const WebRenderSystem = (entities, scene) => {
     const gfx = getImmediateGfx(scene, 'webGfx', 1100);
@@ -11,26 +10,31 @@ export const WebRenderSystem = (entities, scene) => {
     entities.forEach(e => {
         const conn = e.components.WebConnection;
         if (conn) {
-            const p1 = getAnchorWorldPos(entities, conn.fromId, conn.fromOffset);
-            const p2 = getAnchorWorldPos(entities, conn.toId, conn.toOffset);
+            const fromEnt = entities.find(ent => ent.id === conn.fromId);
+            const toEnt = entities.find(ent => ent.id === conn.toId);
 
-            if (p1 && p2) {
-                const dist = Phaser.Math.Distance.Between(p1.x, p1.y, p2.x, p2.y);
+            if (fromEnt && toEnt && fromEnt.components.Position && toEnt.components.Position) {
+                const x1 = fromEnt.components.Position.x + conn.fromOffset.x;
+                const y1 = fromEnt.components.Position.y + conn.fromOffset.y;
+                const x2 = toEnt.components.Position.x + conn.toOffset.x;
+                const y2 = toEnt.components.Position.y + conn.toOffset.y;
+
+                const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
                 const ropeLength = conn.fixedLength || dist;
 
                 gfx.lineStyle(thickness, 0xaaaaaa, 0.8);
                 gfx.beginPath();
-                gfx.moveTo(p1.x, p1.y);
+                gfx.moveTo(x1, y1);
 
                 if (ropeLength <= dist + 1) {
-                    gfx.lineTo(p2.x, p2.y);
+                    gfx.lineTo(x2, y2);
                 } else {
                     const segments = 15;
                     const slack = (ropeLength - dist) * 0.5;
                     for (let i = 1; i <= segments; i++) {
                         const t = i / segments;
-                        const cx = p1.x + (p2.x - p1.x) * t;
-                        const cy = p1.y + (p2.y - p1.y) * t;
+                        const cx = x1 + (x2 - x1) * t;
+                        const cy = y1 + (y2 - y1) * t;
                         const dip = 4 * t * (1 - t) * slack;
                         gfx.lineTo(cx, cy + dip);
                     }
@@ -39,8 +43,8 @@ export const WebRenderSystem = (entities, scene) => {
 
                 // Draw end bolts
                 gfx.fillStyle(0xaaaaaa, 1);
-                gfx.fillCircle(p1.x, p1.y, 2 / cam.zoom);
-                gfx.fillCircle(p2.x, p2.y, 2 / cam.zoom);
+                gfx.fillCircle(x1, y1, 2 / cam.zoom);
+                gfx.fillCircle(x2, y2, 2 / cam.zoom);
             }
         }
     });
@@ -52,13 +56,15 @@ export const WebRenderSystem = (entities, scene) => {
     const pPos = player.components.Position;
 
     if (tether && pPos) {
-        const anchor = getAnchorWorldPos(entities, tether.platformId, tether.anchorOffset);
-        if (anchor) {
-            const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, anchor.x, anchor.y);
+        const platform = entities.find(e => e.id === tether.platformId);
+        if (platform && platform.components.Position) {
+            const ax = platform.components.Position.x + tether.anchorOffset.x;
+            const ay = platform.components.Position.y + tether.anchorOffset.y;
+            const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, ax, ay);
 
             gfx.lineStyle(thickness, 0xffffff, 0.8);
             gfx.beginPath();
-            gfx.moveTo(anchor.x, anchor.y);
+            gfx.moveTo(ax, ay);
 
             if (dist >= tether.maxLength - 1) {
                 gfx.lineTo(pPos.x, pPos.y);
@@ -67,14 +73,14 @@ export const WebRenderSystem = (entities, scene) => {
                 const slack = (tether.maxLength - dist) * 0.5;
                 for (let i = 1; i <= segments; i++) {
                     const t = i / segments;
-                    const cx = anchor.x + (pPos.x - anchor.x) * t;
-                    const cy = anchor.y + (pPos.y - anchor.y) * t;
+                    const cx = ax + (pPos.x - ax) * t;
+                    const cy = ay + (pPos.y - ay) * t;
                     gfx.lineTo(cx, cy + (4 * t * (1 - t) * slack));
                 }
             }
             gfx.strokePath();
             gfx.fillStyle(0xffffff, 1);
-            gfx.fillCircle(anchor.x, anchor.y, 4 / cam.zoom);
+            gfx.fillCircle(ax, ay, 4 / cam.zoom);
         }
     }
 };

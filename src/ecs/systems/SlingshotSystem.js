@@ -52,6 +52,10 @@ export const SlingshotSystem = (entities, inputManager) => {
             const forceMult = Math.min(1.0, sling.peakMagnitude);
 
             if (parent) {
+                // Set lastPlatformId so AttachmentSystem knows to ignore this platform briefly
+                sling.lastPlatformId = parent.id;
+                sling.canJump = false;
+
                 const hit = RaycastPlatformSystem.findTarget(entities, pos, launchDir, 500);
                 if (hit && hit.entity.id === parent.id) {
                     pos.x = hit.point.x + (launchDir.x * 10);

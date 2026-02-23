@@ -5,7 +5,8 @@ import { GlowGraphic } from '../../graphics/GlowGraphic';
 import { BubbleGraphic } from '../../graphics/BubbleGraphic';
 import { FairyGlowGraphic } from '../../graphics/FairyGlowGraphic';
 import { ChaosEmitterGraphic } from '../../graphics/ChaosEmitterGraphic';
-import { TriangleGraphic } from '../../graphics/TriangleGraphic'; // 1. Import it
+import { TriangleGraphic } from '../../graphics/TriangleGraphic';
+import { SpiderGraphic } from '../../graphics/SpiderGraphic';
 
 const REGISTRY = {
     'sprite': SpriteGraphic,
@@ -15,7 +16,8 @@ const REGISTRY = {
     'bubble': BubbleGraphic,
     'fairy_glow': FairyGlowGraphic,
     'chaos_emitter': ChaosEmitterGraphic,
-    'triangle': TriangleGraphic // 2. Map it
+    'triangle': TriangleGraphic,
+    'spider': SpiderGraphic
 };
 
 export const RenderFactory = {
