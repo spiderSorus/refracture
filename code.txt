@@ -1,4 +1,393 @@
 
+--- FILE: src/app.js ---
+import Phaser from 'phaser';
+import { MenuScene } from './scenes/MenuScene';
+import { TestMenuScene } from './scenes/TestMenuScene';
+import { TestScenes } from './scenes/test/index'; // Import the array
+
+const config = {
+    type: Phaser.AUTO,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    backgroundColor: '#050505',
+    parent: 'game-container',
+    input: { gamepad: true },
+    scene: [
+        MenuScene,
+        TestMenuScene,
+        ...TestScenes
+    ]
+};
+
+new Phaser.Game(config);
+--- FILE: src/core/Constants.js ---
+export const GRID = {
+    UNIT: 10,        // 1 Grid Unit = 10px
+    PLAYER_SIZE: 1,  // 1 Unit wide/high
+    SPEED: 10,       // CHANGED: 10 Units per second (was 5)
+};
+
+export const PHYSICS = {
+    FPS: 60,
+    STEP: 1000 / 60, // ~16.66ms per tick
+    GRAVITY: 980,    // 9.8m/s^2 scaled up for pixel coordinates
+};
+--- FILE: src/core/Input.js ---
+import Phaser from 'phaser';
+
+export class InputManager {
+    constructor(scene) {
+        this.scene = scene;
+        this.cursors = scene.input.keyboard.createCursorKeys();
+
+        this.keys = scene.input.keyboard.addKeys({
+            enter: Phaser.Input.Keyboard.KeyCodes.ENTER,
+            esc: Phaser.Input.Keyboard.KeyCodes.ESC,
+            x: Phaser.Input.Keyboard.KeyCodes.X,
+            y: Phaser.Input.Keyboard.KeyCodes.Y,
+            b: Phaser.Input.Keyboard.KeyCodes.B,
+            tab: Phaser.Input.Keyboard.KeyCodes.TAB,
+            shorten: Phaser.Input.Keyboard.KeyCodes.Q, // LB equivalent
+            lengthen: Phaser.Input.Keyboard.KeyCodes.E, // RB equivalent
+            // --- NEW: WASD for twin-stick keyboard fallback ---
+            w: Phaser.Input.Keyboard.KeyCodes.W,
+            a: Phaser.Input.Keyboard.KeyCodes.A,
+            s: Phaser.Input.Keyboard.KeyCodes.S,
+            d: Phaser.Input.Keyboard.KeyCodes.D
+        });
+
+        this.pad = null;
+        this.prevPadState = {};
+
+        if (this.scene.input.gamepad.total > 0) {
+            this.pad = this.scene.input.gamepad.getPad(0);
+        }
+
+        this.scene.input.gamepad.on('connected', (pad) => {
+            this.pad = pad;
+        });
+    }
+
+    isButtonDown(action) {
+        if (action === 'X' && this.keys.x.isDown) return true;
+        if (action === 'Y' && this.keys.y.isDown) return true;
+        if (action === 'B' && (this.keys.b.isDown || this.keys.esc.isDown)) return true;
+
+        if (action === 'SHORTEN') {
+            if (this.keys.shorten.isDown) return true;
+            if (this.pad && (this.pad.L1 || this.pad.buttons[4].pressed)) return true;
+        }
+        if (action === 'LENGTHEN') {
+            if (this.keys.lengthen.isDown) return true;
+            if (this.pad && (this.pad.R1 || this.pad.buttons[5].pressed)) return true;
+        }
+
+        if (this.pad) {
+            if (action === 'X' && (this.pad.X || this.pad.buttons[2].pressed)) return true;
+            if (action === 'Y' && (this.pad.Y || this.pad.buttons[3].pressed)) return true;
+            if (action === 'B' && (this.pad.B || this.pad.buttons[1].pressed)) return true;
+        }
+        return false;
+    }
+
+    getAction(action) {
+        const justDown = (key) => Phaser.Input.Keyboard.JustDown(key);
+
+        if (action === 'UP') return justDown(this.cursors.up) || this.isButtonPressed('up');
+        if (action === 'DOWN') return justDown(this.cursors.down) || this.isButtonPressed('down');
+        if (action === 'SELECT') return justDown(this.keys.enter) || this.isButtonPressed('A');
+        if (action === 'BACK') return justDown(this.keys.esc) || this.isButtonPressed('B');
+
+        if (action === 'NEXT_TARGET') return justDown(this.keys.lengthen) || this.isButtonPressed('R1');
+        if (action === 'PREV_TARGET') return justDown(this.keys.shorten) || this.isButtonPressed('L1');
+
+        return false;
+    }
+
+    isButtonPressed(button) {
+        if (!this.pad) return false;
+
+        let isDown = false;
+
+        if (button === 'up') isDown = this.pad.up;
+        else if (button === 'down') isDown = this.pad.down;
+        else if (button === 'left') isDown = this.pad.left;
+        else if (button === 'right') isDown = this.pad.right;
+        else if (button === 'A') isDown = this.pad.A;
+        else if (button === 'B') isDown = this.pad.B;
+        else if (button === 'X') isDown = this.pad.X;
+        else if (button === 'Y') isDown = this.pad.Y;
+        else if (button === 'L1') isDown = this.pad.L1;
+        else if (button === 'R1') isDown = this.pad.R1;
+        else if (this.pad[button]) isDown = this.pad[button];
+
+        const wasDown = this.prevPadState[button] || false;
+        this.prevPadState[button] = isDown;
+
+        return isDown && !wasDown;
+    }
+
+    // --- UPDATED: Left Stick / WASD ---
+    getMovement() {
+        let x = 0, y = 0;
+
+        if (this.keys.a.isDown) x = -1;
+        else if (this.keys.d.isDown) x = 1;
+        if (this.keys.w.isDown) y = -1;
+        else if (this.keys.s.isDown) y = 1;
+
+        if (this.pad) {
+            const t = 0.15;
+            if (Math.abs(this.pad.leftStick.x) > t) x = this.pad.leftStick.x;
+            if (Math.abs(this.pad.leftStick.y) > t) y = this.pad.leftStick.y;
+        }
+        return { x, y };
+    }
+
+    // --- NEW: Right Stick / Arrows ---
+    getRightStickRaw() {
+        let x = 0, y = 0;
+
+        if (this.pad) {
+            x = this.pad.rightStick.x;
+            y = this.pad.rightStick.y;
+        } else {
+            if (this.cursors.left.isDown) x = -1;
+            else if (this.cursors.right.isDown) x = 1;
+            if (this.cursors.up.isDown) y = -1;
+            else if (this.cursors.down.isDown) y = 1;
+        }
+
+        return { x, y };
+    }
+}
+--- FILE: src/core/UIManager.js ---
+// src/core/UIManager.js
+
+export class UIManager {
+    constructor() {
+        if (typeof document === 'undefined') return;
+
+        // Prevent duplicate overlays
+        if (document.getElementById('game-ui-overlay')) {
+            this.overlay = document.getElementById('game-ui-overlay');
+            return;
+        }
+
+        this.overlay = document.createElement('div');
+        this.overlay.id = 'game-ui-overlay';
+        this.overlay.style.cssText = `
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 1000; font-family: monospace; color: #fff;
+            overflow: hidden;
+        `;
+        document.body.appendChild(this.overlay);
+    }
+
+    showTitle(title = "SCENE", sub = "") {
+        const el = document.createElement('div');
+        el.style.cssText = `
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; opacity: 0; transition: opacity 0.5s ease-in-out;
+        `;
+
+        el.innerHTML = `
+            <h1 style="color: #8b008b; font-size: 64px; margin: 0; font-weight: bold; text-shadow: 2px 2px #000;">
+                ${title.toString().toUpperCase()}
+            </h1>
+            <p style="color: #ff69b4; font-size: 24px; margin: 10px 0 0 0; text-shadow: 1px 1px #000;">
+                ${sub.toString()}
+            </p>
+        `;
+
+        this.overlay.appendChild(el);
+        requestAnimationFrame(() => { el.style.opacity = '1'; });
+
+        setTimeout(() => {
+            el.style.opacity = '0';
+            setTimeout(() => el.remove(), 1000);
+        }, 3000);
+    }
+
+    updateDebug(playerData, stateData) {
+        let debugEl = document.getElementById('debug-console');
+        if (!debugEl) {
+            debugEl = document.createElement('div');
+            debugEl.id = 'debug-console';
+            debugEl.style.cssText = `
+                position: absolute; top: 0; left: 0; width: 340px;
+                background: rgba(0,0,0,0.85); padding: 20px;
+                display: flex; flex-direction: column; align-items: flex-start;
+                font-size: 13px; color: #0f0; visibility: visible;
+                border-bottom: 1px solid #0f0; border-right: 1px solid #0f0;
+                pointer-events: auto;
+            `;
+            this.overlay.appendChild(debugEl);
+        }
+
+        const sling = stateData.sling || {};
+        const raw = sling.rawStick || { x: 0, y: 0 };
+        const mag = Math.sqrt(raw.x * raw.x + raw.y * raw.y);
+
+        // Visualize the Deadbolt State
+        const isLocked = mag < 0.5 && sling.isCharging;
+        const stateTag = isLocked ? '<span style="color:#ff0000">LOCKED</span>' :
+            mag >= 0.5 ? '<span style="color:#00ff00">AIMING</span>' : 'IDLE';
+
+        debugEl.innerHTML = `
+            <div style="margin-bottom: 10px; border-bottom: 1px solid #444; width: 100%; padding-bottom: 5px;">
+                <strong style="color: #0ff;">[ PLAYER ]</strong><br>
+                POS: ${playerData.x}, ${playerData.y}<br>
+                STATUS: ${stateData.status}
+            </div>
+            <div style="color: #ff8400;">
+                <strong style="color: #fff;">[ SLINGSHOT ]</strong><br>
+                STATE: ${stateTag}<br>
+                RAW MAG: ${mag.toFixed(3)}<br>
+                LOCKED VEC: ${sling.vecX.toFixed(2)}, ${sling.vecY.toFixed(2)}<br>
+                <br>
+                <strong style="color: #fff;">[ DIAGNOSTICS ]</strong><br>
+                STICK X: ${raw.x.toFixed(3)}<br>
+                STICK Y: ${raw.y.toFixed(3)}
+            </div>
+        `;
+    }
+
+    toggleDebug() {
+        const el = document.getElementById('debug-console');
+        if (el) {
+            el.style.visibility = (el.style.visibility === 'hidden') ? 'visible' : 'hidden';
+        }
+    }
+}
+
+export const UI = new UIManager();
+--- FILE: src/ecs/components/index.js ---
+export const Position = (x = 0, y = 0) => ({ _type: 'Position', x, y });
+export const Velocity = (x = 0, y = 0) => ({ _type: 'Velocity', x, y });
+export const Rotation = (angle = 0) => ({ _type: 'Rotation', angle });
+
+export const Renderable = (definitions = {}) => ({
+    _type: 'Renderable',
+    definitions,
+    activeVisuals: {}
+});
+
+export const ViewLayers = (layers = ['BASE']) => ({
+    _type: 'ViewLayers',
+    layers
+});
+
+export const PlayerTag = () => ({ _type: 'PlayerTag' });
+export const InputControlled = () => ({ _type: 'InputControlled' });
+export const CameraTarget = () => ({ _type: 'CameraTarget' });
+export const EntityType = (type) => ({ _type: 'EntityType', value: type });
+export const AbilityState = () => ({
+    _type: 'AbilityState', armed: null, targetIndex: 0, potentialTargets: [], currentTargetId: null
+});
+export const Parent = (entityId, offset = { x: 0, y: 0 }) => ({
+    _type: 'Parent',
+    id: entityId,
+    offset
+});
+export const Collider = (type = 'circle', radius = 50, width = 100, height = 100) => ({
+    _type: 'Collider',
+    type, radius, width, height
+});
+export const PlatformTag = () => ({ _type: 'PlatformTag' });
+
+export const ConnectionPoint = (x = 0, y = 0) => ({
+    _type: 'ConnectionPoint',
+    x, y
+});
+
+// --- NEW COMPONENTS ---
+
+// Active tether (Player -> Platform)
+export const WebTether = (platformId, anchorOffset = { x: 0, y: 0 }) => ({
+    _type: 'WebTether',
+    platformId,
+    anchorOffset,
+    maxLength: 1000, // Hard limit as requested
+    currentLength: 50, // Calculated dynamically
+    stiffness: 0.015, // Tension strength
+    damping: 0.095   // Prevents infinite bouncing
+});
+
+// Static connection (Platform A -> Platform B)
+export const WebConnection = (fromId, fromOffset, toId, toOffset) => ({
+    _type: 'WebConnection',
+    fromId,
+    fromOffset, // {x, y}
+    toId,
+    toOffset    // {x, y}
+});
+
+export const EnergySource = (strength = 100, type = 'EMIT') => ({
+    _type: 'EnergySource',
+    strength, // +100 or -100
+    type      // 'EMIT' or 'ABSORB'
+});
+
+// --- SLINGSHOT MECHANIC ---
+export const SlingshotJump = (maxForce = 1500) => ({
+    _type: 'SlingshotJump',
+    isCharging: false,
+    vector: { x: 0, y: 0 },
+    chargeRatio: 0,
+    maxForce,
+    canJump: false // Tracks if we are touching a surface
+});
+
+
+--- FILE: src/ecs/entities/player.js ---
+import {
+    Position, Velocity, Rotation, Renderable,
+    PlayerTag, InputControlled, CameraTarget, ViewLayers
+} from '../components/index';
+
+export const createPlayer = (x, y) => [
+    Position(x, y),
+    Velocity(0, 0),
+    Rotation(0),
+    Renderable({
+        'BASE': {
+            type: 'triangle',
+            color: '#ff8400',
+            // size: 5.0 -> Radius 50px (5 units) -> Total Width 100px (10 units)
+            // If this is still "Huge", try size: 2.5 (50px width) or size: 0.5 (10px width).
+            size: 1.0
+        }
+    }),
+    PlayerTag(),
+    InputControlled(),
+    CameraTarget(),
+    ViewLayers(['BASE'])
+];
+--- FILE: src/ecs/entities/target.js ---
+import { Position, Renderable, Rotation, EntityType } from '../components/index';
+
+export const createTarget = (x, y, type = 'A') => {
+    // Determine configuration based on type
+    const config = {
+        'A': { color: 0x0000ff, type: 'rect' },
+        'B': { color: 0x00ff00, type: 'rect' },
+        'C': { color: 0xffff00, type: 'circle' }
+    }[type] || { color: 0xffffff, type: 'rect' };
+
+    return [
+        Position(x, y),
+        Rotation(0),
+        Renderable({
+            'BASE': {
+                type: config.type,
+                color: config.color,
+                width: 12, height: 12, radius: 6 // Default sizes
+            }
+        }),
+        EntityType(type)
+    ];
+};
 --- FILE: src/ecs/systems/AbilityTargetingSystem.js ---
 import Phaser from 'phaser';
 import { GRID } from '../../core/Constants';
@@ -352,7 +741,8 @@ export const MovementSystem = (entities, inputManager, dt) => {
     const walkSpeed = GRID.SPEED * GRID.UNIT * 2;
 
     entities.forEach(entity => {
-        const { Position: pos, Velocity: vel, Parent: parent, Rotation: rot, SlingshotJump: sling } = entity.components;
+        // ADDED WebTether to the destructured components
+        const { Position: pos, Velocity: vel, Parent: parent, Rotation: rot, SlingshotJump: sling, WebTether: tether } = entity.components;
         if (!pos || !rot) return;
 
         // --- 1. ROTATION LOGIC (PRIORITY: JUMP VECTOR -> MOVEMENT) ---
@@ -389,7 +779,7 @@ export const MovementSystem = (entities, inputManager, dt) => {
                 }
 
                 if (exited) {
-                    // (Optional: remove sling.lastPlatformId = parent.id if you want instant re-grabbing)
+                    if (sling) sling.lastPlatformId = parent.id;
                     delete entity.components.Parent;
                 }
             }
@@ -402,15 +792,21 @@ export const MovementSystem = (entities, inputManager, dt) => {
                 vel.x += (move.x * walkSpeed * 10) * dt;
                 vel.x *= 0.85;
             } else {
-                // AIR CONTROL LOCKOUT
-                // We no longer apply move.x here. The Left Stick is ignored.
-                // Physics (Gravity & WebSystem) are in full control!
-                vel.x *= 0.95; // Standard air friction
+                // --- THE FIX: TETHER BYPASS ---
+                if (!tether) {
+                    // Normal Freefall: apply standard slingshot air friction
+                    vel.x *= 0.95;
+                    vel.y *= 0.99;
+                } else {
+                    // On a Rope: DO NOT kill the momentum! Let the pendulum swing!
+                    // Apply only a micro-fraction of air resistance so the swing lasts.
+                    vel.x *= 0.999;
+                    vel.y *= 0.999;
+                }
             }
 
             // Always apply gravity when not parented
             vel.y += (PHYSICS.GRAVITY || 980) * dt;
-            vel.y *= 0.99;
         }
     });
 };
@@ -531,6 +927,62 @@ export const RaycastPlatformSystem = {
         return closestHit;
     }
 };
+--- FILE: src/ecs/systems/RecordingSystem.js ---
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+
+export const RecordingSystem = (scene, inputManager) => {
+    if (!inputManager || !scene) return;
+
+    // 1. Initialize UI Indicator
+    if (!scene.recIndicator) {
+        scene.recIndicator = scene.add.text(10, 40, '🔴 REC', {
+            font: '16px monospace',
+            fill: '#ff0000',
+            stroke: '#000000',
+            strokeThickness: 3,
+            backgroundColor: '#00000088'
+        }).setScrollFactor(0).setDepth(3000).setVisible(false);
+
+        const uiScale = 1 / scene.cameras.main.zoom;
+        scene.recIndicator.setScale(uiScale);
+        scene.recIndicator.setPosition(10 * uiScale, 40 * uiScale);
+    }
+
+    // 2. Toggle on D-Pad Down / Down Arrow
+    if (inputManager.getAction('DOWN')) {
+        if (!isRecording) {
+            const canvas = scene.game.canvas;
+            const stream = canvas.captureStream(60);
+
+            try {
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' });
+            } catch (e) {
+                mediaRecorder = new MediaRecorder(stream);
+            }
+
+            recordedChunks = [];
+            mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `gameplay_${Date.now()}.webm`;
+                a.click();
+            };
+
+            mediaRecorder.start();
+            isRecording = true;
+            scene.recIndicator.setVisible(true);
+        } else {
+            if (mediaRecorder) mediaRecorder.stop();
+            isRecording = false;
+            scene.recIndicator.setVisible(false);
+        }
+    }
+};
 --- FILE: src/ecs/systems/RenderFactory.js ---
 import { SpriteGraphic } from '../../graphics/SpriteGraphic';
 import { RectGraphic } from '../../graphics/RectGraphic';
@@ -632,13 +1084,13 @@ export const SlingshotRenderSystem = (entities, scene) => {
     const sling = player.components.SlingshotJump;
     const pos = player.components.Position;
 
-    // Use isCharging to determine visibility
-    if (sling.isCharging && sling.vector && (sling.vector.x !== 0 || sling.vector.y !== 0)) {
+    // FIX: Look for lockedAim instead of the old vector property
+    if (sling.isCharging && sling.lockedAim) {
         const indicatorLen = 80;
 
         // Direction is the inverse of the pull
-        const endX = pos.x + (-sling.vector.x * indicatorLen);
-        const endY = pos.y + (-sling.vector.y * indicatorLen);
+        const endX = pos.x + (-sling.lockedAim.x * indicatorLen);
+        const endY = pos.y + (-sling.lockedAim.y * indicatorLen);
 
         scene.slingGfx.lineStyle(3, 0x00ffff, 0.6);
         scene.slingGfx.beginPath();
@@ -790,7 +1242,6 @@ export class TitleSystem {
     }
 }
 --- FILE: src/ecs/systems/WebRenderSystem.js ---
-// src/ecs/systems/WebRenderSystem.js
 import Phaser from 'phaser';
 
 export const WebRenderSystem = (entities, scene) => {
@@ -801,7 +1252,7 @@ export const WebRenderSystem = (entities, scene) => {
     const cam = scene.cameras.main;
     const thickness = 2 / cam.zoom;
 
-    // --- PART 1: DRAW COMPLETED WEBS (Static Connections) ---
+    // --- PART 1: COMPLETED WEBS (Static Slack) ---
     entities.forEach(e => {
         const conn = e.components.WebConnection;
         if (conn) {
@@ -814,82 +1265,65 @@ export const WebRenderSystem = (entities, scene) => {
                 const x2 = toEnt.components.Position.x + conn.toOffset.x;
                 const y2 = toEnt.components.Position.y + conn.toOffset.y;
 
-                scene.webGfx.lineStyle(thickness, 0xaaaaaa, 0.8); // Silver/Grey
+                const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
+                const ropeLength = conn.fixedLength || dist;
+
+                scene.webGfx.lineStyle(thickness, 0xaaaaaa, 0.8);
                 scene.webGfx.beginPath();
                 scene.webGfx.moveTo(x1, y1);
-                scene.webGfx.lineTo(x2, y2);
-                scene.webGfx.strokePath();
 
-                scene.webGfx.fillStyle(0xaaaaaa, 1);
-                scene.webGfx.fillCircle(x1, y1, 3 / cam.zoom);
-                scene.webGfx.fillCircle(x2, y2, 3 / cam.zoom);
+                if (ropeLength <= dist + 1) {
+                    scene.webGfx.lineTo(x2, y2);
+                } else {
+                    const segments = 15;
+                    const slack = (ropeLength - dist) * 0.5;
+                    for (let i = 1; i <= segments; i++) {
+                        const t = i / segments;
+                        const cx = x1 + (x2 - x1) * t;
+                        const cy = y1 + (y2 - y1) * t;
+                        const dip = 4 * t * (1 - t) * slack;
+                        scene.webGfx.lineTo(cx, cy + dip);
+                    }
+                }
+                scene.webGfx.strokePath();
             }
         }
     });
 
-    // --- PART 2: DRAW ACTIVE TETHER (With Slack & Momentum) ---
+    // --- PART 2: ACTIVE TETHER ---
     const player = entities.find(e => e.components.PlayerTag);
     if (!player) return;
-
     const tether = player.components.WebTether;
     const pPos = player.components.Position;
-    const pVel = player.components.Velocity;
 
     if (tether && pPos) {
         const platform = entities.find(e => e.id === tether.platformId);
         if (platform && platform.components.Position) {
-            const anchorX = platform.components.Position.x + tether.anchorOffset.x;
-            const anchorY = platform.components.Position.y + tether.anchorOffset.y;
+            const ax = platform.components.Position.x + tether.anchorOffset.x;
+            const ay = platform.components.Position.y + tether.anchorOffset.y;
+            const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, ax, ay);
 
-            const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, anchorX, anchorY);
-            const isTaut = dist >= (tether.maxLength - 5);
-
-            scene.webGfx.lineStyle(thickness, isTaut ? 0xffa500 : 0xffffff, isTaut ? 1.0 : 0.6);
+            scene.webGfx.lineStyle(thickness, 0xffffff, 0.8);
             scene.webGfx.beginPath();
-            scene.webGfx.moveTo(anchorX, anchorY);
+            scene.webGfx.moveTo(ax, ay);
 
-            if (isTaut) {
-                // Straight line when stretched
+            if (dist >= tether.maxLength - 1) {
                 scene.webGfx.lineTo(pPos.x, pPos.y);
             } else {
-                // --- STRICTLY USING lineTo ---
                 const segments = 10;
                 const slack = (tether.maxLength - dist) * 0.5;
-
-                // Momentum: drag the web in opposite direction of velocity
-                let dragX = 0;
-                let dragY = 0;
-                if (pVel) {
-                    dragX = -pVel.x * 0.04;
-                    dragY = -pVel.y * 0.04;
-                }
-
                 for (let i = 1; i <= segments; i++) {
                     const t = i / segments;
-
-                    const currX = Phaser.Math.Interpolation.Linear([anchorX, pPos.x], t);
-                    const currY = Phaser.Math.Interpolation.Linear([anchorY, pPos.y], t);
-
-                    // Arc multiplier keeps ends attached, moves the middle
-                    const arc = 4 * t * (1 - t);
-
-                    const offsetX = dragX * arc;
-                    const offsetY = (slack + dragY) * arc;
-
-                    scene.webGfx.lineTo(currX + offsetX, currY + offsetY);
+                    const cx = ax + (pPos.x - ax) * t;
+                    const cy = ay + (pPos.y - ay) * t;
+                    scene.webGfx.lineTo(cx, cy + (4 * t * (1 - t) * slack));
                 }
             }
-
             scene.webGfx.strokePath();
-
-            // Draw the anchor point dot
-            scene.webGfx.fillStyle(isTaut ? 0xffa500 : 0xffffff, 1);
-            scene.webGfx.fillCircle(anchorX, anchorY, 4 / cam.zoom);
         }
     }
 };
 --- FILE: src/ecs/systems/WebSystem.js ---
-// src/ecs/systems/WebSystem.js
 import Phaser from 'phaser';
 import { WebTether, WebConnection, Parent } from '../components/index';
 
@@ -902,10 +1336,9 @@ export const WebSystem = (entities, inputManager) => {
     const pPos = player.components.Position;
     const pVel = player.components.Velocity;
 
-    const MAX_SPOOL_LENGTH = 1000; // Updated to match your component
+    const MAX_SPOOL_LENGTH = 1000;
     const MIN_SPOOL_LENGTH = 10;
 
-    // --- 1. WINCH & SPRING PHYSICS ---
     if (tether) {
         const plat = entities.find(e => e.id === tether.platformId);
         if (plat && plat.components.Position) {
@@ -919,119 +1352,1515 @@ export const WebSystem = (entities, inputManager) => {
             const rb = inputManager.isButtonDown('LENGTHEN');
             const winchSpeed = 4;
 
-            // Spool / Unspool (Change Max Length)
             if (lb) tether.maxLength = Math.max(MIN_SPOOL_LENGTH, tether.maxLength - winchSpeed);
             if (rb) tether.maxLength = Math.min(MAX_SPOOL_LENGTH, tether.maxLength + winchSpeed);
 
-            // A. IF STANDING ON PLATFORM (Parented)
-            if (currentParent) {
-                const dx = currentParent.offset.x - tether.anchorOffset.x;
-                const dy = currentParent.offset.y - tether.anchorOffset.y;
-                const offsetDist = Math.sqrt(dx * dx + dy * dy);
-
-                if (offsetDist > tether.maxLength) {
-                    const diff = offsetDist - tether.maxLength;
-                    const dirX = dx / offsetDist;
-                    const dirY = dy / offsetDist;
-
-                    currentParent.offset.x -= dirX * diff;
-                    currentParent.offset.y -= dirY * diff;
-                }
-            }
-
-            // B. IF DANGLING IN AIR (Free-Hanging with Spring Physics)
-            else if (!currentParent && pVel) {
-                if (dist > tether.maxLength) {
-                    // 1. Find the direction vector from Anchor TO Player
-                    const nx = (pPos.x - anchorX) / dist;
-                    const ny = (pPos.y - anchorY) / dist;
-
-                    // 2. HARD POSITION CONSTRAINT: You cannot stretch the rope
-                    pPos.x = anchorX + (nx * tether.maxLength);
-                    pPos.y = anchorY + (ny * tether.maxLength);
-
-                    // 3. TANGENT VELOCITY PROJECTION
-                    // Find exactly how much of the current velocity is pushing OUTWARD
-                    const outwardVel = (pVel.x * nx) + (pVel.y * ny);
-
-                    // If moving outward, subtract only that outward force.
-                    // This seamlessly preserves perpendicular momentum, creating a perfect swing arc.
-                    if (outwardVel > 0) {
-                        pVel.x -= outwardVel * nx;
-                        pVel.y -= outwardVel * ny;
-                    }
-
-                    // Apply a very light air resistance to the swing (do not use massive damping)
-                    pVel.x *= 0.999;
-                    pVel.y *= 0.999;
+            if (!currentParent && pVel && dist > tether.maxLength) {
+                const nx = (pPos.x - anchorX) / dist;
+                const ny = (pPos.y - anchorY) / dist;
+                pPos.x = anchorX + (nx * tether.maxLength);
+                pPos.y = anchorY + (ny * tether.maxLength);
+                const outwardVel = (pVel.x * nx) + (pVel.y * ny);
+                if (outwardVel > 0) {
+                    pVel.x -= outwardVel * nx;
+                    pVel.y -= outwardVel * ny;
                 }
             }
         }
+    }
 
-        // --- 2. X & Y BUTTON LOGIC ---
-        const xJustPressed = inputManager.isButtonPressed('X');
-        const yJustPressed = inputManager.isButtonPressed('Y');
+    const xJustPressed = inputManager.isButtonPressed('X');
+    const yJustPressed = inputManager.isButtonPressed('Y');
 
-        // ATTACH
-        if ((xJustPressed || yJustPressed) && !tether && currentParent) {
-            const dx = currentParent.offset.x;
-            const dy = currentParent.offset.y;
-            let initialDist = Math.sqrt(dx * dx + dy * dy);
-            initialDist = Phaser.Math.Clamp(initialDist, MIN_SPOOL_LENGTH, MAX_SPOOL_LENGTH);
+    if ((xJustPressed || yJustPressed) && !tether && currentParent) {
+        const dx = currentParent.offset.x;
+        const dy = currentParent.offset.y;
+        let initialDist = Math.sqrt(dx * dx + dy * dy);
+        initialDist = Phaser.Math.Clamp(initialDist, MIN_SPOOL_LENGTH, MAX_SPOOL_LENGTH);
 
-            // 1. Create the component using your exact setup
-            player.components.WebTether = WebTether(currentParent.id, { x: 0, y: 0 });
+        player.components.WebTether = WebTether(currentParent.id, { x: 0, y: 0 });
+        player.components.WebTether.maxLength = initialDist;
+        return;
+    }
 
-            // 2. Immediately overwrite the hardcoded 1000 so it starts perfectly taut
-            player.components.WebTether.maxLength = initialDist;
-            player.components.WebTether.currentLength = initialDist;
-            return;
-        }
+    if (xJustPressed && tether) {
+        delete player.components.WebTether;
+        return;
+    }
 
-        // DETACH
-        if (xJustPressed && tether) {
-            delete player.components.WebTether;
-            return;
-        }
+    // CONNECT: Save the slack length
+    if (yJustPressed && tether && currentParent && tether.platformId !== currentParent.id) {
+        const exists = entities.some(e => {
+            const c = e.components.WebConnection;
+            return c && ((c.fromId === tether.platformId && c.toId === currentParent.id) || (c.fromId === currentParent.id && c.toId === tether.platformId));
+        });
 
-        // CONNECT
-        if (yJustPressed && tether && currentParent && tether.platformId !== currentParent.id) {
-            const exists = entities.some(e => {
-                const c = e.components.WebConnection;
-                return c && (
-                    (c.fromId === tether.platformId && c.toId === currentParent.id) ||
-                    (c.fromId === currentParent.id && c.toId === tether.platformId)
-                );
+        if (!exists) {
+            const conn = WebConnection(tether.platformId, { ...tether.anchorOffset }, currentParent.id, { x: 0, y: 0 });
+            conn.fixedLength = tether.maxLength; // Capture spool length
+            entities.push({
+                id: crypto.randomUUID(),
+                components: { WebConnection: conn }
             });
+        }
+        delete player.components.WebTether;
+    }
+};
+--- FILE: src/graphics/BaseGraphic.js ---
+export class BaseGraphic {
+    constructor(scene, config) {
+        this.scene = scene;
+        this.gameObject = this.create(config);
 
-            if (!exists) {
-                entities.push({
-                    id: crypto.randomUUID(),
-                    components: {
-                        WebConnection: WebConnection(
-                            tether.platformId,
-                            { ...tether.anchorOffset },
-                            currentParent.id,
-                            { x: 0, y: 0 }
-                        )
-                    }
-                });
-            }
-            delete player.components.WebTether;
+        // Default Z-sorting
+        this.gameObject.setDepth(config.layer === 'BASE' ? 10 : 20);
+    }
+
+    /**
+     * @abstract
+     * Create and return the Phaser GameObject here.
+     */
+    create(config) {
+        throw new Error("BaseGraphic.create() must be implemented.");
+    }
+
+    update(position, rotation, config) {
+        if (!this.gameObject) return;
+
+        this.gameObject.setPosition(position.x, position.y);
+
+        if (rotation) {
+            this.gameObject.setRotation(rotation.angle);
         }
 
-        // LASSO (Fallback for X if not parented)
-        if (xJustPressed && !tether && !currentParent) {
-            const platforms = entities.filter(e => e.components.PlatformTag && e.components.Collider);
-            const target = platforms.find(plat => {
-                const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, plat.components.Position.x, plat.components.Position.y);
-                return dist <= (plat.components.Collider.radius || 50) + 20;
+        // Hook for specific graphic logic (animations, tweens, etc.)
+        this.onUpdate(config);
+    }
+
+    onUpdate(config) {
+        // Optional override
+    }
+
+    setVisible(visible) {
+        if (this.gameObject) this.gameObject.setVisible(visible);
+    }
+
+    destroy() {
+        if (this.gameObject) this.gameObject.destroy();
+        this.gameObject = null;
+    }
+}
+--- FILE: src/graphics/BubbleGraphic.js ---
+import { BaseGraphic } from './BaseGraphic';
+import { GRID } from '../core/Constants';
+
+export class BubbleGraphic extends BaseGraphic {
+    create(config) {
+        const sprite = this.scene.add.sprite(0, 0, 'bubble_sheet', config.frame || 0);
+
+        // Scale to match Game Units
+        const targetPixelSize = (config.size || 1) * GRID.UNIT * 2;
+        const scaleX = targetPixelSize / sprite.width;
+        const scaleY = targetPixelSize / sprite.height;
+        const finalScale = Math.min(scaleX, scaleY);
+
+        sprite.setScale(finalScale);
+
+        return sprite;
+    }
+
+    onUpdate(config) {
+        if (config.animate && this.gameObject) {
+            // CONFIG: 1/4 second loop (250ms)
+            // 8 Frames total.
+            // 250ms / 8 = 31.25ms per frame.
+
+            const loopDuration = 250;
+            const totalFrames = 8;
+            const msPerFrame = loopDuration / totalFrames;
+
+            const currentFrame = Math.floor(Date.now() / msPerFrame) % totalFrames;
+
+            this.gameObject.setFrame(currentFrame);
+        }
+    }
+}
+--- FILE: src/graphics/ChaosEmitterGraphic.js ---
+import Phaser from 'phaser';
+import { BaseGraphic } from './BaseGraphic';
+
+export class ChaosEmitterGraphic extends BaseGraphic {
+    create(config) {
+        this.gameObject = this.scene.add.circle(0, 0, (config.size || 1) * 10, config.coreColor || 0xffff00, 0.2);
+        this.gameObject.setDepth(100);
+
+        this.tracerGfx = this.scene.add.graphics().setDepth(90);
+        this.particles = [];
+        this.spawnTimer = 0;
+        return this.gameObject;
+    }
+
+    onUpdate(config) {
+        if (!this.gameObject) return;
+
+        const intensity = config.intensity ?? 1.0;
+        this.spawnTimer++;
+
+        const spawnRate = config.spawnRate ?? (10 / intensity);
+        const maxParticles = config.maxParticles ?? (20 * intensity);
+
+        if (this.spawnTimer > spawnRate && this.particles.length < maxParticles) {
+            this.spawnParticle(config);
+            this.spawnTimer = 0;
+        }
+
+        this.tracerGfx.clear();
+
+        for (let i = this.particles.length - 1; i >= 0; i--) {
+            const p = this.particles[i];
+
+            // Chaos Jitter
+            p.vx += (Math.random() - 0.5) * (config.jitter ?? 0.8) * intensity;
+            p.vy += (Math.random() - 0.5) * (config.jitter ?? 0.8) * intensity;
+
+            const dx = p.x - this.gameObject.x;
+            const dy = p.y - this.gameObject.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > 0) {
+                const pushForce = (config.push ?? 0.15) * intensity;
+                p.vx += (dx / dist) * pushForce;
+                p.vy += (dy / dist) * pushForce;
+
+                // ABSORPTION KILL-ZONE: If push is negative, kill particle when it hits center
+                if (pushForce < 0 && dist < 8) {
+                    p.life = 0;
+                }
+            }
+
+            p.vx *= (config.friction ?? 0.92);
+            p.vy *= (config.friction ?? 0.92);
+
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 1;
+
+            p.history.push({ x: p.x, y: p.y });
+            if (p.history.length > (config.tailLen ?? 15)) p.history.shift();
+
+            this.drawParticle(p, config, intensity);
+            if (p.life <= 0) this.particles.splice(i, 1);
+        }
+    }
+
+    drawParticle(p, config, intensity) {
+        const alpha = (p.life / p.maxLife);
+        if (p.history.length > 1) {
+            this.tracerGfx.lineStyle(config.thickness ?? 1, config.tracerColor ?? 0xffa500, alpha);
+            this.tracerGfx.beginPath();
+            this.tracerGfx.moveTo(p.history[0].x, p.history[0].y);
+            p.history.forEach(pos => this.tracerGfx.lineTo(pos.x, pos.y));
+            this.tracerGfx.strokePath();
+        }
+        this.tracerGfx.fillStyle(config.headColor ?? 0x00ffff, alpha);
+        this.tracerGfx.fillCircle(p.x, p.y, config.headSize ?? 2);
+    }
+
+    spawnParticle(config) {
+        const life = 40 + Math.random() * 40;
+        const push = config.push ?? 0.15;
+
+        let sx = this.gameObject.x;
+        let sy = this.gameObject.y;
+
+        // If push is negative (Absorb), spawn in a ring around the center
+        if (push < 0) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 50 + Math.random() * 30;
+            sx += Math.cos(angle) * dist;
+            sy += Math.sin(angle) * dist;
+        }
+
+        this.particles.push({
+            x: sx, y: sy,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 2,
+            history: [], life: life, maxLife: life
+        });
+    }
+
+    destroy() {
+        if (this.tracerGfx) this.tracerGfx.destroy();
+        this.particles = [];
+        super.destroy();
+    }
+}
+--- FILE: src/graphics/CircleGraphic.js ---
+import { BaseGraphic } from './BaseGraphic';
+
+export class CircleGraphic extends BaseGraphic {
+    create(config) {
+        return this.scene.add.circle(0, 0, config.radius || 16, config.color || 0xffffff);
+    }
+
+    onUpdate(config) {
+        const intensity = config.intensity ?? 1.0;
+        const baseRadius = config.radius || 16;
+
+        // Intensity drives a "vibration" effect
+        if (intensity > 1.0) {
+            const jitter = (intensity - 1.0) * 2;
+            this.gameObject.setRadius(baseRadius + (Math.random() * jitter));
+        } else {
+            this.gameObject.setRadius(baseRadius * intensity);
+        }
+    }
+}
+--- FILE: src/graphics/FairyGlowGraphic.js ---
+import Phaser from 'phaser';
+import { BaseGraphic } from './BaseGraphic';
+import { GRID } from '../core/Constants';
+
+export class FairyGlowGraphic extends BaseGraphic {
+    create(config) {
+        const radius = (config.size || 1) * GRID.UNIT;
+
+        if (!this.scene.textures.exists('wisp_glow')) {
+            const graphics = this.scene.make.graphics({ x: 0, y: 0, add: false });
+            graphics.fillStyle(0xffffff, 1);
+            graphics.fillCircle(8, 8, 8);
+            graphics.generateTexture('wisp_glow', 16, 16);
+        }
+
+        this.gameObject = this.scene.add.circle(0, 0, radius, config.coreColor || 0xff0000, 1);
+        this.gameObject.setDepth(100);
+
+        this.emitter = this.scene.add.particles(0, 0, 'wisp_glow', {
+            speed: { min: 20, max: 50 },
+            lifespan: { min: 2000, max: 4000 },
+            frequency: 60,
+            angle: { min: 0, max: 360 },
+            scale: { start: 0.4, end: 0 },
+            alpha: { start: 0.6, end: 0 },
+            tint: config.tints || [0xff0000, 0xffffff],
+            blendMode: 'ADD',
+            emitting: true
+        });
+
+        this.emitter.setDepth(90);
+        return this.gameObject;
+    }
+
+    onUpdate(config) {
+        if (!this.gameObject || !this.emitter) return;
+
+        const { x, y } = this.gameObject;
+        this.emitter.setPosition(x, y);
+
+        const intensity = config.intensity ?? 1.0;
+        const time = Date.now() * 0.002;
+
+        const updateProp = (prop, min, max) => {
+            if (prop && typeof prop === 'object') {
+                if (prop.hasOwnProperty('min')) prop.min = min;
+                if (prop.hasOwnProperty('max')) prop.max = max;
+            }
+        };
+
+        const baseSpeed = 40 * intensity;
+        updateProp(this.emitter.speedX, -baseSpeed, baseSpeed);
+        updateProp(this.emitter.speedY, -baseSpeed, baseSpeed);
+
+        this.emitter.frequency = Math.max(5, 60 / intensity);
+
+        this.emitter.forEachAlive((p) => {
+            const noise = p.id || 0;
+            p.vx += Math.cos(time + noise) * (0.8 * intensity);
+            p.vy += Math.sin(time + noise) * (0.8 * intensity);
+
+            const dx = p.x - x;
+            const dy = p.y - y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist > 0) {
+                const pushForce = (config.push ?? 0.3) * intensity;
+                p.vx += (dx / dist) * pushForce;
+                p.vy += (dy / dist) * pushForce;
+            }
+        });
+
+        const baseRadius = (config.size || 1) * GRID.UNIT;
+        this.gameObject.setRadius(baseRadius * (0.8 + intensity * 0.4));
+    }
+
+    setVisible(visible) {
+        super.setVisible(visible);
+        if (this.emitter) {
+            this.emitter.setVisible(visible);
+            this.emitter.paused = !visible;
+        }
+    }
+
+    destroy() {
+        if (this.emitter) {
+            this.emitter.destroy();
+            this.emitter = null;
+        }
+        super.destroy();
+    }
+}
+--- FILE: src/graphics/GlowGraphic.js ---
+import Phaser from 'phaser';
+import { BaseGraphic } from './BaseGraphic';
+
+export class GlowGraphic extends BaseGraphic {
+    create(config) {
+        const g = this.scene.add.circle(
+            0, 0,
+            config.radius || 25,
+            config.color || 0xffff00,
+            0.3
+        );
+
+        g.setBlendMode(Phaser.BlendModes.ADD);
+        return g;
+    }
+
+    onUpdate(config) {
+        // Pulse animation logic specific to this graphic type
+        const pulse = 1 + Math.sin(Date.now() / 200) * 0.2;
+        this.gameObject.setScale(pulse);
+    }
+}
+--- FILE: src/graphics/RectGraphic.js ---
+import { BaseGraphic } from './BaseGraphic';
+
+export class RectGraphic extends BaseGraphic {
+    create(config) {
+        const r = this.scene.add.rectangle(
+            0, 0,
+            config.width || 32,
+            config.height || 32,
+            config.color || 0xffffff
+        );
+
+        if (config.alpha !== undefined) r.setAlpha(config.alpha);
+        r.isFilled = true;
+
+        return r;
+    }
+
+    /**
+     * Contract Implementation:
+     * - intensity: Scales dimensions and adds "chaos" jitter at high values.
+     * - color: Live updates the fill color.
+     */
+    onUpdate(config) {
+        if (!this.gameObject) return;
+
+        const intensity = config.intensity ?? 1.0;
+        const baseW = config.width || 32;
+        const baseH = config.height || 32;
+
+        // 1. Reactive Scaling
+        // At intensity 1.0, it is base size. At 0.0, it disappears.
+        let targetW = baseW * intensity;
+        let targetH = baseH * intensity;
+
+        // 2. High-Intensity Jitter (The "Contract" for stress/energy)
+        if (intensity > 1.2) {
+            const jitter = (intensity - 1.2) * 5;
+            targetW += (Math.random() - 0.5) * jitter;
+            targetH += (Math.random() - 0.5) * jitter;
+        }
+
+        this.gameObject.setSize(targetW, targetH);
+
+        // 3. Dynamic Coloring
+        if (config.color !== undefined) {
+            this.gameObject.setFillStyle(config.color, config.alpha ?? 1.0);
+        }
+    }
+}
+--- FILE: src/graphics/SpriteGraphic.js ---
+import { BaseGraphic } from './BaseGraphic';
+
+export class SpriteGraphic extends BaseGraphic {
+    create(config) {
+        return this.scene.add.text(0, 0, config.char || '?', {
+            fontSize: '24px',
+            color: config.color || '#ffffff'
+        }).setOrigin(0.5);
+    }
+
+    onUpdate(config) {
+        const intensity = config.intensity ?? 1.0;
+
+        // Scale and Color react to intensity
+        this.gameObject.setScale(config.size ?? 1 * intensity);
+
+        if (config.color) {
+            this.gameObject.setColor(config.color);
+        }
+    }
+}
+--- FILE: src/graphics/TriangleGraphic.js ---
+import { BaseGraphic } from './BaseGraphic';
+import { GRID } from '../core/Constants';
+import Phaser from 'phaser';
+
+export class TriangleGraphic extends BaseGraphic {
+    create(config) {
+        // Use a Graphics object instead of a Polygon Shape.
+        // Graphics pivot exactly at (0,0) by default, ensuring a perfect "spin".
+        return this.scene.add.graphics();
+    }
+
+    onUpdate(config) {
+        const gfx = this.gameObject;
+        if (!gfx) return;
+
+        // 1. CLEAR previous frame (essential for dynamic zoom thickness)
+        gfx.clear();
+
+        // 2. CONFIGURATION
+        const cam = this.scene.cameras.main;
+        // Stroke stays 2px thick regardless of zoom
+        const thickness = 2 / cam.zoom;
+        const colorVal = Phaser.Display.Color.HexStringToColor(config.color || '#ff8400').color;
+        const intensity = config.intensity ?? 1.0;
+
+        // 3. SIZE CALCULATION
+        // "10x10 World Units" means 10 * GRID.UNIT (10px) = 100px total span.
+        // To span 100px centered at 0, radius 's' must be 50.
+        // config.size of 5.0 * 10 = 50.
+        const unit = GRID.UNIT;
+        const s = (config.size || 1) * unit * intensity;
+
+        // 4. DRAW
+        // We draw relative to local (0,0), which BaseGraphic has already moved to the Player's position.
+        gfx.fillStyle(colorVal, 1);
+        gfx.lineStyle(thickness, 0xffffff);
+
+        gfx.beginPath();
+        gfx.moveTo(s, 0);       // Tip (Right)
+        gfx.lineTo(-s, -s);     // Top Back
+        gfx.lineTo(-s, s);      // Bottom Back
+        gfx.closePath();
+
+        gfx.fillPath();
+        gfx.strokePath();
+    }
+}
+--- FILE: src/main.js ---
+// src/main.js
+const { app, BrowserWindow } = require('electron');
+const path = require('path');
+
+function createWindow() {
+    const win = new BrowserWindow({
+        width: 1500,
+        height: 1200,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true
+        }
+    });
+
+    // LOAD THE VITE SERVER
+    // This tells Electron to look at the web server where your game is running
+    win.loadURL('http://localhost:3000');
+}
+
+app.whenReady().then(createWindow);
+
+app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit();
+});
+--- FILE: src/scenes/LoadingScene.js ---
+
+--- FILE: src/scenes/MenuScene.js ---
+import Phaser from 'phaser';
+import { InputManager } from '../core/Input';
+
+export class MenuScene extends Phaser.Scene {
+    constructor() {
+        super('MenuScene');
+        this.options = ['START GAME', 'LOAD GAME', 'TEST SUITE'];
+        this.selected = 0;
+        this.textObjects = [];
+    }
+
+    create() {
+        this.inputManager = new InputManager(this);
+        this.textObjects = []; // CRITICAL: Reset the array
+
+        this.add.text(100, 100, 'REFRACT', {
+            fontSize: '64px',
+            fill: '#fff',
+            fontFamily: 'monospace'
+        });
+
+        this.options.forEach((opt, index) => {
+            const text = this.add.text(100, 300 + (index * 60), `  ${opt}`, {
+                fontSize: '32px',
+                fill: '#666',
+                fontFamily: 'monospace'
             });
-            if (target) {
-                player.components.Parent = Parent(target.id, {
-                    x: pPos.x - target.components.Position.x,
-                    y: pPos.y - target.components.Position.y
-                });
+            this.textObjects.push(text);
+        });
+
+        this.updateSelection();
+    }
+
+    update() {
+        if (this.inputManager.getAction('UP')) {
+            this.selected = (this.selected - 1 + this.options.length) % this.options.length;
+            this.updateSelection();
+        }
+        else if (this.inputManager.getAction('DOWN')) {
+            this.selected = (this.selected + 1) % this.options.length;
+            this.updateSelection();
+        }
+
+        if (this.inputManager.getAction('SELECT')) {
+            this.handleSelection();
+        }
+    }
+
+    updateSelection() {
+        this.textObjects.forEach((text, index) => {
+            // Safety check to prevent the drawImage error during scene transitions
+            if (!text || !text.active || !text.canvas) return;
+
+            if (index === this.selected) {
+                text.setColor('#0f0');
+                text.setText(`> ${this.options[index]}`);
+            } else {
+                text.setColor('#666');
+                text.setText(`  ${this.options[index]}`);
+            }
+        });
+    }
+
+    handleSelection() {
+        const choice = this.options[this.selected];
+        if (choice === 'TEST SUITE') {
+            this.scene.start('TestMenuScene');
+        } else {
+            console.log("Not implemented yet:", choice);
+        }
+    }
+}
+--- FILE: src/scenes/test/00_MovementTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import {
+    Position, Renderable, Collider, PlatformTag, Parent, AbilityState
+} from '../../ecs/components/index';
+
+export class MovementTest extends BaseTestScene {
+    constructor() {
+        super('MovementTest', 'Restrained Movement', 'Player tethered. Hold X/Y to target.');
+    }
+
+    create() {
+        super.create();
+
+        const cage = this.addEntity([
+            { id: 'cage_platform' },
+            Position(400, 300),
+            // Updated to Renderable
+            Renderable({
+                'BASE': { type: 'circle', radius: 100, color: 0x333333 }
+            }),
+            Collider('circle', 100),
+            PlatformTag()
+        ]);
+
+        this.addEntity([
+            ...createPlayer(400, 300),
+            AbilityState(),
+            Parent(cage.id, { x: 0, y: 0 })
+        ]);
+
+        this.cameras.main.centerOn(400, 300);
+    }
+}
+--- FILE: src/scenes/test/01_TargetTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { createTarget } from '../../ecs/entities/target';
+import { AbilityState, EntityType, CameraTarget } from '../../ecs/components/index';
+import { BaseTestScene } from './BaseTestScene';
+
+export class TargetTest extends BaseTestScene {
+    constructor() {
+        super('TargetTest', 'Targeting Test', 'Hold X/Y to test Spiral Logic. Tap E to cycle.');
+    }
+
+    create() {
+        super.create();
+
+        // Player
+        this.addEntity([
+            ...createPlayer(400, 300),
+            AbilityState(),
+            CameraTarget()
+        ]);
+
+        // Targets (Factories use Renderable internally now)
+        this.addEntity([...createTarget(200, 200), EntityType('A')]);
+        this.addEntity([...createTarget(600, 200), EntityType('A')]);
+        this.addEntity([...createTarget(600, 500), EntityType('A')]);
+        this.addEntity([...createTarget(200, 500), EntityType('B')]);
+
+        this.cameras.main.centerOn(400, 300);
+    }
+}
+--- FILE: src/scenes/test/02_CameraTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { createTarget } from '../../ecs/entities/target';
+import { CameraTarget, AbilityState } from '../../ecs/components/index';
+import { BaseTestScene } from './BaseTestScene';
+
+export class CameraTest extends BaseTestScene {
+    constructor() {
+        super('CameraTest', 'Camera Focus', 'Face Target (200,200) & Hold X to Lock.');
+    }
+
+    create() {
+        super.create();
+
+        this.addEntity([
+            ...createTarget(200, 200, 'A'),
+            CameraTarget()
+        ]);
+
+        this.addEntity([
+            ...createPlayer(0, 0),
+            AbilityState(),
+            CameraTarget()
+        ]);
+
+        this.cameras.main.centerOn(0, 0);
+    }
+}
+--- FILE: src/scenes/test/03_AbilityTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { EntityType, AbilityState, CameraTarget, Position, Renderable } from '../../ecs/components/index';
+import { BaseTestScene } from './BaseTestScene';
+import Phaser from 'phaser'; // Needed for Math
+
+export class AbilityTest extends BaseTestScene {
+    constructor() {
+        super('AbilityTest', 'Ability Test', 'Hold X (A/B) or Y (C). E/Q to Cycle.');
+    }
+
+    create() {
+        super.create();
+        this.addEntity([...createPlayer(0, 0), AbilityState(), CameraTarget()]);
+
+        const types = [
+            { id: 'A', color: 0x0000ff, tex: 'rect' },
+            { id: 'B', color: 0x00ff00, tex: 'rect' },
+            { id: 'C', color: 0xffff00, tex: 'circle' }
+        ];
+
+        types.forEach(t => {
+            for (let i = 0; i < 15; i++) {
+                this.addEntity([
+                    Position(Phaser.Math.Between(-600, 600), Phaser.Math.Between(-400, 400)),
+                    // Updated to Renderable
+                    Renderable({
+                        'BASE': { type: t.tex, color: t.color, width: 15, height: 15, radius: 8 }
+                    }),
+                    EntityType(t.id),
+                    CameraTarget()
+                ]);
+            }
+        });
+    }
+}
+--- FILE: src/scenes/test/04_PlatformTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import {
+    Position, Velocity, Collider, PlatformTag, Renderable, CameraTarget, AbilityState
+} from '../../ecs/components/index';
+
+export class PlatformTest extends BaseTestScene {
+    constructor() {
+        super('PlatformTest', 'Platform Snapping', 'Move onto circles. Hold X to Target.');
+    }
+
+    create() {
+        super.create();
+
+        this.addEntity([...createPlayer(-300, 0), AbilityState()]);
+
+        // Safe Platform
+        this.addEntity([
+            Position(0, 0),
+            // Updated
+            Renderable({
+                'BASE': { type: 'circle', radius: 50, color: 0x333333 }
+            }),
+            Collider('circle', 50),
+            PlatformTag(),
+            CameraTarget()
+        ]);
+
+        // Mover
+        this.addEntity([
+            { id: 'mover_invisible' },
+            Position(400, 0),
+            Velocity(0, 150),
+            // No graphic needed, or empty renderable
+            Renderable({}),
+            Collider('rect', 0, 200, 200),
+            PlatformTag(),
+            CameraTarget()
+        ]);
+
+        this.cameras.main.centerOn(-300, 0);
+    }
+
+    fixedUpdate(time, dt) {
+        const mover = this.entities.find(e => e.id === 'mover_invisible');
+        if (mover && mover.components.Velocity) {
+            mover.components.Velocity.y = Math.sin(time / 1000) * 200;
+        }
+    }
+}
+--- FILE: src/scenes/test/05_OrbitTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import {
+    Position, Collider, PlatformTag, Renderable, CameraTarget, Parent, AbilityState
+} from '../../ecs/components/index';
+
+export class OrbitTest extends BaseTestScene {
+    constructor() {
+        super('OrbitTest', 'Circular Orbit', 'Player orbits. Hold X to Target.');
+        this.theta = 0;
+        this.orbitRadius = 300;
+        this.orbitSpeed = 0.01;
+    }
+
+    create() {
+        super.create();
+
+        // Sun
+        this.addEntity([
+            { id: 'sun' },
+            Position(0, 0),
+            // Updated
+            Renderable({
+                'BASE': { type: 'circle', radius: 50, color: 0xffcc00 }
+            }),
+            Collider('circle', 50),
+            PlatformTag(),
+            CameraTarget()
+        ]);
+
+        // Planet
+        this.addEntity([
+            { id: 'planet' },
+            Position(this.orbitRadius, 0),
+            // Updated
+            Renderable({
+                'BASE': { type: 'circle', radius: 50, color: 0x00aaff }
+            }),
+            Collider('circle', 50),
+            PlatformTag(),
+            CameraTarget()
+        ]);
+
+        this.addEntity([
+            ...createPlayer(0, 0),
+            AbilityState(),
+            Parent('planet', { x: 0, y: -40 })
+        ]);
+    }
+
+    fixedUpdate(time, dt) {
+        this.theta += this.orbitSpeed;
+        const planet = this.entities.find(e => e.id === 'planet');
+
+        if (planet && planet.components.Position) {
+            planet.components.Position.x = Math.cos(this.theta) * this.orbitRadius;
+            planet.components.Position.y = Math.sin(this.theta) * this.orbitRadius;
+        }
+    }
+}
+--- FILE: src/scenes/test/06_LayerTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import { ViewLayers, Renderable, Position, Velocity, Rotation, InputControlled, CameraTarget, PlayerTag } from '../../ecs/components/index';
+import { LayeredRenderSystem } from '../../ecs/systems/LayeredRenderSystem';
+
+export class LayerTest extends BaseTestScene {
+    constructor() {
+        super('LayerTest', 'View Layers', '1: Base, 2: Thermal, 3: Ether. SPACE: Stun.');
+    }
+
+    create() {
+        super.create();
+
+        // 1. Player
+        this.addEntity([
+            Position(0, 0),
+            Velocity(0, 0),
+            Rotation(0),
+            InputControlled(),
+            PlayerTag(),
+            CameraTarget(),
+            ViewLayers(['BASE']),
+            Renderable({
+                'BASE': { type: 'sprite', char: '@', color: '#00ffff' }
+            })
+        ]);
+
+        // 2. Enemy (Visible in Base & Thermal)
+        this.addEntity([
+            { id: 'enemy_1' },
+            Position(200, 0),
+            Renderable({
+                'BASE': { type: 'rect', width: 40, height: 40, color: 0x888888 },
+                'THERMAL': { type: 'circle', radius: 25, color: 0xff0000, alpha: 0.8 },
+            })
+        ]);
+
+        // 3. Ghost Platform (Visible only in Ether)
+        this.addEntity([
+            { id: 'ghost_plat' },
+            Position(-200, 0),
+            Velocity(0, 100),
+            Renderable({
+                'ETHER': { type: 'glow', radius: 40, color: 0x00ff00 }
+            })
+        ]);
+
+        this.input.keyboard.on('keydown-ONE', () => this.toggleLayer('BASE'));
+        this.input.keyboard.on('keydown-TWO', () => this.toggleLayer('THERMAL'));
+        this.input.keyboard.on('keydown-THREE', () => this.toggleLayer('ETHER'));
+
+        this.cameras.main.centerOn(0, 0);
+    }
+
+    update(time, delta) {
+        super.update(time, delta);
+        LayeredRenderSystem(this.entities, this);
+    }
+
+    fixedUpdate(time, dt) {
+        const plat = this.entities.find(e => e.id === 'ghost_plat');
+        if (plat) {
+            if (plat.components.Position.y > 150) plat.components.Velocity.y = -100;
+            if (plat.components.Position.y < -150) plat.components.Velocity.y = 100;
+        }
+    }
+
+    toggleLayer(layerName) {
+        const player = this.entities.find(e => e.components.PlayerTag);
+        if (!player) return;
+
+        const layers = player.components.ViewLayers.layers;
+        const idx = layers.indexOf(layerName);
+        if (idx === -1) layers.push(layerName);
+        else layers.splice(idx, 1);
+        console.log("Current Layers:", layers);
+    }
+}
+--- FILE: src/scenes/test/07_GardenTest.js ---
+import Phaser from 'phaser';
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import { Position, Renderable, ViewLayers, CameraTarget, AbilityState } from '../../ecs/components/index';
+import { LayeredRenderSystem } from '../../ecs/systems/LayeredRenderSystem';
+
+export class GardenTest extends BaseTestScene {
+    constructor() {
+        super('GardenTest', 'Contract Test', 'Player: Red Emit / Yellow Absorb. Grid: Random Emit.');
+    }
+
+    create() {
+        super.create();
+
+        // 1. PLAYER: Red Dot + Dual Emitter Signature
+        const player = this.addEntity([
+            ...createPlayer(0, 0),
+            AbilityState(),
+            CameraTarget(),
+            ViewLayers(['BASE', 'FAIRY', 'CHAOS'])
+        ]);
+
+        player.components.Renderable.definitions = {
+            'BASE': { type: 'circle', radius: 5, color: 0xff0000 },
+            'FAIRY': {
+                type: 'fairy_glow',
+                size: 0.6, coreColor: 0xff0000,
+                intensity: 1.0, push: 0.5 // RED EMIT
+            },
+            'CHAOS': {
+                type: 'chaos_emitter',
+                size: 0.4, headColor: 0xffff00, tracerColor: 0xffaa00,
+                intensity: 1.2, push: -1.2, // YELLOW ABSORB
+                maxParticles: 40
+            }
+        };
+
+        const gridSize = 11;
+        const spacing = 200;
+        const offset = 5 * spacing;
+
+        for (let x = 0; x < gridSize; x++) {
+            for (let y = 0; y < gridSize; y++) {
+                if (x === 5 && y === 5) continue;
+
+                const posX = (x * spacing) - offset;
+                const posY = (y * spacing) - offset;
+                const isFairy = Math.random() > 0.5;
+                const randomColor = Phaser.Display.Color.RandomRGB().color;
+
+                this.addEntity([
+                    Position(posX, posY),
+                    Renderable({
+                        'BASE': {
+                            type: isFairy ? 'fairy_glow' : 'chaos_emitter',
+                            size: 0.8,
+                            coreColor: randomColor,
+                            headColor: randomColor,
+                            tracerColor: randomColor,
+                            intensity: 0.1,
+                            push: 0.3 // ALL GRID ENTITIES PUSH OUT (EMIT)
+                        }
+                    })
+                ]);
             }
         }
-    };
+        this.cameras.main.setZoom(1.2);
+    }
+
+    update(time, delta) {
+        super.update(time, delta);
+        const player = this.entities.find(e => e.components.PlayerTag);
+        if (!player) return;
+
+        const pPos = player.components.Position;
+        this.entities.forEach(entity => {
+            const renderable = entity.components.Renderable;
+            const pos = entity.components.Position;
+            if (!renderable || !pos || entity.components.PlayerTag) return;
+
+            const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, pos.x, pos.y);
+            const intensity = dist < 300 ? 0.1 + (Math.pow(1 - (dist / 300), 1.5) * 2.5) : 0.1;
+            renderable.definitions['BASE'].intensity = intensity;
+        });
+
+        LayeredRenderSystem(this.entities, this);
+    }
+}
+--- FILE: src/scenes/test/08_WebTest.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import {
+    Position,
+    Renderable,
+    Collider,
+    PlatformTag,
+    Parent,
+    AbilityState,
+    EntityType,
+    ConnectionPoint
+} from '../../ecs/components/index';
+
+export class WebTest extends BaseTestScene {
+    constructor() {
+        super('WebTest', 'Web Mechanic Lab', 'Platforms at +/- 500. Hold X to target.');
+    }
+
+    create() {
+        super.create();
+
+        // 1. Left Platform (-500, 0)
+        const leftPlatform = this.addEntity([
+            { id: 'platform_left' },
+            Position(-500, 0),
+            Renderable({
+                'BASE': { type: 'circle', radius: 100, color: 0x222222 }
+            }),
+            Collider('circle', 100),
+            PlatformTag(),
+            EntityType('PLATFORM'),
+            ConnectionPoint(0, 0)
+        ]);
+
+        // 2. Right Platform (500, 0)
+        this.addEntity([
+            { id: 'platform_right' },
+            Position(500, 0),
+            Renderable({
+                'BASE': { type: 'circle', radius: 100, color: 0x222222 }
+            }),
+            Collider('circle', 100),
+            PlatformTag(),
+            EntityType('PLATFORM'),
+            ConnectionPoint(0, 0) // Top edge
+        ]);
+
+        // 3. Player: Starts in the center of the -500 platform
+        this.addEntity([
+            ...createPlayer(-500, 0),
+            AbilityState(),
+            Parent(leftPlatform.id, { x: 0, y: 0 }),
+            // ConnectionPoint at -50 ensures web attaches to the back edge (5 units back)
+            ConnectionPoint(0, 0)
+        ]);
+
+        this.cameras.main.centerOn(0, 0);
+        this.cameras.main.setZoom(0.7);
+    }
+}
+--- FILE: src/scenes/test/09_EnergySystems.js ---
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import {
+    Position,
+    Renderable,
+    Collider,
+    PlatformTag,
+    Parent,
+    AbilityState,
+    EntityType,
+    ConnectionPoint,
+    EnergySource // Import this
+} from '../../ecs/components/index';
+
+export class EnergySystems extends BaseTestScene {
+    constructor() {
+        super('EnergySystems', 'Energy Systems', 'Energy Fields Drive You. RB to Attach.');
+    }
+
+    create() {
+        super.create();
+
+        const radius = 400;
+        const platformRadius = 60;
+        const platforms = [];
+
+        // 1. Create 5 Platforms
+        for (let i = 0; i < 5; i++) {
+            const angleDeg = (i * 72) - 90;
+            const angleRad = angleDeg * (Math.PI / 180);
+
+            const px = Math.cos(angleRad) * radius;
+            const py = Math.sin(angleRad) * radius;
+
+            // Platform 0 (Top) is the EMITTER. Others are ABSORBERS.
+            // Absorbers have negative strength (Pull). Emitters have positive (Push).
+            const isEmitter = (i === 0);
+            const strength = isEmitter ? 500 : -300;
+            const type = isEmitter ? 'EMIT' : 'ABSORB';
+            const color = isEmitter ? 0xff4400 : 0x0044ff; // Red push, Blue pull
+
+            const platform = this.addEntity([
+                { id: `platform_${i}` },
+                Position(px, py),
+                Renderable({
+                    'BASE': { type: 'circle', radius: platformRadius, color: color }
+                }),
+                Collider('circle', platformRadius),
+                PlatformTag(),
+                EntityType('PLATFORM'),
+                ConnectionPoint(0, 0),
+                EnergySource(strength, type) // Add Energy Source
+            ]);
+            platforms.push(platform);
+        }
+
+        // 2. Create Player
+        const startPlat = platforms[0];
+        const startPos = startPlat.components.Position;
+
+        this.addEntity([
+            ...createPlayer(startPos.x, startPos.y),
+            AbilityState(),
+            Parent(startPlat.id, { x: 0, y: 0 }),
+            ConnectionPoint(0, 0)
+        ]);
+
+        this.cameras.main.centerOn(0, 0);
+        this.cameras.main.setZoom(0.6);
+    }
+}
+--- FILE: src/scenes/test/10_VerticalSlice.js ---
+// src/scenes/test/10_VerticalSlice.js
+import { createPlayer } from '../../ecs/entities/player';
+import { BaseTestScene } from './BaseTestScene';
+import {
+    Position, Renderable, Collider, PlatformTag, AbilityState, EntityType, SlingshotJump
+} from '../../ecs/components/index';
+import Phaser from 'phaser';
+
+export class VerticalSlice extends BaseTestScene {
+    constructor() {
+        super('VerticalSlice', 'Vertical Slice', 'Hard Floor at 0. Climb to -10,000.');
+    }
+
+    create() {
+        super.create();
+
+        const WORLD_WIDTH = 3000;
+        const WORLD_HEIGHT = 10000;
+
+        // Set bounds so 0 is the floor and height is negative
+        this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
+        this.cameras.main.setZoom(0.6);
+
+        if (!this.textures.exists('bg_grid')) {
+            const gfx = this.make.graphics({ x: 0, y: 0, add: false });
+            gfx.lineStyle(2, 0x1a1a1a, 1);
+            gfx.strokeRect(0, 0, 100, 100);
+            gfx.generateTexture('bg_grid', 100, 100);
+        }
+
+        // Tile background covers the negative space
+        const bg = this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid');
+        bg.setDepth(0);
+
+        // Visual Floor (Just for the player's eyes)
+        const floorGfx = this.add.graphics();
+        floorGfx.lineStyle(10, 0x00ff00, 1);
+        floorGfx.lineBetween(0, 5, WORLD_WIDTH, 5);
+
+        // Procedural Platforms
+        let lastPos = { x: WORLD_WIDTH / 2, y: -200 };
+        const platformCount = 75;
+        const jumpDistance = 850;
+
+        for (let i = 0; i < platformCount; i++) {
+            // Random upward angle (Phaser negative Y is UP)
+            const angle = Phaser.Math.FloatBetween(Math.PI, Math.PI * 2);
+            const dist = Phaser.Math.Between(450, jumpDistance);
+
+            let nextX = lastPos.x + Math.cos(angle) * dist;
+            let nextY = lastPos.y + Math.sin(angle) * dist;
+
+            nextX = Phaser.Math.Clamp(nextX, 500, WORLD_WIDTH - 500);
+
+            const isCircle = Math.random() > 0.4;
+            const size = Phaser.Math.Between(80, 180);
+            const color = Phaser.Display.Color.RandomRGB(40).color;
+
+            const components = [
+                Position(nextX, nextY),
+                PlatformTag(),
+                EntityType('PLATFORM')
+            ];
+
+            if (isCircle) {
+                components.push(Renderable({ 'BASE': { type: 'circle', radius: size, color: color } }));
+                components.push(Collider('circle', size));
+            } else {
+                const w = size * 2.5;
+                const h = Phaser.Math.Between(60, 130);
+                components.push(Renderable({ 'BASE': { type: 'rect', width: w, height: h, color: color } }));
+                components.push(Collider('rect', 0, w, h));
+            }
+
+            this.addEntity(components);
+            lastPos = { x: nextX, y: nextY };
+        }
+
+        // Spawn Player directly on the hard floor
+        const spawnX = WORLD_WIDTH / 2;
+        const spawnY = 0;
+
+        this.addEntity([
+            ...createPlayer(spawnX, spawnY),
+            AbilityState(),
+            SlingshotJump(3000)
+        ]);
+
+        this.cameras.main.centerOn(spawnX, spawnY);
+    }
+}
+--- FILE: src/scenes/test/BaseTestScene.js ---
+// src/scenes/test/BaseTestScene.js
+import Phaser from 'phaser';
+import { UI } from '../../core/UIManager';
+import { InputManager } from '../../core/Input';
+import { GRID, PHYSICS } from '../../core/Constants';
+
+// We import systems directly from their files to bypass the index.js conflict 
+// and get you back to a working state immediately.
+import { MovementSystem } from '../../ecs/systems/MovementSystem';
+import { AttachmentSystem } from '../../ecs/systems/AttachmentSystem';
+import { AbilityTargetingSystem } from '../../ecs/systems/AbilityTargetingSystem';
+import { PhysicsSystem } from '../../ecs/systems/PhysicsSystem';
+import { CameraSystem } from '../../ecs/systems/CameraSystem';
+import { LayeredRenderSystem } from '../../ecs/systems/LayeredRenderSystem';
+import { TargetRenderSystem } from '../../ecs/systems/TargetRenderSystem';
+import { DebugLayerSystem } from '../../ecs/systems/DebugLayerSystem';
+import { WebRenderSystem } from '../../ecs/systems/WebRenderSystem';
+import { WebSystem } from '../../ecs/systems/WebSystem';
+import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
+import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
+
+export class BaseTestScene extends Phaser.Scene {
+    constructor(key, title, subtitle) {
+        super(key || 'BaseTestScene');
+        this.testTitle = title || "Slingshot Lab";
+        this.testSubtitle = subtitle || "State & Render Sync Debug";
+        this.accumulator = 0;
+    }
+
+    create() {
+        this.entities = [];
+        this.inputManager = new InputManager(this);
+
+        // Initialize UI Overlay
+        UI.showTitle(this.testTitle, this.testSubtitle);
+
+        // Global Key Listeners
+        this.input.keyboard.on('keydown-TAB', () => UI.toggleDebug());
+        this.input.keyboard.on('keydown-ESC', () => this.scene.start('TestMenuScene'));
+
+        this.events.once('shutdown', this.shutdown, this);
+
+        // Run sub-scene specific setup
+        this.setupScene();
+    }
+
+    setupScene() {
+        // Default implementation - override this in child classes
+    }
+
+    shutdown() {
+        this.entities = [];
+        this.input.keyboard.off('keydown-TAB');
+        this.input.keyboard.off('keydown-ESC');
+        this.accumulator = 0;
+    }
+
+    /**
+     * The Heart of the ECS: The Game Loop
+     */
+    update(time, delta) {
+        if (!this.sys.isActive()) return;
+
+        this.accumulator += delta;
+
+        // --- STEP 1: THE SIMULATION (Fixed Timestep) ---
+        // We run these at 60Hz to ensure slingshot math is consistent.
+        while (this.accumulator >= PHYSICS.STEP) {
+            const dtSeconds = PHYSICS.STEP / 1000;
+
+            // Intent Systems (Capture Stick/Buttons)
+            SlingshotSystem(this.entities, this.inputManager);
+            WebSystem(this.entities, this.inputManager);
+            AbilityTargetingSystem(this.entities, this.inputManager);
+
+            // Constraint Systems (Parenting & Dwell)
+            AttachmentSystem(this.entities);
+
+            // Motion Systems (Walking & Gravity)
+            MovementSystem(this.entities, this.inputManager, dtSeconds);
+
+            // Integration System (Calculates final X/Y based on Parents/Floor)
+            PhysicsSystem(this.entities, PHYSICS.STEP);
+
+            this.fixedUpdate(time, PHYSICS.STEP);
+            this.accumulator -= PHYSICS.STEP;
+        }
+
+        // --- STEP 2: THE RENDER PASS ---
+        // CRITICAL ORDER: Sync Phaser Sprites to ECS Position *before* drawing overlays.
+
+        // 1. Sync Sprites/Triangles to their new ECS Positions
+        LayeredRenderSystem(this.entities, this);
+
+        // 2. Draw procedural graphics (Indicator/Webs/Targets) on top of the synced sprites
+        SlingshotRenderSystem(this.entities, this);
+        WebRenderSystem(this.entities, this);
+        TargetRenderSystem(this.entities, this);
+
+        // 3. Update Camera and HUD
+        CameraSystem(this.entities, this);
+        DebugLayerSystem(this.entities, this);
+
+        // 4. Update the Telemetry UI
+        this.updateDebugUI();
+    }
+
+    fixedUpdate(time, dt) { }
+
+    updateDebugUI() {
+        const player = this.entities.find(e => e.components.PlayerTag);
+        if (player) {
+            const sling = player.components.SlingshotJump || {};
+            const rawStick = this.inputManager.getRightStickRaw(); // Add this line
+
+            UI.updateDebug({
+                x: Math.round(player.components.Position.x),
+                y: Math.round(player.components.Position.y)
+            }, {
+                status: player.components.Parent ? "ATTACHED" : "FREE",
+                sling: {
+                    isCharging: sling.isCharging,
+                    rawStick: rawStick, // Pass raw data here
+                    vecX: sling.vector ? sling.vector.x : 0,
+                    vecY: sling.vector ? sling.vector.y : 0
+                }
+            });
+        }
+    }
+
+    addEntity(componentsArray) {
+        const config = componentsArray.find(c => c.id && !c._type);
+        const entity = {
+            id: config ? config.id : crypto.randomUUID(),
+            components: {}
+        };
+
+        componentsArray.forEach(c => {
+            if (c && c._type) {
+                entity.components[c._type] = c;
+            }
+        });
+
+        this.entities.push(entity);
+        return entity;
+    }
+}
+--- FILE: src/scenes/test/index.js ---
+import { MovementTest } from './00_MovementTest';
+import { TargetTest } from './01_TargetTest';
+import { CameraTest } from './02_CameraTest';
+import { AbilityTest } from './03_AbilityTest';
+import { PlatformTest } from './04_PlatformTest';
+import { OrbitTest } from './05_OrbitTest';
+import { LayerTest } from './06_LayerTest';
+import { GardenTest } from './07_GardenTest';
+import { WebTest } from './08_WebTest';
+import { EnergySystems } from './09_EnergySystems';
+import { VerticalSlice } from './10_VerticalSlice'; // Add this
+
+export const TestScenes = [
+    MovementTest,
+    TargetTest,
+    CameraTest,
+    AbilityTest,
+    PlatformTest,
+    OrbitTest,
+    LayerTest,
+    GardenTest,
+    WebTest,
+    EnergySystems,
+    VerticalSlice
+];
+--- FILE: src/scenes/TestMenuScene.js ---
+import Phaser from 'phaser';
+import { InputManager } from '../core/Input';
+import { TestScenes } from './test/index';
+
+export class TestMenuScene extends Phaser.Scene {
+    constructor() {
+        super('TestMenuScene');
+        this.selected = 0;
+        this.textObjects = [];
+    }
+
+    create() {
+        this.inputManager = new InputManager(this);
+        this.textObjects = [];
+
+        // Background / UI Header
+        this.add.text(50, 50, 'LAB / TEST SUITE', {
+            fontSize: '32px',
+            fill: '#0ff',
+            fontFamily: 'monospace'
+        });
+
+        // Generate menu items from the registry
+        TestScenes.forEach((sceneClass, index) => {
+            const name = sceneClass.name;
+            const text = this.add.text(100, 150 + (index * 50), `  ${name}`, {
+                fontSize: '24px',
+                fill: '#666',
+                fontFamily: 'monospace'
+            });
+            this.textObjects.push(text);
+        });
+
+        this.updateSelection();
+    }
+
+    update() {
+        // Navigation
+        if (this.inputManager.getAction('UP')) {
+            this.selected = (this.selected - 1 + TestScenes.length) % TestScenes.length;
+            this.updateSelection();
+        }
+        else if (this.inputManager.getAction('DOWN')) {
+            this.selected = (this.selected + 1) % TestScenes.length;
+            this.updateSelection();
+        }
+
+        // Action
+        if (this.inputManager.getAction('SELECT')) {
+            const sceneClass = TestScenes[this.selected];
+            this.scene.start(sceneClass.name);
+        }
+
+        if (this.inputManager.getAction('BACK')) {
+            this.scene.start('MenuScene');
+        }
+    }
+
+    updateSelection() {
+        this.textObjects.forEach((text, index) => {
+            if (!text || !text.active) return;
+            const sceneName = TestScenes[index].name;
+            if (index === this.selected) {
+                text.setColor('#0f0').setText(`> ${sceneName}`);
+            } else {
+                text.setColor('#666').setText(`  ${sceneName}`);
+            }
+        });
+    }
+}
+--- FILE: src/utils/CollisionUtils.js ---
+// src/utils/CollisionUtils.js
+import Phaser from 'phaser';
+
+export const isOverlapping = (newPos, newCol, existingEntities) => {
+    const platforms = existingEntities.filter(e => e.components.PlatformTag);
+    const buffer = 20; // Extra space between platforms
+
+    for (const plat of platforms) {
+        const otherPos = plat.components.Position;
+        const otherCol = plat.components.Collider;
+
+        // 1. Circle to Circle
+        if (newCol.type === 'circle' && otherCol.type === 'circle') {
+            const dist = Phaser.Math.Distance.Between(newPos.x, newPos.y, otherPos.x, otherPos.y);
+            if (dist < (newCol.radius + otherCol.radius + buffer)) return true;
+        }
+        // 2. AABB to AABB (Rectangles)
+        else {
+            const newW = newCol.width || newCol.radius * 2;
+            const newH = newCol.height || newCol.radius * 2;
+            const otherW = otherCol.width || otherCol.radius * 2;
+            const otherH = otherCol.height || otherCol.radius * 2;
+
+            const overlap = (
+                Math.abs(newPos.x - otherPos.x) * 2 < (newW + otherW + buffer) &&
+                Math.abs(newPos.y - otherPos.y) * 2 < (newH + otherH + buffer)
+            );
+            if (overlap) return true;
+        }
+    }
+    return false;
+};

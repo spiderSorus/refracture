@@ -5,6 +5,7 @@ let isRecording = false;
 export const RecordingSystem = (scene, inputManager) => {
     if (!inputManager || !scene) return;
 
+    // 1. Initialize UI Indicator
     if (!scene.recIndicator) {
         scene.recIndicator = scene.add.text(10, 40, '🔴 REC', {
             font: '16px monospace',
@@ -19,10 +20,13 @@ export const RecordingSystem = (scene, inputManager) => {
         scene.recIndicator.setPosition(10 * uiScale, 40 * uiScale);
     }
 
-    const dpadDown = inputManager.getAction('DOWN');
+    // 2. Robust Input Check: Action (D-Pad) OR Keyboard Down Arrow
+    const dpadAction = inputManager.getAction('DOWN');
+    const keyboardDown = inputManager.cursors?.down && Phaser.Input.Keyboard.JustDown(inputManager.cursors.down);
 
-    if (dpadDown) {
+    if (dpadAction || keyboardDown) {
         if (!isRecording) {
+            // --- START RECORDING ---
             const canvas = scene.game.canvas;
             if (!canvas) return;
 
@@ -35,7 +39,6 @@ export const RecordingSystem = (scene, inputManager) => {
             }
 
             recordedChunks = [];
-
             mediaRecorder.ondataavailable = (e) => {
                 if (e.data.size > 0) recordedChunks.push(e.data);
             };
@@ -46,7 +49,7 @@ export const RecordingSystem = (scene, inputManager) => {
                 const a = document.createElement('a');
                 a.style.display = 'none';
                 a.href = url;
-                a.download = `refract_gameplay_${Date.now()}.webm`;
+                a.download = `refract_clip_${Date.now()}.webm`;
                 document.body.appendChild(a);
                 a.click();
                 setTimeout(() => {
@@ -58,15 +61,15 @@ export const RecordingSystem = (scene, inputManager) => {
             mediaRecorder.start();
             isRecording = true;
             scene.recIndicator.setVisible(true);
-            console.log("[RECORDING] Started...");
-
+            console.log("🎥 Recording Started...");
         } else {
+            // --- STOP RECORDING ---
             if (mediaRecorder && mediaRecorder.state !== 'inactive') {
                 mediaRecorder.stop();
             }
             isRecording = false;
             scene.recIndicator.setVisible(false);
-            console.log("[RECORDING] Stopped. Downloading file...");
+            console.log("💾 Recording Saved.");
         }
     }
 };
