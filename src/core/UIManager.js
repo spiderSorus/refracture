@@ -54,7 +54,7 @@ export class UIManager {
                 position: absolute; top: 0; left: 0; width: 340px;
                 background: rgba(0,0,0,0.85); padding: 20px;
                 display: flex; flex-direction: column; align-items: flex-start;
-                font-size: 13px; color: #0f0; visibility: visible;
+                font-size: 13px; color: #0f0; visibility: hidden;
                 border-bottom: 1px solid #0f0; border-right: 1px solid #0f0;
                 pointer-events: auto;
             `;
@@ -72,7 +72,7 @@ export class UIManager {
 
         debugEl.innerHTML = `
             <div style="margin-bottom: 10px; border-bottom: 1px solid #444; width: 100%; padding-bottom: 5px;">
-                <strong style="color: #0ff;">[ PLAYER ]</strong><br>
+                <strong style="color: #0ff;">[ ${playerData.scene || 'SCENE'} ]</strong><br>
                 POS: ${playerData.x}, ${playerData.y}<br>
                 REALITY: <span style="color: #fff; font-size: 16px;">${stateData.reality || 0}</span><br>
                 STATUS: ${stateData.status}

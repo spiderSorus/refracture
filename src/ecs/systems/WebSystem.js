@@ -82,51 +82,51 @@ export const WebSystem = (entities, inputManager) => {
         }
     }
 
+    // DISCONNECT TETHER (Y button while not attached)
+    if (yJustPressed && tether && !currentParent) {
+        delete player.components.WebTether;
+        return;
+    }
+
     // CUT TETHER (X button only)
     if (xJustPressed && tether) {
         delete player.components.WebTether;
+        delete player.components.Parent;
         return;
     }
 
     // CONNECT (Y Button): Capture Fixed Slack Length
     if (yJustPressed && tether && currentParent && tether.platformId !== currentParent.id) {
-        const exists = entities.some(e => {
-            const c = e.components.WebConnection;
-            return c && ((c.fromId === tether.platformId && c.toId === currentParent.id) || (c.fromId === currentParent.id && c.toId === tether.platformId));
-        });
+        const platA = entities.find(e => e.id === tether.platformId);
+        const platB = entities.find(e => e.id === currentParent.id);
+        
+        if (platA && platB && platA.components.Position && platB.components.Position) {
+            // Determine if both platforms are currently interactive
+            const canA = platA.components.RealityLevel ? platA.components.RealityLevel.interact.includes(currentLevel) : currentLevel === 0;
+            const canB = platB.components.RealityLevel ? platB.components.RealityLevel.interact.includes(currentLevel) : currentLevel === 0;
 
-        if (!exists) {
-            const platA = entities.find(e => e.id === tether.platformId);
-            const platB = entities.find(e => e.id === currentParent.id);
-            
-            if (platA && platB && platA.components.Position && platB.components.Position) {
-                // Determine if both platforms are currently interactive
-                const canA = platA.components.RealityLevel ? platA.components.RealityLevel.interact.includes(currentLevel) : currentLevel === 0;
-                const canB = platB.components.RealityLevel ? platB.components.RealityLevel.interact.includes(currentLevel) : currentLevel === 0;
+            if (canA && canB) {
+                const snappedOffsetB = snapOffsetInside(currentParent.offset, platB.components.Collider, 10);
 
-                if (canA && canB) {
-                    const snappedOffsetB = snapOffsetInside(currentParent.offset, platB.components.Collider, 10);
-
-                    const x1 = platA.components.Position.x + tether.anchorOffset.x;
-                    const y1 = platA.components.Position.y + tether.anchorOffset.y;
-                    const x2 = platB.components.Position.x + snappedOffsetB.x;
-                    const y2 = platB.components.Position.y + snappedOffsetB.y;
-                    
-                    const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
-                    const conn = WebConnection(
-                        tether.platformId, { ...tether.anchorOffset }, 
-                        currentParent.id, snappedOffsetB
-                    );
-                    
-                    conn.fixedLength = dist * 1.15;
-                    
-                    entities.push({
-                        id: crypto.randomUUID(),
-                        components: { 
-                            WebConnection: conn
-                        }
-                    });
-                }
+                const x1 = platA.components.Position.x + tether.anchorOffset.x;
+                const y1 = platA.components.Position.y + tether.anchorOffset.y;
+                const x2 = platB.components.Position.x + snappedOffsetB.x;
+                const y2 = platB.components.Position.y + snappedOffsetB.y;
+                
+                const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
+                const conn = WebConnection(
+                    tether.platformId, { ...tether.anchorOffset }, 
+                    currentParent.id, snappedOffsetB
+                );
+                
+                conn.fixedLength = dist * 1.15;
+                
+                entities.push({
+                    id: crypto.randomUUID(),
+                    components: { 
+                        WebConnection: conn
+                    }
+                });
             }
         }
         delete player.components.WebTether;
@@ -136,6 +136,7 @@ export const WebSystem = (entities, inputManager) => {
     if (tether && tether.tension > tether.maxForce) {
         console.log("💥 Tether Snap!");
         delete player.components.WebTether;
+        delete player.components.Parent;
     }
 
     entities.forEach(e => {

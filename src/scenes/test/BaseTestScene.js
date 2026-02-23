@@ -10,7 +10,6 @@ import { PhysicsSystem } from '../../ecs/systems/PhysicsSystem';
 import { CameraSystem } from '../../ecs/systems/CameraSystem';
 import { LayeredRenderSystem } from '../../ecs/systems/LayeredRenderSystem';
 import { TargetRenderSystem } from '../../ecs/systems/TargetRenderSystem';
-import { DebugLayerSystem } from '../../ecs/systems/DebugLayerSystem';
 import { WebRenderSystem } from '../../ecs/systems/WebRenderSystem';
 import { WebSystem } from '../../ecs/systems/WebSystem';
 import { BugAISystem } from '../../ecs/systems/BugAISystem';
@@ -136,7 +135,6 @@ export class BaseTestScene extends Phaser.Scene {
         WebRenderSystem(this.entities, this);
         TargetRenderSystem(this.entities, this);
         CameraSystem(this.entities, this);
-        DebugLayerSystem(this.entities, this);
 
         this.updateDebugUI();
     }
@@ -151,6 +149,7 @@ export class BaseTestScene extends Phaser.Scene {
             const rawStick = this.inputManager.getRightStickRaw();
 
             UI.updateDebug({
+                scene: this.scene.key,
                 x: Math.round(player.components.Position.x),
                 y: Math.round(player.components.Position.y)
             }, {
