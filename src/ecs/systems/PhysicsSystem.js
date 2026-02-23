@@ -126,30 +126,32 @@ export const PhysicsSystem = (entities, delta, scene) => {
             return;
         }
 
-        if (vel) {
-            const isPlayer = !!entity.components.PlayerTag;
-            const isPlatform = !!entity.components.PlatformTag;
-            const isSpawn = !!entity.components.SpawnTag;
-            const isDynamic = connectedPlatformIds.has(entity.id);
-
-            // GRAVITY RULES
-            if (isPlayer) {
-                vel.y += GRAVITY * dt;
-            } else if (isPlatform && !isSpawn) {
-                if (isDynamic) {
-                    vel.y += FLOATER_GRAVITY * dt;
-                } else {
-                    // Force Static
-                    vel.x = 0;
-                    vel.y = 0;
-                }
-            } else if (!entity.components.GravityExempt) {
-                vel.y += GRAVITY * dt;
-            }
-
-            pos.x += vel.x * dt;
-            pos.y += vel.y * dt;
-
+                if (vel) {
+                    const isPlayer = !!entity.components.PlayerTag;
+                    const isPlatform = !!entity.components.PlatformTag;
+                    const isSpawn = !!entity.components.SpawnTag;
+                    const isDynamic = connectedPlatformIds.has(entity.id);
+        
+                    // SPAWN LOCK: Spawn points never move
+                    if (isSpawn) {
+                        vel.x = 0;
+                        vel.y = 0;
+                    } else if (isPlayer) {
+                        vel.y += GRAVITY * dt;
+                    } else if (isPlatform) {
+                        if (isDynamic) {
+                            vel.y += FLOATER_GRAVITY * dt;
+                        } else {
+                            // Force Static
+                            vel.x = 0;
+                            vel.y = 0;
+                        }
+                    } else if (!entity.components.GravityExempt) {
+                        vel.y += GRAVITY * dt;
+                    }
+        
+                    pos.x += vel.x * dt;
+                    pos.y += vel.y * dt;
             // Player Floor Respawn
             if (isPlayer && pos.y >= FLOOR_Y) {
                 const spawnPoint = entities.find(e => e.components.SpawnTag);

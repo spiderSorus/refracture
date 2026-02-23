@@ -5,15 +5,14 @@ import { GRID, PHYSICS } from '../../core/Constants';
 
 import { MovementSystem } from '../../ecs/systems/MovementSystem';
 import { AttachmentSystem } from '../../ecs/systems/AttachmentSystem';
-import { AbilityTargetingSystem } from '../../ecs/systems/AbilityTargetingSystem';
 import { PhysicsSystem } from '../../ecs/systems/PhysicsSystem';
 import { CameraSystem } from '../../ecs/systems/CameraSystem';
 import { LayeredRenderSystem } from '../../ecs/systems/LayeredRenderSystem';
-import { TargetRenderSystem } from '../../ecs/systems/TargetRenderSystem';
 import { WebRenderSystem } from '../../ecs/systems/WebRenderSystem';
 import { WebSystem } from '../../ecs/systems/WebSystem';
 import { BugAISystem } from '../../ecs/systems/BugAISystem';
 import { MeditationSystem } from '../../ecs/systems/MeditationSystem';
+import { EnergySystem } from '../../ecs/systems/EnergySystem';
 import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
 import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
 import { RecordingSystem } from '../../ecs/systems/RecordingSystem'; 
@@ -76,7 +75,6 @@ export class BaseTestScene extends Phaser.Scene {
                 this.entities.forEach(e => {
                     if (e.components.RealityLevel) {
                         e.components.RealityLevel.visible = [0];
-                        // Interact stays as-is but player will be locked to 0
                     }
                     if (e.components.MeditationState) {
                         e.components.MeditationState.currentLevel = 0;
@@ -101,13 +99,12 @@ export class BaseTestScene extends Phaser.Scene {
 
             SlingshotSystem(this.entities, this.inputManager);
             WebSystem(this.entities, this.inputManager);
-            AbilityTargetingSystem(this.entities, this.inputManager);
             
-            // Only load MeditationSystem if enabled
             if (this.meditationEnabled) {
                 MeditationSystem(this.entities, this.inputManager, dtSeconds);
             }
 
+            EnergySystem(this.entities, dtSeconds);
             BugAISystem(this.entities, dtSeconds);
             AttachmentSystem(this.entities);
             MovementSystem(this.entities, this.inputManager, dtSeconds);
@@ -133,7 +130,6 @@ export class BaseTestScene extends Phaser.Scene {
         LayeredRenderSystem(this.entities, this);
         SlingshotRenderSystem(this.entities, this);
         WebRenderSystem(this.entities, this);
-        TargetRenderSystem(this.entities, this);
         CameraSystem(this.entities, this);
 
         this.updateDebugUI();

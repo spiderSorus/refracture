@@ -17,9 +17,6 @@ export const PlayerTag = () => ({ _type: 'PlayerTag' });
 export const InputControlled = () => ({ _type: 'InputControlled' });
 export const CameraTarget = () => ({ _type: 'CameraTarget' });
 export const EntityType = (type) => ({ _type: 'EntityType', value: type });
-export const AbilityState = () => ({
-    _type: 'AbilityState', armed: null, targetIndex: 0, potentialTargets: [], currentTargetId: null
-});
 export const Parent = (entityId, offset = { x: 0, y: 0 }) => ({
     _type: 'Parent',
     id: entityId,
@@ -32,6 +29,7 @@ export const Collider = (type = 'circle', radius = 50, width = 100, height = 100
 export const PlatformTag = () => ({ _type: 'PlatformTag' });
 export const SpawnTag = () => ({ _type: 'SpawnTag' });
 export const Mass = (value = 1) => ({ _type: 'Mass', value });
+export const Ego = (value = 128) => ({ _type: 'Ego', value });
 
 export const ConnectionPoint = (x = 0, y = 0) => ({
     _type: 'ConnectionPoint',
@@ -47,10 +45,11 @@ export const WebTether = (platformId, anchorOffset = { x: 0, y: 0 }) => ({
     anchorOffset,
     maxLength: 1000,
     currentLength: 50,
-    stiffness: 0.05, // Increased for snappier tension
+    stiffness: 0.05,
     damping: 0.05,
-    maxForce: 5000,  // Breaking point
-    tension: 0
+    maxForce: 5000,
+    tension: 0,
+    wrapPoints: []
 });
 
 // Static connection (Platform A -> Platform B)
@@ -62,8 +61,10 @@ export const WebConnection = (fromId, fromOffset, toId, toOffset) => ({
     toOffset,
     fixedLength: 100,
     stiffness: 0.05,
-    maxForce: 8000, // Stronger than tethers
-    tension: 0
+    maxForce: 8000,
+    tension: 0,
+    transferRate: 10, // Ego flow per second
+    wrapPoints: []
 });
 
 export const EnergySource = (strength = 100, type = 'EMIT') => ({
@@ -109,4 +110,3 @@ export const SlingshotJump = (maxForce = 1500) => ({
     potentialPlatformId: null,
     lastPlatformId: null
 });
-

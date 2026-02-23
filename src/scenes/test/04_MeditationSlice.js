@@ -2,7 +2,7 @@
 import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
-    Position, Renderable, Collider, PlatformTag, AbilityState, EntityType, SlingshotJump,
+    Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
     Velocity, BugTag, BugAI, GravityExempt, Mass, RealityLevel, MeditationState,
     SpawnTag
 } from '../../ecs/components/index';
@@ -112,7 +112,6 @@ export class MeditationSlice extends BaseTestScene {
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
-            AbilityState(),
             SlingshotJump(3500),
             MeditationState(),
             RealityLevel([0], [0])

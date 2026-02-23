@@ -2,7 +2,7 @@
 import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
-    Position, Renderable, Collider, PlatformTag, AbilityState, EntityType, SlingshotJump,
+    Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
     Velocity, BugTag, BugAI, GravityExempt, Mass, SpawnTag, RealityLevel
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
@@ -105,7 +105,6 @@ export class GameplaySlice extends BaseTestScene {
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
-            AbilityState(),
             SlingshotJump(3500),
             RealityLevel([0], [0])
         ]);

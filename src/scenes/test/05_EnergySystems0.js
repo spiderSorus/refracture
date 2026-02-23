@@ -2,7 +2,7 @@
 import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
-    Position, Renderable, Collider, PlatformTag, AbilityState, EntityType, SlingshotJump,
+    Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
     SpawnTag, RealityLevel, MeditationState, Mass, Velocity
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
@@ -11,7 +11,7 @@ export class EnergySystems0 extends BaseTestScene {
     constructor() {
         super('EnergySystems0', 'Energy Systems 0', 'Basic Energy Transfer Test.');
         this.meditationEnabled = false;
-        this.floaterGravity = 980; // Gravity kicks in when connected
+        this.floaterGravity = 980; 
     }
 
     create() {
@@ -32,19 +32,19 @@ export class EnergySystems0 extends BaseTestScene {
 
         this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
 
-        // --- EQUILATERAL TRIANGLE LAYOUT ---
-        const sideLen = 1000;
-        const height = (Math.sqrt(3) / 2) * sideLen;
-        
+        const borderGfx = this.add.graphics();
+        borderGfx.lineStyle(10, 0xffffff, 1);
+        borderGfx.strokeRect(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
+
         const centerX = WORLD_WIDTH / 2;
         const centerY = -WORLD_HEIGHT / 2;
 
-        // 1. SPAWN PLATFORM (Bottom Vertex)
+        // 1. SPAWN PLATFORM
         const spawnX = centerX;
-        const spawnY = centerY + (height / 2);
-        
+        const spawnY = -150;
         this.addEntity([
             Position(spawnX, spawnY),
+            Velocity(0, 0),
             PlatformTag(),
             SpawnTag(),
             RealityLevel([0], [0]),
@@ -54,9 +54,9 @@ export class EnergySystems0 extends BaseTestScene {
             Collider('rect', 0, 100, 20)
         ]);
 
-        // 2. LEFT PLATFORM (Top Left Vertex)
+        // 2. LEFT PLATFORM (Cyan)
         this.addEntity([
-            Position(centerX - (sideLen / 2), centerY - (height / 2)),
+            Position(centerX - 300, centerY),
             Velocity(0, 0),
             PlatformTag(),
             RealityLevel([0], [0]),
@@ -66,9 +66,9 @@ export class EnergySystems0 extends BaseTestScene {
             Collider('circle', 80)
         ]);
 
-        // 3. RIGHT PLATFORM (Top Right Vertex)
+        // 3. RIGHT PLATFORM (Yellow)
         this.addEntity([
-            Position(centerX + (sideLen / 2), centerY - (height / 2)),
+            Position(centerX + 300, centerY),
             Velocity(0, 0),
             PlatformTag(),
             RealityLevel([0], [0]),
@@ -78,15 +78,12 @@ export class EnergySystems0 extends BaseTestScene {
             Collider('circle', 80)
         ]);
 
-        // SPAWN PLAYER
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
-            AbilityState(),
             SlingshotJump(3500),
-            MeditationState(),
             RealityLevel([0], [0])
         ]);
 
-        this.cameras.main.centerOn(centerX, centerY);
+        this.cameras.main.centerOn(spawnX, spawnY);
     }
 }
