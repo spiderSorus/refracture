@@ -42,7 +42,11 @@ export const ConnectionPoint = (x = 0, y = 0) => ({
 export const WebTether = (platformId, anchorOffset = { x: 0, y: 0 }) => ({
     _type: 'WebTether',
     platformId,
-    anchorOffset
+    anchorOffset,
+    maxLength: 1000, // Hard limit as requested
+    currentLength: 50, // Calculated dynamically
+    stiffness: 0.015, // Tension strength
+    damping: 0.095   // Prevents infinite bouncing
 });
 
 // Static connection (Platform A -> Platform B)
@@ -69,3 +73,4 @@ export const SlingshotJump = (maxForce = 1500) => ({
     maxForce,
     canJump: false // Tracks if we are touching a surface
 });
+

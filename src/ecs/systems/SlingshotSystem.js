@@ -1,4 +1,6 @@
 // src/ecs/systems/SlingshotSystem.js
+import { RaycastPlatformSystem } from './RaycastPlatformSystem';
+
 export const SlingshotSystem = (entities, inputManager) => {
     const player = entities.find(e => e.components.PlayerTag && e.components.SlingshotJump);
     if (!player) return;
@@ -10,41 +12,40 @@ export const SlingshotSystem = (entities, inputManager) => {
 
     const stick = inputManager.getRightStickRaw();
     const mag = Math.sqrt(stick.x * stick.x + stick.y * stick.y);
-    const deadzone = 0.3;
 
-    if (mag > deadzone) {
-        // Can jump if attached to a platform OR at the hard floor (y=0)
-        const isOnSurface = (parent || (pos && pos.y >= 0));
+    const ARM_THRESHOLD = 0.5;
+    const RELEASE_THRESHOLD = 0.25;
 
-        if (!sling.isCharging && isOnSurface) {
+    if (mag >= ARM_THRESHOLD) {
+        if (!sling.isCharging && (parent || (pos && pos.y >= 0))) {
             sling.isCharging = true;
         }
-
         if (sling.isCharging) {
-            // Normalized Direction
-            sling.vector = { x: stick.x / mag, y: stick.y / mag };
+            sling.lockedAim = { x: stick.x / mag, y: stick.y / mag };
         }
     }
-    else if (sling.isCharging) {
-        // RELEASE TRIGGER
-        if (sling.vector && (sling.vector.x !== 0 || sling.vector.y !== 0)) {
-            if (vel) {
-                // Fixed Power Jump
-                vel.x = -sling.vector.x * sling.maxForce;
-                vel.y = -sling.vector.y * sling.maxForce;
+    else if (sling.isCharging && mag < RELEASE_THRESHOLD) {
+        if (sling.lockedAim) {
+            const launchDir = { x: -sling.lockedAim.x, y: -sling.lockedAim.y };
 
-                if (parent) {
-                    // Blacklist the current platform so we don't re-stick to it immediately
-                    sling.lastPlatformId = parent.id;
-                    delete player.components.Parent;
+            if (parent) {
+                // Use Raytracing to find the edge of the current platform
+                const hit = RaycastPlatformSystem.findTarget(entities, pos, launchDir, 500);
+                if (hit && hit.entity.id === parent.id) {
+                    // Projection: Move to edge + 10px buffer
+                    pos.x = hit.point.x + (launchDir.x * 10);
+                    pos.y = hit.point.y + (launchDir.y * 10);
                 }
+                delete player.components.Parent;
+            }
+
+            if (vel) {
+                vel.x = launchDir.x * sling.maxForce;
+                vel.y = launchDir.y * sling.maxForce;
             }
         }
-        // Reset state
+
         sling.isCharging = false;
-        // NOTE: We keep sling.vector until the NEXT charge so the Debug UI can show it
-        sling.canJump = false;
-        sling.dwellFrames = 0;
-        sling.potentialPlatformId = null;
+        sling.lockedAim = null;
     }
 };

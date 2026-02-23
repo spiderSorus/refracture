@@ -110,20 +110,17 @@ export class BaseTestScene extends Phaser.Scene {
     updateDebugUI() {
         const player = this.entities.find(e => e.components.PlayerTag);
         if (player) {
-            const pos = player.components.Position;
             const sling = player.components.SlingshotJump || {};
-            const parent = player.components.Parent;
-            const stick = this.inputManager.getRightStickRaw();
+            const rawStick = this.inputManager.getRightStickRaw(); // Add this line
 
             UI.updateDebug({
-                x: Math.round(pos.x),
-                y: Math.round(pos.y)
+                x: Math.round(player.components.Position.x),
+                y: Math.round(player.components.Position.y)
             }, {
-                status: parent ? `ATTACHED: ${parent.id}` : "FREEFALL",
+                status: player.components.Parent ? "ATTACHED" : "FREE",
                 sling: {
-                    isCharging: sling.isCharging || false,
-                    stickX: stick.x,
-                    stickY: stick.y,
+                    isCharging: sling.isCharging,
+                    rawStick: rawStick, // Pass raw data here
                     vecX: sling.vector ? sling.vector.x : 0,
                     vecY: sling.vector ? sling.vector.y : 0
                 }

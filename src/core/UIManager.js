@@ -2,7 +2,9 @@
 
 export class UIManager {
     constructor() {
-        // Prevent duplicate overlays on HMR refresh
+        if (typeof document === 'undefined') return;
+
+        // Prevent duplicate overlays
         if (document.getElementById('game-ui-overlay')) {
             this.overlay = document.getElementById('game-ui-overlay');
             return;
@@ -35,10 +37,7 @@ export class UIManager {
         `;
 
         this.overlay.appendChild(el);
-
-        requestAnimationFrame(() => {
-            el.style.opacity = '1';
-        });
+        requestAnimationFrame(() => { el.style.opacity = '1'; });
 
         setTimeout(() => {
             el.style.opacity = '0';
@@ -52,28 +51,40 @@ export class UIManager {
             debugEl = document.createElement('div');
             debugEl.id = 'debug-console';
             debugEl.style.cssText = `
-                position: absolute; top: 0; left: 0; width: 320px;
+                position: absolute; top: 0; left: 0; width: 340px;
                 background: rgba(0,0,0,0.85); padding: 20px;
                 display: flex; flex-direction: column; align-items: flex-start;
-                font-size: 13px; color: #0f0; visibility: hidden;
+                font-size: 13px; color: #0f0; visibility: visible;
                 border-bottom: 1px solid #0f0; border-right: 1px solid #0f0;
+                pointer-events: auto;
             `;
             this.overlay.appendChild(debugEl);
         }
 
-        const sling = stateData.sling || { stickX: 0, stickY: 0, vecX: 0, vecY: 0, isCharging: false };
+        const sling = stateData.sling || {};
+        const raw = sling.rawStick || { x: 0, y: 0 };
+        const mag = Math.sqrt(raw.x * raw.x + raw.y * raw.y);
+
+        // Visualize the Deadbolt State
+        const isLocked = mag < 0.5 && sling.isCharging;
+        const stateTag = isLocked ? '<span style="color:#ff0000">LOCKED</span>' :
+            mag >= 0.5 ? '<span style="color:#00ff00">AIMING</span>' : 'IDLE';
 
         debugEl.innerHTML = `
-            <div style="margin-bottom: 10px;">
-                <strong style="color: #fff;">[ PLAYER ]</strong><br>
+            <div style="margin-bottom: 10px; border-bottom: 1px solid #444; width: 100%; padding-bottom: 5px;">
+                <strong style="color: #0ff;">[ PLAYER ]</strong><br>
                 POS: ${playerData.x}, ${playerData.y}<br>
                 STATUS: ${stateData.status}
             </div>
             <div style="color: #ff8400;">
                 <strong style="color: #fff;">[ SLINGSHOT ]</strong><br>
-                CHARGING: ${sling.isCharging ? 'YES' : 'NO'}<br>
-                STICK: ${sling.stickX.toFixed(2)}, ${sling.stickY.toFixed(2)}<br>
-                LAST VEC: ${sling.vecX.toFixed(2)}, ${sling.vecY.toFixed(2)}
+                STATE: ${stateTag}<br>
+                RAW MAG: ${mag.toFixed(3)}<br>
+                LOCKED VEC: ${sling.vecX.toFixed(2)}, ${sling.vecY.toFixed(2)}<br>
+                <br>
+                <strong style="color: #fff;">[ DIAGNOSTICS ]</strong><br>
+                STICK X: ${raw.x.toFixed(3)}<br>
+                STICK Y: ${raw.y.toFixed(3)}
             </div>
         `;
     }
@@ -86,5 +97,4 @@ export class UIManager {
     }
 }
 
-// Export a singleton instance
 export const UI = new UIManager();

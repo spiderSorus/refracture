@@ -11,13 +11,13 @@ export const SlingshotRenderSystem = (entities, scene) => {
     const sling = player.components.SlingshotJump;
     const pos = player.components.Position;
 
-    // Use isCharging to determine visibility
-    if (sling.isCharging && sling.vector && (sling.vector.x !== 0 || sling.vector.y !== 0)) {
+    // FIX: Look for lockedAim instead of the old vector property
+    if (sling.isCharging && sling.lockedAim) {
         const indicatorLen = 80;
 
         // Direction is the inverse of the pull
-        const endX = pos.x + (-sling.vector.x * indicatorLen);
-        const endY = pos.y + (-sling.vector.y * indicatorLen);
+        const endX = pos.x + (-sling.lockedAim.x * indicatorLen);
+        const endY = pos.y + (-sling.lockedAim.y * indicatorLen);
 
         scene.slingGfx.lineStyle(3, 0x00ffff, 0.6);
         scene.slingGfx.beginPath();
