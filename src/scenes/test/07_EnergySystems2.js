@@ -3,7 +3,7 @@ import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, RealityLevel, MeditationState, Mass, Velocity, Ego, StaticTag
+    SpawnTag, Mass, Velocity, Ego, StaticTag
 } from '../../ecs/components/index';
 import { EgoGravityRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
@@ -13,8 +13,7 @@ export class EnergySystems2 extends BaseTestScene {
         super('EnergySystems2', 'Energy Systems 2', 'Ego-Weighted Gravity + Balancing.');
         this.meditationEnabled = false;
         this.floaterGravity = 980; 
-        this.webStrengthMult = 10; // 10x Stronger Webs
-        // Plug and Play rules for EnergySystem
+        this.webStrengthMult = 10; 
         this.energyRules = [EgoGravityRule, EgoBalanceRule];
     }
 
@@ -51,19 +50,17 @@ export class EnergySystems2 extends BaseTestScene {
             Velocity(0, 0),
             PlatformTag(),
             SpawnTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Mass(10),
             Renderable({ 'BASE': { type: 'rect', width: 100, height: 20, color: 0x00ff00 } }),
             Collider('rect', 0, 100, 20)
         ]);
 
-        // 2. BIG PLATFORM (Ego 255, Orange) - DYNAMIC
+        // 2. BIG PLATFORM (Ego 255, Orange)
         this.addEntity([
             Position(centerX - 350, centerY),
             Velocity(0, 0),
             PlatformTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Ego(255),
             Mass(10),
@@ -71,12 +68,11 @@ export class EnergySystems2 extends BaseTestScene {
             Collider('circle', 255 * 0.8 + 20)
         ]);
 
-        // 3. SMALL PLATFORM (Ego 10, Purple) - STATIC
+        // 3. SMALL PLATFORM (Ego 10, Purple)
         this.addEntity([
             Position(centerX + 350, centerY),
             PlatformTag(),
             StaticTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Ego(10),
             Mass(2),
@@ -86,8 +82,7 @@ export class EnergySystems2 extends BaseTestScene {
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
-            SlingshotJump(3500),
-            RealityLevel([0], [0])
+            SlingshotJump(3500)
         ]);
 
         this.cameras.main.centerOn(spawnX, spawnY);

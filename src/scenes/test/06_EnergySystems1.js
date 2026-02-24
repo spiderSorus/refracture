@@ -3,7 +3,7 @@ import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, RealityLevel, MeditationState, Mass, Velocity, Ego
+    SpawnTag, Mass, Velocity, Ego
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -42,7 +42,6 @@ export class EnergySystems1 extends BaseTestScene {
             Velocity(0, 0),
             PlatformTag(),
             SpawnTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Mass(10),
             Renderable({ 'BASE': { type: 'rect', width: 100, height: 20, color: 0x00ff00 } }),
@@ -54,7 +53,6 @@ export class EnergySystems1 extends BaseTestScene {
             Position(centerX - 350, centerY),
             Velocity(0, 0),
             PlatformTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Ego(255),
             Mass(10),
@@ -67,7 +65,6 @@ export class EnergySystems1 extends BaseTestScene {
             Position(centerX + 350, centerY),
             Velocity(0, 0),
             PlatformTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Ego(10),
             Mass(2),
@@ -77,8 +74,7 @@ export class EnergySystems1 extends BaseTestScene {
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
-            SlingshotJump(3500),
-            RealityLevel([0], [0])
+            SlingshotJump(3500)
         ]);
 
         this.cameras.main.centerOn(spawnX, spawnY);

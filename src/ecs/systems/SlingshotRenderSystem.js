@@ -22,13 +22,17 @@ export const SlingshotRenderSystem = (entities, scene) => {
         const endY = pos.y + (-sling.lockedAim.y * indicatorLen);
 
         const alpha = 0.3 + (0.5 * forceRatio);
-        gfx.lineStyle(3, 0x00ffff, alpha);
+        
+        // USE DIFFERENCE BLEND MODE FOR CONTRAST
+        gfx.setBlendMode('DIFFERENCE');
+        
+        gfx.lineStyle(3, 0xffffff, alpha);
         gfx.beginPath();
         gfx.moveTo(pos.x, pos.y);
         gfx.lineTo(endX, endY);
         gfx.strokePath();
 
-        gfx.fillStyle(0x00ffff, 1);
+        gfx.fillStyle(0xffffff, 1);
         gfx.fillCircle(endX, endY, 5);
     }
 };

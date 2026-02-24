@@ -3,7 +3,7 @@ import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, RealityLevel
+    SpawnTag
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -43,7 +43,6 @@ export class VerticalSlice extends BaseTestScene {
             Position(spawnX, spawnY),
             PlatformTag(),
             SpawnTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Renderable({ 'BASE': { type: 'rect', width: 100, height: 20, color: 0x00ff00 } }),
             Collider('rect', 0, 100, 20)
@@ -53,7 +52,6 @@ export class VerticalSlice extends BaseTestScene {
         this.addEntity([
             Position(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2),
             PlatformTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Renderable({ 'BASE': { type: 'circle', radius: 120, color: 0xff00ff } }),
             Collider('circle', 120)
@@ -80,7 +78,6 @@ export class VerticalSlice extends BaseTestScene {
             const components = [
                 Position(nextX, nextY),
                 PlatformTag(),
-                RealityLevel([0], [0]),
                 EntityType('PLATFORM')
             ];
 
@@ -100,8 +97,7 @@ export class VerticalSlice extends BaseTestScene {
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
-            SlingshotJump(3000),
-            RealityLevel([0], [0])
+            SlingshotJump(3000)
         ]);
 
         this.cameras.main.centerOn(spawnX, spawnY);

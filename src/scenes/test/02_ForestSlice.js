@@ -3,7 +3,7 @@ import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    Velocity, BugTag, BugAI, GravityExempt, SpawnTag, RealityLevel
+    Velocity, BugTag, BugAI, GravityExempt, SpawnTag
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -43,9 +43,8 @@ export class ForestSlice extends BaseTestScene {
             Position(spawnX, spawnY),
             PlatformTag(),
             SpawnTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
-            Renderable({ 'BASE': { type: 'circle', radius: 50, color: 0x228b22 } }),
+            Renderable({ 'BASE': { type: 'circle', radius: 50, color: 0x228b22 } }), 
             Collider('circle', 50)
         ]);
 
@@ -53,7 +52,6 @@ export class ForestSlice extends BaseTestScene {
         this.addEntity([
             Position(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2),
             PlatformTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Renderable({ 'BASE': { type: 'circle', radius: 120, color: 0xff00ff } }),
             Collider('circle', 120)
@@ -78,7 +76,6 @@ export class ForestSlice extends BaseTestScene {
             this.addEntity([
                 Position(nextX, nextY),
                 PlatformTag(),
-                RealityLevel([0], [0]),
                 EntityType('PLATFORM'),
                 Renderable({ 'BASE': { type: 'circle', radius: size, color: color } }),
                 Collider('circle', size)
@@ -94,7 +91,6 @@ export class ForestSlice extends BaseTestScene {
                 Position(bx, by),
                 Velocity(0, 0),
                 BugTag(),
-                RealityLevel([0], [0]),
                 GravityExempt(),
                 BugAI(),
                 Renderable({
@@ -105,8 +101,7 @@ export class ForestSlice extends BaseTestScene {
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
-            SlingshotJump(3000),
-            RealityLevel([0], [0])
+            SlingshotJump(3000)
         ]);
 
         this.cameras.main.centerOn(spawnX, spawnY);

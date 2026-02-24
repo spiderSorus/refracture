@@ -3,7 +3,7 @@ import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, RealityLevel, MeditationState, Mass, Velocity, Ego
+    SpawnTag, Mass, Velocity, Ego
 } from '../../ecs/components/index';
 import { FloaterGravityRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
@@ -12,7 +12,6 @@ export class EnergySystems0 extends BaseTestScene {
     constructor() {
         super('EnergySystems0', 'Energy Systems 0', 'Modular Energy Logic (Floater Gravity + Balance).');
         this.meditationEnabled = false;
-        // Rules: Activate gravity for any connected floater, and balance ego
         this.energyRules = [FloaterGravityRule, EgoBalanceRule];
     }
 
@@ -49,7 +48,6 @@ export class EnergySystems0 extends BaseTestScene {
             Velocity(0, 0),
             PlatformTag(),
             SpawnTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Mass(10),
             Renderable({ 'BASE': { type: 'rect', width: 100, height: 20, color: 0x00ff00 } }),
@@ -61,7 +59,6 @@ export class EnergySystems0 extends BaseTestScene {
             Position(centerX - 300, centerY),
             Velocity(0, 0),
             PlatformTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Ego(128),
             Mass(5),
@@ -74,7 +71,6 @@ export class EnergySystems0 extends BaseTestScene {
             Position(centerX + 300, centerY),
             Velocity(0, 0),
             PlatformTag(),
-            RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Ego(128),
             Mass(5),
@@ -84,8 +80,7 @@ export class EnergySystems0 extends BaseTestScene {
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
-            SlingshotJump(3500),
-            RealityLevel([0], [0])
+            SlingshotJump(3500)
         ]);
 
         this.cameras.main.centerOn(spawnX, spawnY);

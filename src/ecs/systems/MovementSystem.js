@@ -8,21 +8,23 @@ export const MovementSystem = (entities, inputManager, dt) => {
     const walkSpeed = GRID.SPEED * GRID.UNIT * 2;
 
     entities.forEach(entity => {
-        const { Position: pos, Velocity: vel, Parent: parent, Rotation: rot, SlingshotJump: sling, WebTether: tether } = entity.components;
+        const { Position: pos, Velocity: vel, Parent: parent, Rotation: rot, SlingshotJump: sling, WebTether: tether, PlayerTag: isPlayer } = entity.components;
         if (!pos || !rot) return;
 
-        // --- 1. ROTATION LOGIC ---
-        if (sling && sling.isCharging && sling.lockedAim) {
-            rot.angle = Math.atan2(-sling.lockedAim.y, -sling.lockedAim.x);
-        }
-        else if (Math.abs(move.x) > 0.1 || Math.abs(move.y) > 0.1) {
-            rot.angle = Math.atan2(move.y, move.x);
-        }
-        else if (!parent && vel && (Math.abs(vel.x) > 10 || Math.abs(vel.y) > 10)) {
-            rot.angle = Math.atan2(vel.y, vel.x);
+        // --- 1. ROTATION LOGIC (Player Only) ---
+        if (isPlayer) {
+            if (sling && sling.isCharging && sling.lockedAim) {
+                rot.angle = Math.atan2(-sling.lockedAim.y, -sling.lockedAim.x);
+            }
+            else if (Math.abs(move.x) > 0.1 || Math.abs(move.y) > 0.1) {
+                rot.angle = Math.atan2(move.y, move.x);
+            }
+            else if (!parent && vel && (Math.abs(vel.x) > 10 || Math.abs(vel.y) > 10)) {
+                rot.angle = Math.atan2(vel.y, vel.x);
+            }
         }
 
-        // --- 2. PARENT EXIT LOGIC ---
+        // --- 2. PARENT MOVEMENT (Sliding Clamp) ---
         if (parent) {
             const plat = entities.find(e => e.id === parent.id);
             if (!plat || !plat.components.Position) {
@@ -30,17 +32,33 @@ export const MovementSystem = (entities, inputManager, dt) => {
                 return;
             }
 
-            // NORMAL PLATFORM MOVEMENT
-            parent.offset.x += (move.x * walkSpeed * dt);
-            parent.offset.y += (move.y * walkSpeed * dt);
+            const pRot = plat.components.Rotation?.angle || 0;
+            const cos = Math.cos(-pRot);
+            const sin = Math.sin(-pRot);
+            
+            const localMoveX = move.x * cos - move.y * sin;
+            const localMoveY = move.x * sin + move.y * cos;
 
-            const exitBuffer = 25;
-            const isStillInside = isPointInside(parent.offset, { x: 0, y: 0 }, plat.components.Collider, exitBuffer);
+            let nextOffsetX = parent.offset.x + (localMoveX * walkSpeed * dt);
+            let nextOffsetY = parent.offset.y + (localMoveY * walkSpeed * dt);
 
-            if (!isStillInside) {
-                if (sling) sling.lastPlatformId = parent.id;
-                delete entity.components.Parent;
+            // CLAMP TO BOUNDARY instead of just stopping
+            const col = plat.components.Collider;
+            if (col.type === 'circle') {
+                const dist = Math.sqrt(nextOffsetX**2 + nextOffsetY**2);
+                if (dist > col.radius) {
+                    nextOffsetX = (nextOffsetX / dist) * col.radius;
+                    nextOffsetY = (nextOffsetY / dist) * col.radius;
+                }
+            } else if (col.type === 'rect') {
+                const hw = col.width / 2;
+                const hh = col.height / 2;
+                nextOffsetX = Math.max(-hw, Math.min(hw, nextOffsetX));
+                nextOffsetY = Math.max(-hh, Math.min(hh, nextOffsetY));
             }
+
+            parent.offset.x = nextOffsetX;
+            parent.offset.y = nextOffsetY;
         } 
         // --- 3. FREEFALL FRICTION LOGIC ---
         else if (vel) {

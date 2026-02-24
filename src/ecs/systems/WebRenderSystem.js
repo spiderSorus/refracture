@@ -6,9 +6,6 @@ export const WebRenderSystem = (entities, scene) => {
     const cam = scene.cameras.main;
     const thickness = 2 / cam.zoom;
 
-    const player = entities.find(e => e.components.PlayerTag);
-    const currentLevel = player?.components.MeditationState?.currentLevel || 0;
-
     // --- PART 1: COMPLETED SLACK WEBS ---
     entities.forEach(e => {
         const conn = e.components.WebConnection;
@@ -17,49 +14,51 @@ export const WebRenderSystem = (entities, scene) => {
             const entB = entities.find(ent => ent.id === conn.toId);
 
             if (entA && entB && entA.components.Position && entB.components.Position) {
-                // REALITY FILTER: Only show if both platforms are VISIBLE on current level
-                const visA = entA.components.RealityLevel ? entA.components.RealityLevel.visible.includes(currentLevel) : (currentLevel === 0);
-                const visB = entB.components.RealityLevel ? entB.components.RealityLevel.visible.includes(currentLevel) : (currentLevel === 0);
-                
-                if (!visA || !visB) return;
+                // ACCOUNT FOR ROTATION OF BOTH PLATFORMS
+                const rotA = entA.components.Rotation?.angle || 0;
+                const rotB = entB.components.Rotation?.angle || 0;
 
-                const x1 = entA.components.Position.x + conn.fromOffset.x;
-                const y1 = entA.components.Position.y + conn.fromOffset.y;
-                const x2 = entB.components.Position.x + conn.toOffset.x;
-                const y2 = entB.components.Position.y + conn.toOffset.y;
+                const ax = conn.fromOffset.x * Math.cos(rotA) - conn.fromOffset.y * Math.sin(rotA);
+                const ay = conn.fromOffset.x * Math.sin(rotA) + conn.fromOffset.y * Math.cos(rotA);
+                const bx = conn.toOffset.x * Math.cos(rotB) - conn.toOffset.y * Math.sin(rotB);
+                const by = conn.toOffset.x * Math.sin(rotB) + conn.toOffset.y * Math.cos(rotB);
 
-                const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
+                const worldX1 = entA.components.Position.x + ax;
+                const worldY1 = entA.components.Position.y + ay;
+                const worldX2 = entB.components.Position.x + bx;
+                const worldY2 = entB.components.Position.y + by;
+
+                const dist = Phaser.Math.Distance.Between(worldX1, worldY1, worldX2, worldY2);
                 const ropeLength = conn.fixedLength || dist;
 
-                // FORCE WHITE FOR ALL WEBS
                 gfx.lineStyle(thickness, 0xffffff, 0.8);
                 gfx.beginPath();
-                gfx.moveTo(x1, y1);
+                gfx.moveTo(worldX1, worldY1);
 
                 if (ropeLength <= dist + 1) {
-                    gfx.lineTo(x2, y2);
+                    gfx.lineTo(worldX2, worldY2);
                 } else {
                     const segments = 15;
                     const slack = (ropeLength - dist) * 0.5;
                     for (let i = 1; i <= segments; i++) {
                         const t = i / segments;
-                        const cx = x1 + (x2 - x1) * t;
-                        const cy = y1 + (y2 - y1) * t;
+                        const cx = worldX1 + (worldX2 - worldX1) * t;
+                        const cy = worldY1 + (worldY2 - worldY1) * t;
                         const dip = 4 * t * (1 - t) * slack;
                         gfx.lineTo(cx, cy + dip);
                     }
                 }
                 gfx.strokePath();
 
-                // Draw end bolts (also white)
                 gfx.fillStyle(0xffffff, 1);
-                gfx.fillCircle(x1, y1, 2 / cam.zoom);
-                gfx.fillCircle(x2, y2, 2 / cam.zoom);
+                gfx.fillCircle(worldX1, worldY1, 2 / cam.zoom);
+                gfx.fillCircle(worldX2, worldY2, 2 / cam.zoom);
             }
         }
     });
 
     // --- PART 2: ACTIVE WHITE TETHER ---
+    const player = entities.find(e => e.components.PlayerTag);
     if (!player) return;
     const tether = player.components.WebTether;
     const pPos = player.components.Position;
@@ -67,17 +66,21 @@ export const WebRenderSystem = (entities, scene) => {
     if (tether && pPos) {
         const platform = entities.find(e => e.id === tether.platformId);
         if (platform && platform.components.Position) {
-            // REALITY FILTER: Only show if platform is VISIBLE on current level
-            const visPlat = platform.components.RealityLevel ? platform.components.RealityLevel.visible.includes(currentLevel) : (currentLevel === 0);
-            if (!visPlat) return;
+            // ACCOUNT FOR ROTATION OF THE TETHERED PLATFORM
+            const platRot = platform.components.Rotation?.angle || 0;
+            const ax_local = tether.anchorOffset.x;
+            const ay_local = tether.anchorOffset.y;
 
-            const ax = platform.components.Position.x + tether.anchorOffset.x;
-            const ay = platform.components.Position.y + tether.anchorOffset.y;
-            const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, ax, ay);
+            const ax = ax_local * Math.cos(platRot) - ay_local * Math.sin(platRot);
+            const ay = ax_local * Math.sin(platRot) + ay_local * Math.cos(platRot);
+
+            const worldAX = platform.components.Position.x + ax;
+            const worldAY = platform.components.Position.y + ay;
+            const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, worldAX, worldAY);
 
             gfx.lineStyle(thickness, 0xffffff, 0.8);
             gfx.beginPath();
-            gfx.moveTo(ax, ay);
+            gfx.moveTo(worldAX, worldAY);
 
             if (dist >= tether.maxLength - 1) {
                 gfx.lineTo(pPos.x, pPos.y);
@@ -86,14 +89,14 @@ export const WebRenderSystem = (entities, scene) => {
                 const slack = (tether.maxLength - dist) * 0.5;
                 for (let i = 1; i <= segments; i++) {
                     const t = i / segments;
-                    const cx = ax + (pPos.x - ax) * t;
-                    const cy = ay + (pPos.y - ay) * t;
+                    const cx = worldAX + (pPos.x - worldAX) * t;
+                    const cy = worldAY + (pPos.y - worldAY) * t;
                     gfx.lineTo(cx, cy + (4 * t * (1 - t) * slack));
                 }
             }
             gfx.strokePath();
             gfx.fillStyle(0xffffff, 1);
-            gfx.fillCircle(ax, ay, 4 / cam.zoom);
+            gfx.fillCircle(worldAX, worldAY, 4 / cam.zoom);
         }
     }
 };

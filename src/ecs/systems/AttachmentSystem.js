@@ -12,9 +12,8 @@ export const AttachmentSystem = (entities) => {
 
     const pPos = player.components.Position;
     const sling = player.components.SlingshotJump;
-    const currentLevel = player.components.MeditationState?.currentLevel || 0;
 
-    // 1. Hard Floor check (Logical Floor is 0)
+    // 1. Hard Floor check
     if (pPos.y >= -2) {
         if (sling) {
             sling.canJump = true;
@@ -23,18 +22,9 @@ export const AttachmentSystem = (entities) => {
         return;
     }
 
-    // Filter for physical platforms only + INTERACTION CHECK
-    const platforms = entities.filter(e => {
-        const { PlatformTag: plat, Collider: col, Position: pos, RealityLevel: reality } = e.components;
-        if (!plat || !col || !pos) return false;
-        
-        // Interaction Check: Current level must be in the 'interact' array
-        return reality ? reality.interact.includes(currentLevel) : (currentLevel === 0);
-    });
-
+    const platforms = entities.filter(e => e.components.PlatformTag && e.components.Collider && e.components.Position);
     const catchBuffer = 15;
 
-    // --- 1.5 CLEAR LAST PLATFORM ID WHEN WE LEAVE ITS BOUNDS ---
     if (sling && sling.lastPlatformId) {
         const lastPlat = entities.find(e => e.id === sling.lastPlatformId);
         if (lastPlat && lastPlat.components.Position) {
@@ -47,19 +37,28 @@ export const AttachmentSystem = (entities) => {
         }
     }
 
-    // 2. Collision Detection Pass (Immediate Attachment)
     for (const plat of platforms) {
-        if (sling && sling.lastPlatformId === plat.id) {
-            continue;
-        }
+        if (sling && sling.lastPlatformId === plat.id) continue;
 
         if (isPointInside(pPos, plat.components.Position, plat.components.Collider, catchBuffer)) {
+            // --- ROTATION-AWARE ATTACHMENT ---
+            // We need to calculate the local offset by rotating the world delta into local space
+            const platRot = plat.components.Rotation?.angle || 0;
+            const dx = pPos.x - plat.components.Position.x;
+            const dy = pPos.y - plat.components.Position.y;
+            
+            // Rotate by NEGATIVE platform rotation to get local offset
+            const cos = Math.cos(-platRot);
+            const sin = Math.sin(-platRot);
+            const localX = dx * cos - dy * sin;
+            const localY = dx * sin + dy * cos;
+
             player.components.Parent = {
                 _type: 'Parent',
                 id: plat.id,
                 offset: {
-                    x: pPos.x - plat.components.Position.x,
-                    y: pPos.y - plat.components.Position.y
+                    x: localX,
+                    y: localY
                 }
             };
 

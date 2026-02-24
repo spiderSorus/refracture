@@ -31,6 +31,7 @@ export const SpawnTag = () => ({ _type: 'SpawnTag' });
 export const StaticTag = () => ({ _type: 'StaticTag' });
 export const Mass = (value = 1) => ({ _type: 'Mass', value });
 export const Ego = (value = 128) => ({ _type: 'Ego', value });
+export const Spin = (rate = 0) => ({ _type: 'Spin', rate }); // rate in radians per second
 
 export const ConnectionPoint = (x = 0, y = 0) => ({
     _type: 'ConnectionPoint',
@@ -76,19 +77,6 @@ export const EnergySource = (strength = 100, type = 'EMIT') => ({
 
 export const BugTag = () => ({ _type: 'BugTag' });
 export const GravityExempt = () => ({ _type: 'GravityExempt' });
-
-export const RealityLevel = (visible = [0], interact = [0]) => ({
-    _type: 'RealityLevel',
-    visible: Array.isArray(visible) ? visible : [visible],
-    interact: Array.isArray(interact) ? interact : [interact]
-});
-
-export const MeditationState = () => ({
-    _type: 'MeditationState',
-    currentLevel: 0,
-    elevateTimer: 0,
-    declineTimer: 0
-});
 
 export const BugAI = () => ({
     _type: 'BugAI',

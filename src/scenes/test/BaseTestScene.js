@@ -11,7 +11,6 @@ import { LayeredRenderSystem } from '../../ecs/systems/LayeredRenderSystem';
 import { WebRenderSystem } from '../../ecs/systems/WebRenderSystem';
 import { WebSystem } from '../../ecs/systems/WebSystem';
 import { BugAISystem } from '../../ecs/systems/BugAISystem';
-import { MeditationSystem } from '../../ecs/systems/MeditationSystem';
 import { EnergySystem } from '../../ecs/systems/EnergySystem';
 import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
 import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
@@ -24,9 +23,6 @@ export class BaseTestScene extends Phaser.Scene {
         this.testSubtitle = subtitle || "State & Render Sync Debug";
         this.accumulator = 0;
         this.initialized = false;
-        
-        // MEDITATION CONFIG
-        this.meditationEnabled = false; 
     }
 
     create() {
@@ -56,7 +52,7 @@ export class BaseTestScene extends Phaser.Scene {
     update(time, delta) {
         if (!this.sys.isActive()) return;
 
-        // ON FIRST FRAME: VALIDATE & ENFORCE MEDITATION RULES
+        // ON FIRST FRAME: VALIDATE
         if (!this.initialized) {
             const spawnPoint = this.entities.find(e => e.components.SpawnTag);
             if (!spawnPoint) {
@@ -66,7 +62,6 @@ export class BaseTestScene extends Phaser.Scene {
             }
 
             // --- GLOW EFFECTS (Floor & Walls) ---
-            // Moved here so camera bounds are fully set
             const glowGfx = this.add.graphics();
             const cam = this.cameras.main;
             const bounds = cam.getBounds();
@@ -77,31 +72,11 @@ export class BaseTestScene extends Phaser.Scene {
 
             for (let i = 1; i <= 5; i++) {
                 glowGfx.lineStyle(i * 6, 0x0000ff, 0.5 / i);
-                
-                // Floor (Always at y=0)
                 glowGfx.lineBetween(minX - 5000, 0, maxX + 5000, 0);
-                
-                // Walls
                 glowGfx.lineBetween(minX, minY, minX, maxY);
                 glowGfx.lineBetween(maxX, minY, maxX, maxY);
             }
             glowGfx.setDepth(1);
-
-            if (spawnPoint.components.RealityLevel) {
-                spawnPoint.components.RealityLevel.visible = [0];
-                spawnPoint.components.RealityLevel.interact = [0];
-            }
-
-            if (!this.meditationEnabled) {
-                this.entities.forEach(e => {
-                    if (e.components.RealityLevel) {
-                        e.components.RealityLevel.visible = [0];
-                    }
-                    if (e.components.MeditationState) {
-                        e.components.MeditationState.currentLevel = 0;
-                    }
-                });
-            }
 
             this.initialized = true;
         }
@@ -116,11 +91,6 @@ export class BaseTestScene extends Phaser.Scene {
 
             SlingshotSystem(this.entities, this.inputManager);
             WebSystem(this.entities, this.inputManager, this);
-            
-            if (this.meditationEnabled) {
-                MeditationSystem(this.entities, this.inputManager, dtSeconds);
-            }
-
             EnergySystem(this.entities, dtSeconds, this);
             BugAISystem(this.entities, dtSeconds);
             AttachmentSystem(this.entities);
@@ -156,7 +126,6 @@ export class BaseTestScene extends Phaser.Scene {
         const player = this.entities.find(e => e.components.PlayerTag);
         if (player) {
             const sling = player.components.SlingshotJump || {};
-            const meditation = player.components.MeditationState || {};
             const rawStick = this.inputManager.getRightStickRaw();
 
             UI.updateDebug({
@@ -164,7 +133,6 @@ export class BaseTestScene extends Phaser.Scene {
                 x: Math.round(player.components.Position.x),
                 y: Math.round(player.components.Position.y)
             }, {
-                reality: meditation.currentLevel || 0,
                 status: player.components.Parent ? "ATTACHED" : "FREE",
                 sling: {
                     isCharging: sling.isCharging,

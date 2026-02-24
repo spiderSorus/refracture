@@ -13,6 +13,15 @@ export const PhysicsSystem = (entities, delta, scene) => {
     const minY = bounds.y;
     const maxY = bounds.y + bounds.height;
 
+    // --- 0. UPDATE ROTATION (Spin) ---
+    entities.forEach(entity => {
+        const spin = entity.components.Spin;
+        const rot = entity.components.Rotation;
+        if (spin && rot) {
+            rot.angle += spin.rate * dt;
+        }
+    });
+
     // 1. RESOLVE WEB TENSION FORCES
     entities.forEach(entity => {
         const tether = entity.components.WebTether;
@@ -23,8 +32,18 @@ export const PhysicsSystem = (entities, delta, scene) => {
         if (tether && pPos && pVel) {
             const platform = entities.find(e => e.id === tether.platformId);
             if (platform && platform.components.Position) {
-                const targetX = platform.components.Position.x + tether.anchorOffset.x;
-                const targetY = platform.components.Position.y + tether.anchorOffset.y;
+                // ACCOUNT FOR PLATFORM ROTATION
+                const platRot = platform.components.Rotation?.angle || 0;
+                const localAnchorX = tether.anchorOffset.x;
+                const localAnchorY = tether.anchorOffset.y;
+                
+                // Rotate local offset to world space
+                const ax = localAnchorX * Math.cos(platRot) - localAnchorY * Math.sin(platRot);
+                const ay = localAnchorX * Math.sin(platRot) + localAnchorY * Math.cos(platRot);
+                
+                const targetX = platform.components.Position.x + ax;
+                const targetY = platform.components.Position.y + ay;
+                
                 const dx = targetX - pPos.x;
                 const dy = targetY - pPos.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -55,12 +74,21 @@ export const PhysicsSystem = (entities, delta, scene) => {
             const entA = entities.find(e => e.id === conn.fromId);
             const entB = entities.find(e => e.id === conn.toId);
             if (entA && entB && entA.components.Position && entB.components.Position) {
-                const ax = entA.components.Position.x + conn.fromOffset.x;
-                const ay = entA.components.Position.y + conn.fromOffset.y;
-                const bx = entB.components.Position.x + conn.toOffset.x;
-                const by = entB.components.Position.y + conn.toOffset.y;
-                const dx = bx - ax;
-                const dy = by - ay;
+                const rotA = entA.components.Rotation?.angle || 0;
+                const rotB = entB.components.Rotation?.angle || 0;
+
+                const ax = conn.fromOffset.x * Math.cos(rotA) - conn.fromOffset.y * Math.sin(rotA);
+                const ay = conn.fromOffset.x * Math.sin(rotA) + conn.fromOffset.y * Math.cos(rotA);
+                const bx = conn.toOffset.x * Math.cos(rotB) - conn.toOffset.y * Math.sin(rotB);
+                const by = conn.toOffset.x * Math.sin(rotB) + conn.toOffset.y * Math.cos(rotB);
+
+                const worldAX = entA.components.Position.x + ax;
+                const worldAY = entA.components.Position.y + ay;
+                const worldBX = entB.components.Position.x + bx;
+                const worldBY = entB.components.Position.y + by;
+
+                const dx = worldBX - worldAX;
+                const dy = worldBY - worldAY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 const restLen = conn.fixedLength || 100;
 
@@ -96,8 +124,17 @@ export const PhysicsSystem = (entities, delta, scene) => {
         if (parent) {
             const platform = entities.find(e => e.id === parent.id);
             if (platform && platform.components.Position) {
-                pos.x = platform.components.Position.x + parent.offset.x;
-                pos.y = platform.components.Position.y + parent.offset.y;
+                // ACCOUNT FOR ROTATION IN PARENT OFFSET
+                const pRot = platform.components.Rotation?.angle || 0;
+                const ox = parent.offset.x;
+                const oy = parent.offset.y;
+                
+                // Transform local offset to world position using platform rotation
+                const rx = ox * Math.cos(pRot) - oy * Math.sin(pRot);
+                const ry = ox * Math.sin(pRot) + oy * Math.cos(pRot);
+
+                pos.x = platform.components.Position.x + rx;
+                pos.y = platform.components.Position.y + ry;
             }
             if (vel) { 
                 entity.components._lastVel = { x: vel.x, y: vel.y };
@@ -111,7 +148,8 @@ export const PhysicsSystem = (entities, delta, scene) => {
             const isStatic = !!(entity.components.SpawnTag || entity.components.StaticTag);
 
             if (isStatic) {
-                vel.x = 0; vel.y = 0;
+                vel.x = 0;
+                vel.y = 0;
             } else if (isPlayer) {
                 vel.y += GRAVITY * dt;
             } else if (!entity.components.GravityExempt && !entity.components.PlatformTag) {
@@ -121,10 +159,8 @@ export const PhysicsSystem = (entities, delta, scene) => {
             pos.x += vel.x * dt;
             pos.y += vel.y * dt;
 
-            // Player Bounding & Floor Collision
             if (isPlayer) {
                 const pRadius = 15;
-                // Floor Respawn
                 if (pos.y >= FLOOR_Y) {
                     const spawnPoint = entities.find(e => e.components.SpawnTag);
                     if (spawnPoint && spawnPoint.components.Position) {
@@ -135,14 +171,11 @@ export const PhysicsSystem = (entities, delta, scene) => {
                         delete entity.components.WebTether;
                     }
                 }
-                // World Bounds Constraint
                 if (pos.x - pRadius < minX) { pos.x = minX + pRadius; vel.x = 0; }
                 else if (pos.x + pRadius > maxX) { pos.x = maxX - pRadius; vel.x = 0; }
                 if (pos.y - pRadius < minY) { pos.y = minY + pRadius; vel.y = 0; }
-                // Bottom bound handled by FLOOR_Y respawn logic
             }
 
-            // Platform World Boundary Bouncing
             if (entity.components.PlatformTag && entity.components.Collider) {
                 const col = entity.components.Collider;
                 const radius = col.type === 'circle' ? col.radius : Math.max(col.width, col.height) / 2;
@@ -163,6 +196,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
             const B = platformsForCollision[j];
             const posA = A.components.Position; const posB = B.components.Position;
             const colA = A.components.Collider; const colB = B.components.Collider;
+
             const levelA = A.components.RealityLevel?.interact || [0];
             const levelB = B.components.RealityLevel?.interact || [0];
             if (!levelA.some(lvl => levelB.includes(lvl))) continue;
