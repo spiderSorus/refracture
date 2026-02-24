@@ -13,14 +13,15 @@ export const MovementSystem = (entities, inputManager, dt) => {
 
         // --- 1. ROTATION LOGIC (Player Only) ---
         if (isPlayer) {
+            const offset = Math.PI / 2;
             if (sling && sling.isCharging && sling.lockedAim) {
-                rot.angle = Math.atan2(-sling.lockedAim.y, -sling.lockedAim.x);
+                rot.angle = Math.atan2(-sling.lockedAim.y, -sling.lockedAim.x) + offset;
             }
             else if (Math.abs(move.x) > 0.1 || Math.abs(move.y) > 0.1) {
-                rot.angle = Math.atan2(move.y, move.x);
+                rot.angle = Math.atan2(move.y, move.x) + offset;
             }
             else if (!parent && vel && (Math.abs(vel.x) > 10 || Math.abs(vel.y) > 10)) {
-                rot.angle = Math.atan2(vel.y, vel.x);
+                rot.angle = Math.atan2(vel.y, vel.x) + offset;
             }
         }
 
