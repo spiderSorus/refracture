@@ -101,7 +101,11 @@ export const PhysicsSystem = (entities, delta, scene) => {
                 pos.x = platform.components.Position.x + parent.offset.x;
                 pos.y = platform.components.Position.y + parent.offset.y;
             }
-            if (vel) { vel.x = 0; vel.y = 0; }
+            if (vel) { 
+                // Store last known velocity before zeroing for rules like DynamicStaticToggle
+                entity.components._lastVel = { x: vel.x, y: vel.y };
+                vel.x = 0; vel.y = 0; 
+            }
             return;
         }
 
