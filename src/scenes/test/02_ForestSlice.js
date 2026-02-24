@@ -18,7 +18,6 @@ export class ForestSlice extends BaseTestScene {
 
         const WORLD_WIDTH = 4000;
         const WORLD_HEIGHT = 8000;
-
         this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setZoom(0.5);
 
@@ -28,17 +27,12 @@ export class ForestSlice extends BaseTestScene {
             gfx.strokeRect(0, 0, 100, 100);
             gfx.generateTexture('bg_grid', 100, 100);
         }
+        this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
 
-        const bg = this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid');
-        bg.setDepth(0);
-
-        const floorGfx = this.add.graphics();
-        floorGfx.lineStyle(10, 0x228b22, 1);
-        floorGfx.lineBetween(0, 5, WORLD_WIDTH, 5);
-
-        // --- 0. SPAWN PLATFORM ---
         const spawnX = WORLD_WIDTH / 2;
-        const spawnY = -150;
+        const spawnY = -WORLD_HEIGHT / 2;
+
+        // 0. SPAWN PLATFORM
         this.addEntity([
             Position(spawnX, spawnY),
             PlatformTag(),
@@ -48,9 +42,9 @@ export class ForestSlice extends BaseTestScene {
             Collider('circle', 50)
         ]);
 
-        // --- 1. CENTER FLOATER ---
+        // 1. CENTER FLOATER
         this.addEntity([
-            Position(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2),
+            Position(WORLD_WIDTH / 2, spawnY - 500),
             PlatformTag(),
             EntityType('PLATFORM'),
             Renderable({ 'BASE': { type: 'circle', radius: 120, color: 0xff00ff } }),
@@ -59,20 +53,16 @@ export class ForestSlice extends BaseTestScene {
 
         // Forest-like procedural generation
         let lastPos = { x: spawnX, y: spawnY };
-        const platformCount = 60;
-
-        for (let i = 0; i < platformCount; i++) {
-            const angle = Phaser.Math.FloatBetween(Math.PI * 1.1, Math.PI * 1.9);
+        for (let i = 0; i < 60; i++) {
+            const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
             const dist = Phaser.Math.Between(300, 700);
-
             let nextX = lastPos.x + Math.cos(angle) * dist;
             let nextY = lastPos.y + Math.sin(angle) * dist;
-
             nextX = Phaser.Math.Clamp(nextX, 400, WORLD_WIDTH - 400);
+            nextY = Phaser.Math.Clamp(nextY, -WORLD_HEIGHT + 400, -400);
 
             const size = Phaser.Math.Between(60, 120);
             const color = 0x556b2f; 
-
             this.addEntity([
                 Position(nextX, nextY),
                 PlatformTag(),
@@ -93,9 +83,7 @@ export class ForestSlice extends BaseTestScene {
                 BugTag(),
                 GravityExempt(),
                 BugAI(),
-                Renderable({
-                    'BASE': { type: 'circle', radius: 6, color: 0xffff00 }
-                })
+                Renderable({ 'BASE': { type: 'circle', radius: 6, color: 0xffff00 } })
             ]);
         }
 

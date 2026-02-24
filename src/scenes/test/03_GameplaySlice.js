@@ -18,7 +18,6 @@ export class GameplaySlice extends BaseTestScene {
 
         const WORLD_WIDTH = 4000;
         const WORLD_HEIGHT = 8000;
-        
         this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setZoom(0.5);
 
@@ -28,17 +27,12 @@ export class GameplaySlice extends BaseTestScene {
             gfx.strokeRect(0, 0, 100, 100);
             gfx.generateTexture('bg_grid', 100, 100);
         }
+        this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
 
-        const bg = this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid');
-        bg.setDepth(0);
-
-        const floorGfx = this.add.graphics();
-        floorGfx.lineStyle(10, 0x00ff00, 1);
-        floorGfx.lineBetween(0, 5, WORLD_WIDTH, 5);
-
-        // --- 0. SPAWN PLATFORM ---
         const spawnX = WORLD_WIDTH / 2;
-        const spawnY = -150;
+        const spawnY = -WORLD_HEIGHT / 2;
+
+        // 0. SPAWN PLATFORM
         this.addEntity([
             Position(spawnX, spawnY),
             PlatformTag(),
@@ -49,9 +43,9 @@ export class GameplaySlice extends BaseTestScene {
             Collider('circle', 50)
         ]);
 
-        // --- 1. CENTER FLOATER ---
+        // 1. CENTER FLOATER
         this.addEntity([
-            Position(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2),
+            Position(WORLD_WIDTH / 2, spawnY - 500),
             PlatformTag(),
             GravityExempt(),
             Mass(5),
@@ -60,17 +54,13 @@ export class GameplaySlice extends BaseTestScene {
             Collider('circle', 120)
         ]);
 
-        // --- 2. SPAWN FLOATERS ---
-        const platformCount = 60;
-        const margin = 200;
-        for (let i = 0; i < platformCount; i++) {
-            const fx = Phaser.Math.Between(margin, WORLD_WIDTH - margin);
-            const fy = Phaser.Math.Between(-WORLD_HEIGHT + margin, -200);
-            
+        // 2. SPAWN FLOATERS
+        for (let i = 0; i < 60; i++) {
+            const fx = Phaser.Math.Between(200, WORLD_WIDTH - 200);
+            const fy = Phaser.Math.Between(-WORLD_HEIGHT + 200, -200);
             const size = Phaser.Math.Between(80, 220);
             const color = Phaser.Display.Color.RandomRGB(40).color;
             const mass = size / 40;
-
             this.addEntity([
                 Position(fx, fy),
                 Velocity(Phaser.Math.Between(-80, 80), Phaser.Math.Between(-80, 80)),
@@ -83,7 +73,7 @@ export class GameplaySlice extends BaseTestScene {
             ]);
         }
 
-        // --- 3. SPAWN BUGS ---
+        // 3. SPAWN BUGS
         for (let i = 0; i < 150; i++) {
             const bx = Phaser.Math.Between(0, WORLD_WIDTH);
             const by = Phaser.Math.Between(-WORLD_HEIGHT, -100);
@@ -93,9 +83,7 @@ export class GameplaySlice extends BaseTestScene {
                 BugTag(),
                 GravityExempt(),
                 BugAI(),
-                Renderable({
-                    'BASE': { type: 'circle', radius: 6, color: 0xffff00 }
-                })
+                Renderable({ 'BASE': { type: 'circle', radius: 6, color: 0xffff00 } })
             ]);
         }
 

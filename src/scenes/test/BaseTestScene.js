@@ -52,7 +52,7 @@ export class BaseTestScene extends Phaser.Scene {
     update(time, delta) {
         if (!this.sys.isActive()) return;
 
-        // ON FIRST FRAME: VALIDATE
+        // ON FIRST FRAME: VALIDATE & INITIALIZE VISUALS
         if (!this.initialized) {
             const spawnPoint = this.entities.find(e => e.components.SpawnTag);
             if (!spawnPoint) {
@@ -72,7 +72,7 @@ export class BaseTestScene extends Phaser.Scene {
 
             for (let i = 1; i <= 5; i++) {
                 glowGfx.lineStyle(i * 6, 0x0000ff, 0.5 / i);
-                glowGfx.lineBetween(minX - 5000, 0, maxX + 5000, 0);
+                glowGfx.lineBetween(minX - 5000, maxY, maxX + 5000, maxY); // FLOOR AT maxY
                 glowGfx.lineBetween(minX, minY, minX, maxY);
                 glowGfx.lineBetween(maxX, minY, maxX, maxY);
             }

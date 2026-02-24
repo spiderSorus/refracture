@@ -4,14 +4,19 @@ import Phaser from 'phaser';
 
 export const PhysicsSystem = (entities, delta, scene) => {
     const dt = delta / 1000;
-    const FLOOR_Y = 0;
     const GRAVITY = PHYSICS.GRAVITY || 980;
     
-    const bounds = scene?.cameras.main.getBounds() || { x: -5000, y: -10000, width: 10000, height: 10000 };
+    // Fallback bounds
+    const defaultBounds = { x: -5000, y: -10000, width: 10000, height: 10000 };
+    const bounds = scene?.cameras.main.getBounds() || defaultBounds;
+    
     const minX = bounds.x;
     const maxX = bounds.x + bounds.width;
     const minY = bounds.y;
-    const maxY = bounds.y + bounds.height;
+    const maxY = bounds.y + bounds.height; // BOTTOM OF THE MAP
+
+    // FLOOR_Y is now the bottom of the world bounds
+    const FLOOR_Y = maxY;
 
     // --- 0. UPDATE ROTATION (Spin) ---
     entities.forEach(entity => {
@@ -32,18 +37,13 @@ export const PhysicsSystem = (entities, delta, scene) => {
         if (tether && pPos && pVel) {
             const platform = entities.find(e => e.id === tether.platformId);
             if (platform && platform.components.Position) {
-                // ACCOUNT FOR PLATFORM ROTATION
                 const platRot = platform.components.Rotation?.angle || 0;
                 const localAnchorX = tether.anchorOffset.x;
                 const localAnchorY = tether.anchorOffset.y;
-                
-                // Rotate local offset to world space
                 const ax = localAnchorX * Math.cos(platRot) - localAnchorY * Math.sin(platRot);
                 const ay = localAnchorX * Math.sin(platRot) + localAnchorY * Math.cos(platRot);
-                
                 const targetX = platform.components.Position.x + ax;
                 const targetY = platform.components.Position.y + ay;
-                
                 const dx = targetX - pPos.x;
                 const dy = targetY - pPos.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -76,17 +76,14 @@ export const PhysicsSystem = (entities, delta, scene) => {
             if (entA && entB && entA.components.Position && entB.components.Position) {
                 const rotA = entA.components.Rotation?.angle || 0;
                 const rotB = entB.components.Rotation?.angle || 0;
-
                 const ax = conn.fromOffset.x * Math.cos(rotA) - conn.fromOffset.y * Math.sin(rotA);
                 const ay = conn.fromOffset.x * Math.sin(rotA) + conn.fromOffset.y * Math.cos(rotA);
                 const bx = conn.toOffset.x * Math.cos(rotB) - conn.toOffset.y * Math.sin(rotB);
                 const by = conn.toOffset.x * Math.sin(rotB) + conn.toOffset.y * Math.cos(rotB);
-
                 const worldAX = entA.components.Position.x + ax;
                 const worldAY = entA.components.Position.y + ay;
                 const worldBX = entB.components.Position.x + bx;
                 const worldBY = entB.components.Position.y + by;
-
                 const dx = worldBX - worldAX;
                 const dy = worldBY - worldAY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
@@ -102,7 +99,6 @@ export const PhysicsSystem = (entities, delta, scene) => {
                     const massB = entB.components.Mass?.value || 10;
                     const staticA = !!(entA.components.SpawnTag || entA.components.StaticTag);
                     const staticB = !!(entB.components.SpawnTag || entB.components.StaticTag);
-
                     if (entA.components.Velocity && !staticA) {
                         entA.components.Velocity.x += (nx * force / massA) * dt;
                         entA.components.Velocity.y += (ny * force / massA) * dt;
@@ -124,15 +120,11 @@ export const PhysicsSystem = (entities, delta, scene) => {
         if (parent) {
             const platform = entities.find(e => e.id === parent.id);
             if (platform && platform.components.Position) {
-                // ACCOUNT FOR ROTATION IN PARENT OFFSET
                 const pRot = platform.components.Rotation?.angle || 0;
                 const ox = parent.offset.x;
                 const oy = parent.offset.y;
-                
-                // Transform local offset to world position using platform rotation
                 const rx = ox * Math.cos(pRot) - oy * Math.sin(pRot);
                 const ry = ox * Math.sin(pRot) + oy * Math.cos(pRot);
-
                 pos.x = platform.components.Position.x + rx;
                 pos.y = platform.components.Position.y + ry;
             }
@@ -159,9 +151,10 @@ export const PhysicsSystem = (entities, delta, scene) => {
             pos.x += vel.x * dt;
             pos.y += vel.y * dt;
 
+            // Player Respawn (Touching Bottom)
             if (isPlayer) {
                 const pRadius = 15;
-                if (pos.y >= FLOOR_Y) {
+                if (pos.y + pRadius >= FLOOR_Y) {
                     const spawnPoint = entities.find(e => e.components.SpawnTag);
                     if (spawnPoint && spawnPoint.components.Position) {
                         pos.x = spawnPoint.components.Position.x;
@@ -171,11 +164,14 @@ export const PhysicsSystem = (entities, delta, scene) => {
                         delete entity.components.WebTether;
                     }
                 }
+                // Wall Constraints
                 if (pos.x - pRadius < minX) { pos.x = minX + pRadius; vel.x = 0; }
                 else if (pos.x + pRadius > maxX) { pos.x = maxX - pRadius; vel.x = 0; }
+                // Top Constraint
                 if (pos.y - pRadius < minY) { pos.y = minY + pRadius; vel.y = 0; }
             }
 
+            // Platform World Boundary Bouncing
             if (entity.components.PlatformTag && entity.components.Collider) {
                 const col = entity.components.Collider;
                 const radius = col.type === 'circle' ? col.radius : Math.max(col.width, col.height) / 2;
@@ -196,11 +192,6 @@ export const PhysicsSystem = (entities, delta, scene) => {
             const B = platformsForCollision[j];
             const posA = A.components.Position; const posB = B.components.Position;
             const colA = A.components.Collider; const colB = B.components.Collider;
-
-            const levelA = A.components.RealityLevel?.interact || [0];
-            const levelB = B.components.RealityLevel?.interact || [0];
-            if (!levelA.some(lvl => levelB.includes(lvl))) continue;
-
             const dist = Phaser.Math.Distance.Between(posA.x, posA.y, posB.x, posB.y);
             const radiusA = colA.type === 'circle' ? colA.radius : Math.max(colA.width, colA.height) / 2;
             const radiusB = colB.type === 'circle' ? colB.radius : Math.max(colB.width, colB.height) / 2;

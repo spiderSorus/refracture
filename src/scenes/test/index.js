@@ -8,6 +8,7 @@ import { EnergySystems3 } from './08_EnergySystems3';
 import { SpinLab } from './09_SpinLab';
 import { SpinnerClimb } from './10_SpinnerClimb';
 import { ChaosLab } from './11_ChaosLab';
+import { PlayerTest } from './12_PlayerTest';
 
 export const TestScenes = [
     VerticalSlice,
@@ -19,5 +20,6 @@ export const TestScenes = [
     EnergySystems3,
     SpinLab,
     SpinnerClimb,
-    ChaosLab
+    ChaosLab,
+    PlayerTest
 ];
