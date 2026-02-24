@@ -49,7 +49,7 @@ export class EnergySystems1 extends BaseTestScene {
             Collider('rect', 0, 100, 20)
         ]);
 
-        // 2. BIG PLATFORM (Ego 255, Moved closer: 600 -> 350)
+        // 2. BIG PLATFORM (Ego 255, Orange)
         this.addEntity([
             Position(centerX - 350, centerY),
             Velocity(0, 0),
@@ -58,11 +58,11 @@ export class EnergySystems1 extends BaseTestScene {
             EntityType('PLATFORM'),
             Ego(255),
             Mass(10),
-            Renderable({ 'BASE': { type: 'circle', radius: 255 * 0.8 + 20, color: 0xffffff } }),
+            Renderable({ 'BASE': { type: 'circle', radius: 255 * 0.8 + 20, color: 0xffa500 } }),
             Collider('circle', 255 * 0.8 + 20)
         ]);
 
-        // 3. SMALL PLATFORM (Ego 10, Moved closer: 600 -> 350)
+        // 3. SMALL PLATFORM (Ego 10, Purple)
         this.addEntity([
             Position(centerX + 350, centerY),
             Velocity(0, 0),
@@ -71,7 +71,7 @@ export class EnergySystems1 extends BaseTestScene {
             EntityType('PLATFORM'),
             Ego(10),
             Mass(2),
-            Renderable({ 'BASE': { type: 'circle', radius: 10 * 0.8 + 20, color: 0xffffff } }),
+            Renderable({ 'BASE': { type: 'circle', radius: 10 * 0.8 + 20, color: 0x800080 } }),
             Collider('circle', 10 * 0.8 + 20)
         ]);
 

@@ -3,7 +3,7 @@ import { WebTether, WebConnection } from '../components/index';
 import { findPlayer } from '../entities/player';
 import { snapOffsetInside } from '../../utils/CollisionUtils';
 
-export const WebSystem = (entities, inputManager) => {
+export const WebSystem = (entities, inputManager, scene) => {
     const player = findPlayer(entities);
     if (!player) return;
 
@@ -15,11 +15,13 @@ export const WebSystem = (entities, inputManager) => {
 
     const MAX_SPOOL_LENGTH = 1000;
     const MIN_SPOOL_LENGTH = 10;
+    
+    // Scene-specific strength multiplier
+    const strengthMult = scene?.webStrengthMult || 1.0;
 
     // --- 1. WINCH & DANGLE PHYSICS ---
     if (tether) {
         const platform = entities.find(e => e.id === tether.platformId);
-        // Interaction Check for Physics
         const canInteract = platform && (platform.components.RealityLevel ? platform.components.RealityLevel.interact.includes(currentLevel) : currentLevel === 0);
 
         if (platform && platform.components.Position && canInteract) {
@@ -48,9 +50,6 @@ export const WebSystem = (entities, inputManager) => {
                 }
             }
 
-            // --- NEW: ON-PLATFORM CONSTRAINT ---
-            // If we are WALKING on the platform we are tethered to, 
-            // don't let our offset exceed the tether length.
             if (currentParent && currentParent.id === tether.platformId) {
                 const dx = currentParent.offset.x - tether.anchorOffset.x;
                 const dy = currentParent.offset.y - tether.anchorOffset.y;
@@ -70,44 +69,44 @@ export const WebSystem = (entities, inputManager) => {
     const xJustPressed = inputManager.isButtonPressed('X');
     const yJustPressed = inputManager.isButtonPressed('Y');
 
-    // CREATE TETHER (Y button only)
+    // CREATE TETHER
     if (yJustPressed && !tether && currentParent) {
         const plat = entities.find(e => e.id === currentParent.id);
-        // No extra check needed as currentParent implies we already passed attachment interaction check
         if (plat && plat.components.Position) {
             const snappedOffset = snapOffsetInside(currentParent.offset, plat.components.Collider, 10);
-            player.components.WebTether = WebTether(currentParent.id, snappedOffset);
+            const newTether = WebTether(currentParent.id, snappedOffset);
+            
+            // Apply Scene Multiplier
+            newTether.maxForce *= strengthMult;
+            
+            player.components.WebTether = newTether;
             player.components.WebTether.maxLength = MAX_SPOOL_LENGTH; 
             return;
         }
     }
 
-    // DISCONNECT TETHER (Y button while not attached)
     if (yJustPressed && tether && !currentParent) {
         delete player.components.WebTether;
         return;
     }
 
-    // CUT TETHER (X button only)
     if (xJustPressed && tether) {
         delete player.components.WebTether;
         delete player.components.Parent;
         return;
     }
 
-    // CONNECT (Y Button): Capture Fixed Slack Length
+    // CONNECT
     if (yJustPressed && tether && currentParent && tether.platformId !== currentParent.id) {
         const platA = entities.find(e => e.id === tether.platformId);
         const platB = entities.find(e => e.id === currentParent.id);
         
         if (platA && platB && platA.components.Position && platB.components.Position) {
-            // Determine if both platforms are currently interactive
             const canA = platA.components.RealityLevel ? platA.components.RealityLevel.interact.includes(currentLevel) : currentLevel === 0;
             const canB = platB.components.RealityLevel ? platB.components.RealityLevel.interact.includes(currentLevel) : currentLevel === 0;
 
             if (canA && canB) {
                 const snappedOffsetB = snapOffsetInside(currentParent.offset, platB.components.Collider, 10);
-
                 const x1 = platA.components.Position.x + tether.anchorOffset.x;
                 const y1 = platA.components.Position.y + tether.anchorOffset.y;
                 const x2 = platB.components.Position.x + snappedOffsetB.x;
@@ -119,13 +118,15 @@ export const WebSystem = (entities, inputManager) => {
                     currentParent.id, snappedOffsetB
                 );
                 
+                // Apply Scene Multiplier
+                conn.maxForce *= strengthMult;
                 conn.fixedLength = dist * 1.15;
                 
+                console.log(`🔗 [WEB] Created Connection (Strength x${strengthMult}): ${tether.platformId} <-> ${currentParent.id}`);
+
                 entities.push({
                     id: crypto.randomUUID(),
-                    components: { 
-                        WebConnection: conn
-                    }
+                    components: { WebConnection: conn }
                 });
             }
         }
@@ -143,7 +144,7 @@ export const WebSystem = (entities, inputManager) => {
         const conn = e.components.WebConnection;
         if (conn && conn.tension > conn.maxForce) {
             console.log("💥 Web Connection Snap!");
-            e.toDestroy = true; // Handled by BaseTestScene cleanup
+            e.toDestroy = true;
         }
     });
 };

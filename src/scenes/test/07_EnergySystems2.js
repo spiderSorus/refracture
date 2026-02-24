@@ -3,14 +3,19 @@ import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, RealityLevel, MeditationState, Mass, Velocity, Ego
+    SpawnTag, RealityLevel, MeditationState, Mass, Velocity, Ego, StaticTag
 } from '../../ecs/components/index';
+import { EgoGravityRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
 
 export class EnergySystems2 extends BaseTestScene {
     constructor() {
-        super('EnergySystems2', 'Energy Systems 2', 'Identical to Energy Systems 1.');
+        super('EnergySystems2', 'Energy Systems 2', 'Ego-Weighted Gravity + Balancing.');
         this.meditationEnabled = false;
+        this.floaterGravity = 980; 
+        this.webStrengthMult = 10; // 10x Stronger Webs
+        // Plug and Play rules for EnergySystem
+        this.energyRules = [EgoGravityRule, EgoBalanceRule];
     }
 
     create() {
@@ -31,6 +36,10 @@ export class EnergySystems2 extends BaseTestScene {
 
         this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
 
+        const borderGfx = this.add.graphics();
+        borderGfx.lineStyle(10, 0xffffff, 1);
+        borderGfx.strokeRect(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
+
         const centerX = WORLD_WIDTH / 2;
         const centerY = -WORLD_HEIGHT / 2;
 
@@ -49,7 +58,7 @@ export class EnergySystems2 extends BaseTestScene {
             Collider('rect', 0, 100, 20)
         ]);
 
-        // 2. BIG PLATFORM (Ego 255)
+        // 2. BIG PLATFORM (Ego 255, Orange) - DYNAMIC
         this.addEntity([
             Position(centerX - 350, centerY),
             Velocity(0, 0),
@@ -58,20 +67,20 @@ export class EnergySystems2 extends BaseTestScene {
             EntityType('PLATFORM'),
             Ego(255),
             Mass(10),
-            Renderable({ 'BASE': { type: 'circle', radius: 255 * 0.8 + 20, color: 0xffffff } }),
+            Renderable({ 'BASE': { type: 'circle', radius: 255 * 0.8 + 20, color: 0xffa500 } }),
             Collider('circle', 255 * 0.8 + 20)
         ]);
 
-        // 3. SMALL PLATFORM (Ego 10)
+        // 3. SMALL PLATFORM (Ego 10, Purple) - STATIC
         this.addEntity([
             Position(centerX + 350, centerY),
-            Velocity(0, 0),
             PlatformTag(),
+            StaticTag(),
             RealityLevel([0], [0]),
             EntityType('PLATFORM'),
             Ego(10),
             Mass(2),
-            Renderable({ 'BASE': { type: 'circle', radius: 10 * 0.8 + 20, color: 0xffffff } }),
+            Renderable({ 'BASE': { type: 'circle', radius: 10 * 0.8 + 20, color: 0x800080 } }),
             Collider('circle', 10 * 0.8 + 20)
         ]);
 

@@ -3,15 +3,17 @@ import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, RealityLevel, MeditationState, Mass, Velocity
+    SpawnTag, RealityLevel, MeditationState, Mass, Velocity, Ego
 } from '../../ecs/components/index';
+import { FloaterGravityRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
 
 export class EnergySystems0 extends BaseTestScene {
     constructor() {
-        super('EnergySystems0', 'Energy Systems 0', 'Basic Energy Transfer Test.');
+        super('EnergySystems0', 'Energy Systems 0', 'Modular Energy Logic (Floater Gravity + Balance).');
         this.meditationEnabled = false;
-        this.floaterGravity = 980; 
+        // Rules: Activate gravity for any connected floater, and balance ego
+        this.energyRules = [FloaterGravityRule, EgoBalanceRule];
     }
 
     create() {
@@ -54,28 +56,30 @@ export class EnergySystems0 extends BaseTestScene {
             Collider('rect', 0, 100, 20)
         ]);
 
-        // 2. LEFT PLATFORM (Cyan)
+        // 2. LEFT PLATFORM (Cyan, Ego 128)
         this.addEntity([
             Position(centerX - 300, centerY),
             Velocity(0, 0),
             PlatformTag(),
             RealityLevel([0], [0]),
             EntityType('PLATFORM'),
+            Ego(128),
             Mass(5),
-            Renderable({ 'BASE': { type: 'circle', radius: 80, color: 0x00ffff } }),
-            Collider('circle', 80)
+            Renderable({ 'BASE': { type: 'circle', radius: 128 * 0.8 + 20, color: 0x00ffff } }),
+            Collider('circle', 128 * 0.8 + 20)
         ]);
 
-        // 3. RIGHT PLATFORM (Yellow)
+        // 3. RIGHT PLATFORM (Yellow, Ego 128)
         this.addEntity([
             Position(centerX + 300, centerY),
             Velocity(0, 0),
             PlatformTag(),
             RealityLevel([0], [0]),
             EntityType('PLATFORM'),
+            Ego(128),
             Mass(5),
-            Renderable({ 'BASE': { type: 'circle', radius: 80, color: 0xffff00 } }),
-            Collider('circle', 80)
+            Renderable({ 'BASE': { type: 'circle', radius: 128 * 0.8 + 20, color: 0xffff00 } }),
+            Collider('circle', 128 * 0.8 + 20)
         ]);
 
         this.addEntity([

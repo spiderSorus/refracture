@@ -98,13 +98,13 @@ export class BaseTestScene extends Phaser.Scene {
             const dtSeconds = PHYSICS.STEP / 1000;
 
             SlingshotSystem(this.entities, this.inputManager);
-            WebSystem(this.entities, this.inputManager);
+            WebSystem(this.entities, this.inputManager, this);
             
             if (this.meditationEnabled) {
                 MeditationSystem(this.entities, this.inputManager, dtSeconds);
             }
 
-            EnergySystem(this.entities, dtSeconds);
+            EnergySystem(this.entities, dtSeconds, this);
             BugAISystem(this.entities, dtSeconds);
             AttachmentSystem(this.entities);
             MovementSystem(this.entities, this.inputManager, dtSeconds);

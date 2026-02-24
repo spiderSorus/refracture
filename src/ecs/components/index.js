@@ -28,6 +28,7 @@ export const Collider = (type = 'circle', radius = 50, width = 100, height = 100
 });
 export const PlatformTag = () => ({ _type: 'PlatformTag' });
 export const SpawnTag = () => ({ _type: 'SpawnTag' });
+export const StaticTag = () => ({ _type: 'StaticTag' });
 export const Mass = (value = 1) => ({ _type: 'Mass', value });
 export const Ego = (value = 128) => ({ _type: 'Ego', value });
 
