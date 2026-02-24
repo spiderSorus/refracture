@@ -52,13 +52,36 @@ export class BaseTestScene extends Phaser.Scene {
     update(time, delta) {
         if (!this.sys.isActive()) return;
 
-        // ON FIRST FRAME: VALIDATE & INITIALIZE VISUALS
+        // --- FIRST FRAME INITIALIZATION ---
         if (!this.initialized) {
             const spawnPoint = this.entities.find(e => e.components.SpawnTag);
+            const player = this.entities.find(e => e.components.PlayerTag);
+
             if (!spawnPoint) {
                 console.error("no spawnpoint detected:");
                 this.scene.start('TestMenuScene');
                 return;
+            }
+
+            // BAKE-IN ATTACHMENT: Start player attached to spawnpoint
+            if (player) {
+                // Force player to spawn position
+                player.components.Position.x = spawnPoint.components.Position.x;
+                player.components.Position.y = spawnPoint.components.Position.y;
+                
+                // Create Parent component
+                player.components.Parent = {
+                    _type: 'Parent',
+                    id: spawnPoint.id,
+                    offset: { x: 0, y: 0 }
+                };
+                
+                // Reset Slingshot
+                if (player.components.SlingshotJump) {
+                    player.components.SlingshotJump.canJump = true;
+                }
+                
+                console.log(`[BASE] Baked-in attachment: Player -> ${spawnPoint.id}`);
             }
 
             // --- GLOW EFFECTS (Floor & Walls) ---
@@ -72,7 +95,7 @@ export class BaseTestScene extends Phaser.Scene {
 
             for (let i = 1; i <= 5; i++) {
                 glowGfx.lineStyle(i * 6, 0x0000ff, 0.5 / i);
-                glowGfx.lineBetween(minX - 5000, maxY, maxX + 5000, maxY); // FLOOR AT maxY
+                glowGfx.lineBetween(minX - 5000, maxY, maxX + 5000, maxY); 
                 glowGfx.lineBetween(minX, minY, minX, maxY);
                 glowGfx.lineBetween(maxX, minY, maxX, maxY);
             }

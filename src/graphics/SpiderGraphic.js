@@ -12,73 +12,73 @@ export class SpiderGraphic extends BaseGraphic {
     }
 
     setupSpider(config) {
-        const color = config.color || 0x222222;
-        
-        // 1. Body (Small Oval, 12x16)
-        this.body = this.scene.add.ellipse(0, 0, 12, 16, color);
-        this.gameObject.add(this.body);
+        const bodyColor = config.color || 0x000000;
 
-        // 2. Leg Layout Data
-        const legConfigs = [
-            { side: 'Left',  spread: -25,  id: 1 },
-            { side: 'Left',  spread: -65,  id: 2 },
-            { side: 'Left',  spread: -115, id: 3 },
-            { side: 'Left',  spread: -165, id: 4 },
-            { side: 'Right', spread: 25,   id: 1 },
-            { side: 'Right', spread: 65,   id: 2 },
-            { side: 'Right', spread: 115,  id: 3 },
-            { side: 'Right', spread: 165,  id: 4 }
+        this.head = this.scene.add.ellipse(0, -8, 14, 16, bodyColor);
+        this.abdomen = this.scene.add.ellipse(0, 12, 22, 28, bodyColor);
+        this.gameObject.add(this.abdomen);
+        this.gameObject.add(this.head);
+
+        const segmentDefs = [
+            { name: 'Coxa', len: 6, w: 3.5 },
+            { name: 'Trochanter', len: 4, w: 3.0 },
+            { name: 'Femur', len: 22, w: 2.5 },
+            { name: 'Patella', len: 6, w: 2.5 },
+            { name: 'Tibia', len: 20, w: 2.0 },
+            { name: 'Metatarsus', len: 18, w: 1.5 },
+            { name: 'Tarsus', len: 10, w: 1.0 }
         ];
 
-        // Specific Bends from request
-        const bends = [5, 5, 25, 55, 30, 40, 15]; 
-        
-        // Segment lengths
-        const lengths = [3, 2, 8, 3, 7, 6, 4];    
-        const widths = [2.0, 1.8, 1.5, 1.5, 1.2, 0.8, 0.5]; 
+        // 1. Fully Hardcoded Coordinates & Vectors
+        // No dynamic flipping. What you see is exactly what renders.
+        // In Phaser: 0 is Right, -90 is Up, 90 is Down, 180/-180 is Left.
+        const legConfigs = [
+            // --- LEFT SIDE (All X are -5) ---
+            { id: 'L1', name: 'Red', color: 0xFF0000, x: -5, y: -12, angleDeg: -115 }, // Points Up-Left
+            { id: 'L2', name: 'Green', color: 0x00FF00, x: -5, y: -8, angleDeg: -155 }, // Points Up-Left
+            { id: 'L3', name: 'Blue', color: 0x0000FF, x: -5, y: -4, angleDeg: 155 }, // Points Down-Left
+            { id: 'L4', name: 'Yellow', color: 0xFFFF00, x: -5, y: 0, angleDeg: 105 }, // Points Down-Left
 
-        this.legs = legConfigs.map(cfg => {
-            const isLeft = cfg.side === 'Left';
-            const sideMult = isLeft ? -1 : 1;
-            
-            // "Top 4" (ID 1, 2) and "Bottom 4" (ID 3, 4)
-            // Adjusting groupMult for ID 1 and 4 which were "180 degrees wrong"
-            let groupMult = (cfg.id <= 2) ? -1 : 1;
-            if (cfg.id === 1 || cfg.id === 4) {
-                groupMult *= -1;
-            }
-            
-            // Map Spread relative to UP (-90 degrees)
-            const baseAngleRad = Phaser.Math.DegToRad(cfg.spread - 90);
-            
-            let curAngle = baseAngleRad;
-            let curX = Math.cos(baseAngleRad) * 5; 
-            let curY = Math.sin(baseAngleRad) * 7;
+            // --- RIGHT SIDE (All X are 5) ---
+            { id: 'R1', name: 'Pink', color: 0xFF00FF, x: 5, y: -12, angleDeg: -65 }, // Points Up-Right
+            { id: 'R2', name: 'Cyan', color: 0x00FFFF, x: 5, y: -8, angleDeg: -25 }, // Points Up-Right
+            { id: 'R3', name: 'Orange', color: 0xFFA500, x: 5, y: -4, angleDeg: 25 }, // Points Down-Right
+            { id: 'R4', name: 'White', color: 0xFFFFFF, x: 5, y: 0, angleDeg: 75 }  // Points Down-Right
+        ];
 
-            const legSegments = [];
+        this.legs = legConfigs.map((cfg) => {
+            let curX = cfg.x;
+            let curY = cfg.y;
 
-            for (let i = 0; i < 7; i++) {
-                const segW = widths[i];
-                const segL = lengths[i];
-                const bendRad = Phaser.Math.DegToRad(bends[i]);
+            // Convert exact vector angle to radians
+            const angleRad = Phaser.Math.DegToRad(cfg.angleDeg);
 
-                curAngle += (bendRad * sideMult * groupMult);
+            const legParts = [];
+            segmentDefs.forEach((def) => {
+                const displayLen = def.len;
 
-                const seg = this.scene.add.rectangle(curX, curY, segW, segL, color);
+                const seg = this.scene.add.rectangle(curX, curY, def.w, displayLen, cfg.color);
                 seg.setOrigin(0.5, 0);
-                seg.setRotation(curAngle - Math.PI / 2);
+                seg.setStrokeStyle(1, 0x000000);
+
+                // Phaser rectangles point DOWN (90deg) by default. 
+                // Subtracting 90 aligns them perfectly with our mathematical vector.
+                seg.setRotation(angleRad - Math.PI / 2);
+
                 this.gameObject.add(seg);
-                legSegments.push(seg);
+                legParts.push(seg);
 
-                curX += Math.cos(curAngle) * segL;
-                curY += Math.sin(curAngle) * segL;
-            }
+                // Pure tip-to-tail vector addition. No guessing.
+                curX += Math.cos(angleRad) * displayLen;
+                curY += Math.sin(angleRad) * displayLen;
+            });
 
-            return legSegments;
+            // Tip Marker
+            const tipMarker = this.scene.add.circle(curX, curY, 4, cfg.color);
+            tipMarker.setStrokeStyle(1, 0x000000);
+            this.gameObject.add(tipMarker);
+
+            return { id: cfg.id, parts: legParts, tip: tipMarker };
         });
-    }
-
-    onUpdate(config) {
-        // Static
     }
 }

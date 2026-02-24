@@ -1,9 +1,10 @@
 // src/scenes/test/08_EnergySystems3.js
 import { createPlayer } from '../../ecs/entities/player';
+import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, Mass, Velocity, Ego
+    Mass, Velocity, Ego
 } from '../../ecs/components/index';
 import { DynamicStaticToggleRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
@@ -20,7 +21,6 @@ export class EnergySystems3 extends BaseTestScene {
 
         const WORLD_WIDTH = 4000;
         const WORLD_HEIGHT = 8000;
-        
         this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setZoom(0.5);
 
@@ -30,25 +30,13 @@ export class EnergySystems3 extends BaseTestScene {
             gfx.strokeRect(0, 0, 100, 100);
             gfx.generateTexture('bg_grid', 100, 100);
         }
-
         this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
 
-        const centerX = WORLD_WIDTH / 2;
-        const centerY = -WORLD_HEIGHT / 2;
+        const spawnX = WORLD_WIDTH / 2;
+        const spawnY = -WORLD_HEIGHT / 2;
 
-        // 1. SPAWN PLATFORM
-        const spawnX = centerX;
-        const spawnY = -150;
-        this.addEntity([
-            Position(spawnX, spawnY),
-            Velocity(0, 0),
-            PlatformTag(),
-            SpawnTag(),
-            EntityType('PLATFORM'),
-            Mass(10),
-            Renderable({ 'BASE': { type: 'rect', width: 100, height: 20, color: 0x00ff00 } }),
-            Collider('rect', 0, 100, 20)
-        ]);
+        // 0. SPAWN PLATFORM
+        this.addEntity(createSpawnPlatform(spawnX, spawnY));
 
         // 2. 60 RANDOM EGO FLOATERS
         for (let i = 0; i < 60; i++) {

@@ -1,9 +1,9 @@
 // src/scenes/test/01_VerticalSlice.js
 import { createPlayer } from '../../ecs/entities/player';
+import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { BaseTestScene } from './BaseTestScene';
 import {
-    Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag
+    Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -29,19 +29,11 @@ export class VerticalSlice extends BaseTestScene {
         }
         this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
 
-        // spawn at center
         const spawnX = WORLD_WIDTH / 2;
         const spawnY = -WORLD_HEIGHT / 2;
 
         // 0. SPAWN PLATFORM
-        this.addEntity([
-            Position(spawnX, spawnY),
-            PlatformTag(),
-            SpawnTag(),
-            EntityType('PLATFORM'),
-            Renderable({ 'BASE': { type: 'rect', width: 100, height: 20, color: 0x00ff00 } }),
-            Collider('rect', 0, 100, 20)
-        ]);
+        this.addEntity(createSpawnPlatform(spawnX, spawnY));
 
         // 1. CENTER FLOATER
         this.addEntity([

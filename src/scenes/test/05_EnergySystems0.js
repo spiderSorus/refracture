@@ -1,9 +1,10 @@
 // src/scenes/test/05_EnergySystems0.js
 import { createPlayer } from '../../ecs/entities/player';
+import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, Mass, Velocity, Ego
+    Mass, Velocity, Ego
 } from '../../ecs/components/index';
 import { FloaterGravityRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
@@ -20,7 +21,6 @@ export class EnergySystems0 extends BaseTestScene {
 
         const WORLD_WIDTH = 4000;
         const WORLD_HEIGHT = 4000;
-        
         this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setZoom(0.6);
 
@@ -30,7 +30,6 @@ export class EnergySystems0 extends BaseTestScene {
             gfx.strokeRect(0, 0, 100, 100);
             gfx.generateTexture('bg_grid', 100, 100);
         }
-
         this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
 
         const borderGfx = this.add.graphics();
@@ -40,21 +39,13 @@ export class EnergySystems0 extends BaseTestScene {
         const centerX = WORLD_WIDTH / 2;
         const centerY = -WORLD_HEIGHT / 2;
 
-        // 1. SPAWN PLATFORM
         const spawnX = centerX;
-        const spawnY = -150;
-        this.addEntity([
-            Position(spawnX, spawnY),
-            Velocity(0, 0),
-            PlatformTag(),
-            SpawnTag(),
-            EntityType('PLATFORM'),
-            Mass(10),
-            Renderable({ 'BASE': { type: 'rect', width: 100, height: 20, color: 0x00ff00 } }),
-            Collider('rect', 0, 100, 20)
-        ]);
+        const spawnY = -WORLD_HEIGHT / 2;
 
-        // 2. LEFT PLATFORM (Cyan, Ego 128)
+        // 0. SPAWN PLATFORM
+        this.addEntity(createSpawnPlatform(spawnX, spawnY));
+
+        // 2. LEFT PLATFORM
         this.addEntity([
             Position(centerX - 300, centerY),
             Velocity(0, 0),
@@ -66,7 +57,7 @@ export class EnergySystems0 extends BaseTestScene {
             Collider('circle', 128 * 0.8 + 20)
         ]);
 
-        // 3. RIGHT PLATFORM (Yellow, Ego 128)
+        // 3. RIGHT PLATFORM
         this.addEntity([
             Position(centerX + 300, centerY),
             Velocity(0, 0),

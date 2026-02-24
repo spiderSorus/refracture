@@ -1,9 +1,10 @@
 // src/scenes/test/10_SpinnerClimb.js
 import { createPlayer } from '../../ecs/entities/player';
+import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, Mass, Velocity, Spin, Rotation, StaticTag
+    Mass, Velocity, Spin, Rotation, StaticTag
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -17,7 +18,7 @@ export class SpinnerClimb extends BaseTestScene {
         super.create();
 
         const WORLD_WIDTH = 3000;
-        const WORLD_HEIGHT = 12000; // Even taller for a real climb
+        const WORLD_HEIGHT = 12000;
         this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setZoom(0.5);
 
@@ -30,29 +31,17 @@ export class SpinnerClimb extends BaseTestScene {
         this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
 
         const spawnX = WORLD_WIDTH / 2;
-        const spawnY = -150;
+        const spawnY = -WORLD_HEIGHT / 2;
 
-        // 1. SPAWN PLATFORM
-        this.addEntity([
-            Position(spawnX, spawnY),
-            Velocity(0, 0),
-            PlatformTag(),
-            SpawnTag(),
-            EntityType('PLATFORM'),
-            Mass(10),
-            Renderable({ 'BASE': { type: 'rect', width: 100, height: 20, color: 0x00ff00 } }),
-            Collider('rect', 0, 100, 20)
-        ]);
+        // 0. SPAWN PLATFORM
+        this.addEntity(createSpawnPlatform(spawnX, spawnY));
 
         // 2. PROCEDURAL SPINNER PATH
         let lastY = spawnY;
-        const count = 50;
-
-        for (let i = 0; i < count; i++) {
+        for (let i = 0; i < 50; i++) {
             const dist = Phaser.Math.Between(400, 900);
             const nextY = lastY - dist;
             const nextX = Phaser.Math.Between(400, WORLD_WIDTH - 400);
-            
             const isCircle = Math.random() > 0.4;
             const size = Phaser.Math.Between(70, 160);
             const spinRate = Phaser.Math.FloatBetween(0.3, 2.0) * (Math.random() > 0.5 ? 1 : -1);
@@ -72,12 +61,10 @@ export class SpinnerClimb extends BaseTestScene {
                 comps.push(Renderable({ 'BASE': { type: 'circle', radius: size, color: color } }));
                 comps.push(Collider('circle', size));
             } else {
-                const w = size * 2.2;
-                const h = Phaser.Math.Between(30, 80);
+                const w = size * 2.2; const h = Phaser.Math.Between(30, 80);
                 comps.push(Renderable({ 'BASE': { type: 'rect', width: w, height: h, color: color } }));
                 comps.push(Collider('rect', 0, w, h));
             }
-
             this.addEntity(comps);
             lastY = nextY;
         }

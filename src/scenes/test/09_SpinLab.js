@@ -1,9 +1,10 @@
 // src/scenes/test/09_SpinLab.js
 import { createPlayer } from '../../ecs/entities/player';
+import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, Mass, Velocity, Spin, Rotation, StaticTag
+    Mass, Velocity, Spin, Rotation, StaticTag
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -32,19 +33,11 @@ export class SpinLab extends BaseTestScene {
         const centerX = WORLD_WIDTH / 2;
         const centerY = -WORLD_HEIGHT / 2;
 
-        // 1. SPAWN PLATFORM
         const spawnX = centerX;
-        const spawnY = -150;
-        this.addEntity([
-            Position(spawnX, spawnY),
-            Velocity(0, 0),
-            PlatformTag(),
-            SpawnTag(),
-            EntityType('PLATFORM'),
-            Mass(10),
-            Renderable({ 'BASE': { type: 'rect', width: 100, height: 20, color: 0x00ff00 } }),
-            Collider('rect', 0, 100, 20)
-        ]);
+        const spawnY = -WORLD_HEIGHT / 2;
+
+        // 0. SPAWN PLATFORM
+        this.addEntity(createSpawnPlatform(spawnX, spawnY));
 
         // 2. STATIC SQUARE SPINNER
         this.addEntity([

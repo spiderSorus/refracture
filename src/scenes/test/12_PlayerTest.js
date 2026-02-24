@@ -1,15 +1,16 @@
 // src/scenes/test/12_PlayerTest.js
 import { createPlayer } from '../../ecs/entities/player';
+import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, Mass, Velocity
+    Mass, Velocity
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
 export class PlayerTest extends BaseTestScene {
     constructor() {
-        super('PlayerTest', 'Player Test', 'A small 700x700 sandbox.');
+        super('PlayerTest', 'Player Test', 'A small sandbox.');
         this.meditationEnabled = false;
     }
 
@@ -17,8 +18,8 @@ export class PlayerTest extends BaseTestScene {
         super.create();
 
         const WORLD_SIZE = 2000;
-        this.cameras.main.setBounds(-WORLD_SIZE/2, -WORLD_SIZE/2, WORLD_SIZE, WORLD_SIZE);
-        this.cameras.main.setZoom(0.8);
+        this.cameras.main.setBounds(-WORLD_SIZE / 2, -WORLD_SIZE / 2, WORLD_SIZE, WORLD_SIZE);
+        this.cameras.main.setZoom(4);
 
         if (!this.textures.exists('bg_grid')) {
             const gfx = this.make.graphics({ x: 0, y: 0, add: false });
@@ -28,25 +29,15 @@ export class PlayerTest extends BaseTestScene {
         }
         this.add.tileSprite(0, 0, WORLD_SIZE, WORLD_SIZE, 'bg_grid').setDepth(0);
 
-        // Visual Borders
         const borderGfx = this.add.graphics();
         borderGfx.lineStyle(4, 0xffffff, 1);
-        borderGfx.strokeRect(-WORLD_SIZE/2, -WORLD_SIZE/2, WORLD_SIZE, WORLD_SIZE);
+        borderGfx.strokeRect(-WORLD_SIZE / 2, -WORLD_SIZE / 2, WORLD_SIZE, WORLD_SIZE);
 
         const spawnX = 0;
         const spawnY = 0;
 
-        // 1. SPAWN PLATFORM
-        this.addEntity([
-            Position(spawnX, spawnY),
-            Velocity(0, 0),
-            PlatformTag(),
-            SpawnTag(),
-            EntityType('PLATFORM'),
-            Mass(10),
-            Renderable({ 'BASE': { type: 'rect', width: 100, height: 20, color: 0x00ff00 } }),
-            Collider('rect', 0, 100, 20)
-        ]);
+        // 0. SPAWN PLATFORM
+        this.addEntity(createSpawnPlatform(spawnX, spawnY, { width: 1000, height: 1000 }));
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),

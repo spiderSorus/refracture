@@ -1,9 +1,10 @@
 // src/scenes/test/03_GameplaySlice.js
 import { createPlayer } from '../../ecs/entities/player';
+import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    Velocity, BugTag, BugAI, GravityExempt, Mass, SpawnTag
+    Velocity, BugTag, BugAI, GravityExempt, Mass
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -33,15 +34,7 @@ export class GameplaySlice extends BaseTestScene {
         const spawnY = -WORLD_HEIGHT / 2;
 
         // 0. SPAWN PLATFORM
-        this.addEntity([
-            Position(spawnX, spawnY),
-            PlatformTag(),
-            SpawnTag(),
-            EntityType('PLATFORM'),
-            Mass(10),
-            Renderable({ 'BASE': { type: 'circle', radius: 50, color: 0x00ff00 } }),
-            Collider('circle', 50)
-        ]);
+        this.addEntity(createSpawnPlatform(spawnX, spawnY));
 
         // 1. CENTER FLOATER
         this.addEntity([

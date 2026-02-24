@@ -1,9 +1,10 @@
 // src/scenes/test/11_ChaosLab.js
 import { createPlayer } from '../../ecs/entities/player';
+import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, Mass, Velocity, Spin, Rotation, StaticTag, Ego
+    Mass, Velocity, Spin, Rotation, StaticTag, Ego
 } from '../../ecs/components/index';
 import { FloaterGravityRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
@@ -33,19 +34,10 @@ export class ChaosLab extends BaseTestScene {
         this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
 
         const spawnX = WORLD_WIDTH / 2;
-        const spawnY = -150;
+        const spawnY = -WORLD_HEIGHT / 2;
 
-        // 1. SPAWN PLATFORM (STAYS PERMANENT)
-        this.addEntity([
-            Position(spawnX, spawnY),
-            Velocity(0, 0),
-            PlatformTag(),
-            SpawnTag(),
-            EntityType('PLATFORM'),
-            Mass(10),
-            Renderable({ 'BASE': { type: 'rect', width: 100, height: 20, color: 0x00ff00 } }),
-            Collider('rect', 0, 100, 20)
-        ]);
+        // 0. SPAWN PLATFORM
+        this.addEntity(createSpawnPlatform(spawnX, spawnY));
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
@@ -56,15 +48,11 @@ export class ChaosLab extends BaseTestScene {
     }
 
     fixedUpdate(time, dt) {
-        // dt is PHYSICS.STEP (16.6ms)
         this.spawnTimer -= dt;
-
         if (this.spawnTimer <= 0) {
-            this.spawnTimer = 500; // Spawn every 0.5s
+            this.spawnTimer = 500; 
             this.spawnChaosEntity();
         }
-
-        // Handle Lifecycle Despawning
         this.entities.forEach(e => {
             if (e.components.SpawnTag || e.components.PlayerTag) return;
             if (e.life) {
@@ -77,14 +65,12 @@ export class ChaosLab extends BaseTestScene {
     spawnChaosEntity() {
         const WORLD_WIDTH = 4000;
         const WORLD_HEIGHT = 12000;
-
         const x = Phaser.Math.Between(500, WORLD_WIDTH - 500);
         const y = Phaser.Math.Between(-WORLD_HEIGHT, -500);
         const ego = Phaser.Math.Between(20, 200);
         const isCircle = Math.random() > 0.5;
         const isSpinner = Math.random() > 0.3;
         const isFloater = Math.random() > 0.5;
-        
         const color = Phaser.Display.Color.RandomRGB(100).color;
 
         const comps = [
@@ -98,7 +84,6 @@ export class ChaosLab extends BaseTestScene {
 
         if (!isFloater) comps.push(StaticTag());
         else comps.push(Velocity(Phaser.Math.Between(-20, 20), Phaser.Math.Between(-20, 20)));
-
         if (isSpinner) comps.push(Spin(Phaser.Math.FloatBetween(-1.5, 1.5)));
 
         if (isCircle) {
@@ -111,7 +96,6 @@ export class ChaosLab extends BaseTestScene {
         }
 
         const ent = this.addEntity(comps);
-        // Random lifespan between 10 and 30 seconds
         ent.life = Phaser.Math.Between(10000, 30000); 
     }
 }

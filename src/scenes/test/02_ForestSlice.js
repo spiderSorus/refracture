@@ -1,9 +1,10 @@
 // src/scenes/test/02_ForestSlice.js
 import { createPlayer } from '../../ecs/entities/player';
+import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    Velocity, BugTag, BugAI, GravityExempt, SpawnTag
+    Velocity, BugTag, BugAI, GravityExempt
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -33,14 +34,7 @@ export class ForestSlice extends BaseTestScene {
         const spawnY = -WORLD_HEIGHT / 2;
 
         // 0. SPAWN PLATFORM
-        this.addEntity([
-            Position(spawnX, spawnY),
-            PlatformTag(),
-            SpawnTag(),
-            EntityType('PLATFORM'),
-            Renderable({ 'BASE': { type: 'circle', radius: 50, color: 0x228b22 } }), 
-            Collider('circle', 50)
-        ]);
+        this.addEntity(createSpawnPlatform(spawnX, spawnY, { color: 0x228b22 }));
 
         // 1. CENTER FLOATER
         this.addEntity([
