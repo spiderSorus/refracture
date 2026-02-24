@@ -33,9 +33,9 @@ export const PhysicsSystem = (entities, delta, scene) => {
                     const overlap = dist - tether.maxLength;
                     const nx = dx / dist;
                     const ny = dy / dist;
-                    const force = overlap * tether.stiffness * 500;
+                    let force = overlap * tether.stiffness * 500;
+                    if (entity.components.Parent) force *= 0.1;
                     tether.tension = force;
-
                     pVel.x += (nx * force / pMass) * dt;
                     pVel.y += (ny * force / pMass) * dt;
 
@@ -70,10 +70,8 @@ export const PhysicsSystem = (entities, delta, scene) => {
                     const ny = dy / dist;
                     const force = overlap * conn.stiffness * 500;
                     conn.tension = force;
-
                     const massA = entA.components.Mass?.value || 10;
                     const massB = entB.components.Mass?.value || 10;
-
                     const staticA = !!(entA.components.SpawnTag || entA.components.StaticTag);
                     const staticB = !!(entB.components.SpawnTag || entB.components.StaticTag);
 
@@ -102,7 +100,6 @@ export const PhysicsSystem = (entities, delta, scene) => {
                 pos.y = platform.components.Position.y + parent.offset.y;
             }
             if (vel) { 
-                // Store last known velocity before zeroing for rules like DynamicStaticToggle
                 entity.components._lastVel = { x: vel.x, y: vel.y };
                 vel.x = 0; vel.y = 0; 
             }
@@ -114,8 +111,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
             const isStatic = !!(entity.components.SpawnTag || entity.components.StaticTag);
 
             if (isStatic) {
-                vel.x = 0;
-                vel.y = 0;
+                vel.x = 0; vel.y = 0;
             } else if (isPlayer) {
                 vel.y += GRAVITY * dt;
             } else if (!entity.components.GravityExempt && !entity.components.PlatformTag) {
@@ -125,17 +121,28 @@ export const PhysicsSystem = (entities, delta, scene) => {
             pos.x += vel.x * dt;
             pos.y += vel.y * dt;
 
-            if (isPlayer && pos.y >= FLOOR_Y) {
-                const spawnPoint = entities.find(e => e.components.SpawnTag);
-                if (spawnPoint && spawnPoint.components.Position) {
-                    pos.x = spawnPoint.components.Position.x;
-                    pos.y = spawnPoint.components.Position.y;
-                    if (vel) { vel.x = 0; vel.y = 0; }
-                    delete entity.components.Parent;
-                    delete entity.components.WebTether;
+            // Player Bounding & Floor Collision
+            if (isPlayer) {
+                const pRadius = 15;
+                // Floor Respawn
+                if (pos.y >= FLOOR_Y) {
+                    const spawnPoint = entities.find(e => e.components.SpawnTag);
+                    if (spawnPoint && spawnPoint.components.Position) {
+                        pos.x = spawnPoint.components.Position.x;
+                        pos.y = spawnPoint.components.Position.y;
+                        if (vel) { vel.x = 0; vel.y = 0; }
+                        delete entity.components.Parent;
+                        delete entity.components.WebTether;
+                    }
                 }
+                // World Bounds Constraint
+                if (pos.x - pRadius < minX) { pos.x = minX + pRadius; vel.x = 0; }
+                else if (pos.x + pRadius > maxX) { pos.x = maxX - pRadius; vel.x = 0; }
+                if (pos.y - pRadius < minY) { pos.y = minY + pRadius; vel.y = 0; }
+                // Bottom bound handled by FLOOR_Y respawn logic
             }
 
+            // Platform World Boundary Bouncing
             if (entity.components.PlatformTag && entity.components.Collider) {
                 const col = entity.components.Collider;
                 const radius = col.type === 'circle' ? col.radius : Math.max(col.width, col.height) / 2;
@@ -156,7 +163,6 @@ export const PhysicsSystem = (entities, delta, scene) => {
             const B = platformsForCollision[j];
             const posA = A.components.Position; const posB = B.components.Position;
             const colA = A.components.Collider; const colB = B.components.Collider;
-
             const levelA = A.components.RealityLevel?.interact || [0];
             const levelB = B.components.RealityLevel?.interact || [0];
             if (!levelA.some(lvl => levelB.includes(lvl))) continue;
@@ -171,7 +177,6 @@ export const PhysicsSystem = (entities, delta, scene) => {
                 const nx = (posB.x - posA.x) / dist; const ny = (posB.y - posA.y) / dist;
                 const canA = !(A.components.SpawnTag || A.components.StaticTag);
                 const canB = !(B.components.SpawnTag || B.components.StaticTag);
-
                 if (canA && canB) {
                     posA.x -= nx * overlap * 0.5; posA.y -= ny * overlap * 0.5;
                     posB.x += nx * overlap * 0.5; posB.y += ny * overlap * 0.5;

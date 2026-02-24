@@ -3,26 +3,27 @@ import { createPlayer } from '../../ecs/entities/player';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    SpawnTag, RealityLevel, MeditationState, Mass, Velocity
+    SpawnTag, RealityLevel, MeditationState, Mass, Velocity, Ego
 } from '../../ecs/components/index';
-import { DynamicStaticToggleRule } from '../../ecs/systems/energy_logic/Rules';
+import { DynamicStaticToggleRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
 
 export class EnergySystems3 extends BaseTestScene {
     constructor() {
-        super('EnergySystems3', 'Energy Systems 3', 'Platform Toggle: Static (Attached) / Dynamic (Free).');
+        super('EnergySystems3', 'Energy Systems 3', 'High-Density Ego/Toggle Lab.');
         this.meditationEnabled = false;
-        this.energyRules = [DynamicStaticToggleRule];
+        // Rules: Toggle static on attachment, inherit velocity, and balance ego
+        this.energyRules = [DynamicStaticToggleRule, EgoBalanceRule];
     }
 
     create() {
         super.create();
 
         const WORLD_WIDTH = 4000;
-        const WORLD_HEIGHT = 4000;
+        const WORLD_HEIGHT = 8000;
         
         this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
-        this.cameras.main.setZoom(0.6);
+        this.cameras.main.setZoom(0.5);
 
         if (!this.textures.exists('bg_grid')) {
             const gfx = this.make.graphics({ x: 0, y: 0, add: false });
@@ -51,26 +52,32 @@ export class EnergySystems3 extends BaseTestScene {
             Collider('rect', 0, 100, 20)
         ]);
 
-        // 2. 10 PROCEDURAL FLOATERS
-        for (let i = 0; i < 10; i++) {
+        // 2. 60 RANDOM EGO FLOATERS
+        for (let i = 0; i < 60; i++) {
             const fx = Phaser.Math.Between(500, WORLD_WIDTH - 500);
             const fy = Phaser.Math.Between(-WORLD_HEIGHT + 500, -500);
-            const size = Phaser.Math.Between(60, 120);
-            const color = Phaser.Display.Color.RandomRGB(100).color;
+            
+            // Random Ego 10-255
+            const egoVal = Phaser.Math.Between(10, 255);
+            const mass = egoVal / 50; 
+            
+            // Color based on Ego
+            const color = Phaser.Display.Color.HSLToColor(egoVal / 255, 0.6, 0.5).color;
 
             this.addEntity([
                 Position(fx, fy),
-                // Small random initial velocity for "bounce"
-                Velocity(Phaser.Math.Between(-40, 40), Phaser.Math.Between(-40, 40)),
+                Velocity(Phaser.Math.Between(-50, 50), Phaser.Math.Between(-50, 50)),
                 PlatformTag(),
                 RealityLevel([0], [0]),
                 EntityType('PLATFORM'),
-                Mass(5),
-                Renderable({ 'BASE': { type: 'circle', radius: size, color: color } }),
-                Collider('circle', size)
+                Ego(egoVal),
+                Mass(mass),
+                Renderable({ 'BASE': { type: 'circle', radius: egoVal * 0.8 + 20, color: color } }),
+                Collider('circle', egoVal * 0.8 + 20)
             ]);
         }
 
+        // 3. SPAWN PLAYER
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
             SlingshotJump(3500),

@@ -46,6 +46,7 @@ export class BaseTestScene extends Phaser.Scene {
 
     shutdown() {
         this.entities = [];
+        this.inputManager = null;
         this.input.keyboard.off('keydown-TAB');
         this.input.keyboard.off('keydown-ESC');
         this.accumulator = 0;
@@ -64,13 +65,33 @@ export class BaseTestScene extends Phaser.Scene {
                 return;
             }
 
-            // Enforce Spawnpoint rules: always level 0
+            // --- GLOW EFFECTS (Floor & Walls) ---
+            // Moved here so camera bounds are fully set
+            const glowGfx = this.add.graphics();
+            const cam = this.cameras.main;
+            const bounds = cam.getBounds();
+            const minX = bounds.x;
+            const maxX = bounds.x + bounds.width;
+            const minY = bounds.y;
+            const maxY = bounds.y + bounds.height;
+
+            for (let i = 1; i <= 5; i++) {
+                glowGfx.lineStyle(i * 6, 0x0000ff, 0.5 / i);
+                
+                // Floor (Always at y=0)
+                glowGfx.lineBetween(minX - 5000, 0, maxX + 5000, 0);
+                
+                // Walls
+                glowGfx.lineBetween(minX, minY, minX, maxY);
+                glowGfx.lineBetween(maxX, minY, maxX, maxY);
+            }
+            glowGfx.setDepth(1);
+
             if (spawnPoint.components.RealityLevel) {
                 spawnPoint.components.RealityLevel.visible = [0];
                 spawnPoint.components.RealityLevel.interact = [0];
             }
 
-            // If meditation is disabled, snap EVERYTHING to level 0
             if (!this.meditationEnabled) {
                 this.entities.forEach(e => {
                     if (e.components.RealityLevel) {
@@ -85,15 +106,11 @@ export class BaseTestScene extends Phaser.Scene {
             this.initialized = true;
         }
 
-        // 1. Refresh Input Manager Polling
         this.inputManager.update();
-
-        // 2. High-Priority Systems (Recording happens once per visual frame)
         RecordingSystem(this, this.inputManager);
 
         this.accumulator += delta;
 
-        // --- STEP 1: THE SIMULATION (Fixed Timestep) ---
         while (this.accumulator >= PHYSICS.STEP) {
             const dtSeconds = PHYSICS.STEP / 1000;
 
@@ -110,7 +127,6 @@ export class BaseTestScene extends Phaser.Scene {
             MovementSystem(this.entities, this.inputManager, dtSeconds);
             PhysicsSystem(this.entities, PHYSICS.STEP, this);
 
-            // Cleanup destroyed entities
             this.entities = this.entities.filter(e => {
                 if (e.toDestroy) {
                     const renderable = e.components.Renderable;
@@ -126,7 +142,6 @@ export class BaseTestScene extends Phaser.Scene {
             this.accumulator -= PHYSICS.STEP;
         }
 
-        // --- STEP 2: THE RENDER PASS ---
         LayeredRenderSystem(this.entities, this);
         SlingshotRenderSystem(this.entities, this);
         WebRenderSystem(this.entities, this);
