@@ -2,8 +2,9 @@
 import { createPlayer } from '../../ecs/entities/player';
 import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { BaseTestScene } from './BaseTestScene';
+import { PHYSICS } from '../../core/Constants';
 import {
-    Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump
+    Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump, ZLayer
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -78,7 +79,7 @@ export class VerticalSlice extends BaseTestScene {
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
-            SlingshotJump(3000)
+            SlingshotJump(PHYSICS.SLINGSHOT_FORCE)
         ]);
 
         this.cameras.main.centerOn(spawnX, spawnY);

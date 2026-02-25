@@ -7,6 +7,11 @@ export const GRID = {
 export const PHYSICS = {
     FPS: 60,
     STEP: 1000 / 60, // ~16.66ms per tick
-    GRAVITY: 9800,    // Increased for a fast, snappy fall
-    SLINGSHOT_FORCE: 5000,
+    GRAVITY: 980,
+    SLINGSHOT_FORCE: 3500,
+    GROUND_FRICTION: 0.85,
+    AIR_RESISTANCE_X: 0.95,
+    AIR_RESISTANCE_Y: 0.99,
+    TETHER_AIR_RESISTANCE_X: 0.999,
+    TETHER_AIR_RESISTANCE_Y: 0.999,
 };
