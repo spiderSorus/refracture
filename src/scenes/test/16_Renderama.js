@@ -5,7 +5,7 @@ import { BaseTestScene } from './BaseTestScene';
 import { PHYSICS } from '../../core/Constants';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    Mass, Velocity, ZLayer, Rotation
+    Mass, Velocity, ZLayer, Rotation, GravityExempt
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -29,7 +29,8 @@ export class Renderama extends BaseTestScene {
         this.cameraConfigs = [
             { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACK' },
             { name: 'BackgroundOldGlass', layer: 'bg_glass', effect: 'old_glass', type: 'BACK' },
-            { name: 'ForegroundRainbow', layer: 'fg_rainbow', effect: 'rainbow', type: 'FORE' }
+            { name: 'ForegroundRainbow', layer: 'fg_rainbow', effect: 'rainbow', type: 'FORE' },
+            { name: 'PlayerCamera', layer: 'player_layer', type: 'TOP' } // Renders on top
         ];
         
         // --- LOAD BACKGROUND ---
@@ -72,18 +73,11 @@ export class Renderama extends BaseTestScene {
                 GravityExempt(),
                 PlatformTag(), 
                 EntityType('PLATFORM'),
-                ZLayer('FORE', 10, 'fg_rainbow')
+                ZLayer('FORE', 10, 'fg_rainbow'),
+                Renderable({ 'BASE': { type: 'amorphous_blob', radius: size, color: color } }),
+                Collider('circle', size * 0.6) // Collider is smaller than the visual blob
             ];
             
-            if (isCircle) {
-                components.push(Renderable({ 'BASE': { type: 'circle', radius: size, color: color } }));
-                components.push(Collider('circle', size));
-            } else {
-                const w = size * 2.5;
-                const h = Phaser.Math.Between(60, 130);
-                components.push(Renderable({ 'BASE': { type: 'rect', width: w, height: h, color: color } }));
-                components.push(Collider('rect', 0, w, h));
-            }
             this.addEntity(components);
             lastPos = { x: nextX, y: nextY };
         }
@@ -97,7 +91,8 @@ export class Renderama extends BaseTestScene {
     fixedUpdate(time, dt) {
         const player = this.entities.find(e => e.components.PlayerTag && !e.toDestroy);
         if (player) {
-            player.components.ZLayer = ZLayer('PLAY', 0);
+            // Assign player to their own layer to be rendered by the top camera
+            player.components.ZLayer = ZLayer('PLAY', 0, 'player_layer');
         }
     }
 }

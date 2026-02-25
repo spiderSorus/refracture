@@ -11,6 +11,7 @@ import { SpiderGraphic } from '../../graphics/SpiderGraphic';
 import { WatercolorGraphic } from '../../graphics/WatercolorGraphic';
 import { EllipseGraphic } from '../../graphics/EllipseGraphic';
 import { HardShapeGraphic } from '../../graphics/HardShapeGraphic';
+import { AmorphousBlobGraphic } from '../../graphics/AmorphousBlobGraphic';
 
 const REGISTRY = {
     'sprite': SpriteGraphic,
@@ -25,7 +26,8 @@ const REGISTRY = {
     'spider': SpiderGraphic,
     'watercolor': WatercolorGraphic,
     'ellipse': EllipseGraphic,
-    'hard_shape': HardShapeGraphic
+    'hard_shape': HardShapeGraphic,
+    'amorphous_blob': AmorphousBlobGraphic
 };
 
 export const RenderFactory = {

@@ -63,37 +63,27 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
         lowestCam.setBackgroundColor(scene.backgroundColor);
     }
 
+    // Create all layers first
     configs.forEach(cfg => {
-        // Create Layer if missing
         if (!scene.auxLayers[cfg.layer]) {
-            // Check if scene already has this layer by name (e.g. from create())
-            if (scene[cfg.layer] && scene[cfg.layer] instanceof Phaser.GameObjects.Layer) {
-                scene.auxLayers[cfg.layer] = scene[cfg.layer];
-            } else {
-                scene.auxLayers[cfg.layer] = scene.add.layer().setName(cfg.layer.toUpperCase());
-            }
+            scene.auxLayers[cfg.layer] = scene.add.layer().setName(cfg.layer.toUpperCase());
         }
+    });
 
-        // Ensure cameras ignore the right layers
+    // Isolate camera rendering
+    const allAuxLayers = Object.values(scene.auxLayers);
+    mainCam.ignore(allAuxLayers);
+    
+    configs.forEach(cfg => {
         const cam = scene.auxCameras[cfg.name];
-        const layer = scene.auxLayers[cfg.layer];
-
-        // Main camera ignores all auxiliary layers
-        mainCam.ignore(layer);
-
-        // Auxiliary camera ignores common layers
-        if (scene.bgLayer && scene.bgLayer !== layer) cam.ignore(scene.bgLayer);
-        if (scene.fgLayer && scene.fgLayer !== layer) cam.ignore(scene.fgLayer);
-        if (scene.foreLayer && scene.foreLayer !== layer) cam.ignore(scene.foreLayer);
+        const designatedLayer = scene.auxLayers[cfg.layer];
+        const otherLayers = allAuxLayers.filter(l => l !== designatedLayer);
         
-        // Also ignore other auxiliary layers
-        Object.values(scene.auxLayers).forEach(otherLayer => {
-            if (otherLayer !== layer) cam.ignore(otherLayer);
-        });
+        cam.ignore([scene.bgLayer, scene.fgLayer, scene.foreLayer, ...otherLayers]);
     });
 
     // Special case for backward compatibility or default bgLayer
-    if (scene.bgLayer && !Object.values(scene.auxLayers).includes(scene.bgLayer)) {
+    if (scene.bgLayer && !allAuxLayers.includes(scene.bgLayer)) {
         mainCam.ignore(scene.bgLayer);
     }
 

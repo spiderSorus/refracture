@@ -45,7 +45,7 @@ void main() {
     vec3 rainbowColor = hslToRgb(vec3(hue, 1.0, 0.5));
     
     // Multiply the original color by the rainbow color to tint it
-    gl_FragColor = vec4(color.rgb * rainbowColor, color.a);
+    gl_FragColor = vec4(color.rgb * rainbowColor, color.a * 0.35);
 }
 `;
 
