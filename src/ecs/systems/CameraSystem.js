@@ -55,7 +55,12 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
     }
 
     if (!player) {
-        // Don't jump to 0,0 - just stay where you are
+        // Still sync cameras even if no player, in case the scene moved the camera manually
+        if (bgCam) {
+            bgCam.setScroll(cam.scrollX, cam.scrollY);
+            bgCam.setZoom(cam.zoom);
+            bgCam.setRotation(cam.rotation);
+        }
         return;
     }
 

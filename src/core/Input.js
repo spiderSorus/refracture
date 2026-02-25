@@ -164,12 +164,15 @@ export class InputManager {
         if (this.pad) {
             x = this.pad.rightStick.x;
             y = this.pad.rightStick.y;
-        } else {
-            if (this.cursors.left.isDown) x = -1;
-            else if (this.cursors.right.isDown) x = 1;
-            if (this.cursors.up.isDown) y = -1;
-            else if (this.cursors.down.isDown) y = 1;
         }
         return { x, y };
+    }
+
+    getRightStick() {
+        const raw = this.getRightStickRaw();
+        const deadzone = 0.15;
+        const mag = Math.sqrt(raw.x * raw.x + raw.y * raw.y);
+        if (mag < deadzone) return { x: 0, y: 0 };
+        return raw;
     }
 }
