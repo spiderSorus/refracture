@@ -4,17 +4,17 @@ import Phaser from 'phaser';
 export const Complexity2Background = (scene, config = {}) => {
     const worldW = config.worldWidth || config.worldSize || 8000;
     const worldH = config.worldHeight || config.worldSize || 8000;
-    
-    const count = config.count || 400;
+
+    const count = config.count || 1000;
 
     for (let i = 0; i < count; i++) {
         const x = Phaser.Math.Between(-worldW / 2, worldW / 2);
         const y = Phaser.Math.Between(-worldH / 2, worldH / 2);
-        
+
         const width = Phaser.Math.Between(1, 50);
         const height = Phaser.Math.Between(500, 3000);
         const color = Math.random() > 0.5 ? 0x000000 : 0xffffff;
-        
+
         // Randomly choose between watercolor and glass layers
         const layerName = Math.random() > 0.5 ? 'bg_watercolor' : 'bg_glass';
         const parallax = layerName === 'bg_watercolor' ? 0.2 + Math.random() * 0.3 : 0.5 + Math.random() * 0.4;

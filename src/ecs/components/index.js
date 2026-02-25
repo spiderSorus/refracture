@@ -75,7 +75,8 @@ export const WebTether = (platformId, anchorOffset = { x: 0, y: 0 }) => ({
     damping: 0.05,
     maxForce: 5000,
     tension: 0,
-    wrapPoints: []
+    wrapPoints: [],
+    effect: 'silk'
 });
 
 // Static connection (Platform A -> Platform B)
@@ -90,7 +91,8 @@ export const WebConnection = (fromId, fromOffset, toId, toOffset) => ({
     maxForce: 8000,
     tension: 0,
     transferRate: 10, // Ego flow per second
-    wrapPoints: []
+    wrapPoints: [],
+    effect: 'silk'
 });
 
 export const EnergySource = (strength = 100, type = 'EMIT') => ({

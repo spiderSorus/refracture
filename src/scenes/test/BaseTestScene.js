@@ -21,6 +21,7 @@ import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
 import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
 import { RecordingSystem } from '../../ecs/systems/RecordingSystem'; 
 import { EnergyRules } from '../../ecs/systems/energy_logic/Rules';
+import { cleanupWebEffects } from '../../web_effects/index';
 
 export class BaseTestScene extends Phaser.Scene {
     constructor(key, title, subtitle) {
@@ -83,6 +84,9 @@ export class BaseTestScene extends Phaser.Scene {
         this.accumulator = 0;
         this.initialized = false;
         
+        // Clean up web effects
+        cleanupWebEffects(this, new Set());
+
         // Clear custom camera/layer properties to prevent issues on re-entry
         this.auxCameras = {};
         this.auxLayers = {};
@@ -118,22 +122,23 @@ export class BaseTestScene extends Phaser.Scene {
 
             // --- GLOW EFFECTS (Floor & Walls) ---
             const glowGfx = this.add.graphics();
-            if (this.bgLayer) this.bgLayer.add(glowGfx);
+            if (this.fgLayer) this.fgLayer.add(glowGfx);
             const cam = this.cameras.main;
             
-            // Use camera bounds if available, otherwise fallback to viewport
-            const minX = cam.useBounds ? cam._bounds.x : 0;
-            const maxX = cam.useBounds ? cam._bounds.x + cam._bounds.width : cam.width;
-            const minY = cam.useBounds ? cam._bounds.y : 0;
-            const maxY = cam.useBounds ? cam._bounds.y + cam._bounds.height : cam.height;
+            // Use camera bounds if available, otherwise fallback to a large default
+            const worldBounds = cam.useBounds ? cam._bounds : { x: -5000, y: -10000, width: 10000, height: 10000 };
+            const minX = worldBounds.x;
+            const maxX = worldBounds.x + worldBounds.width;
+            const minY = worldBounds.y;
+            const maxY = worldBounds.y + worldBounds.height;
 
-            for (let i = 1; i <= 5; i++) {
-                glowGfx.lineStyle(i * 6, 0x0000ff, 0.5 / i);
+            for (let i = 1; i <= 8; i++) {
+                glowGfx.lineStyle(i * 8, 0x0088ff, 0.4 / i);
                 glowGfx.lineBetween(minX, maxY, maxX, maxY); // Floor
                 glowGfx.lineBetween(minX, minY, minX, maxY); // Left Wall
                 glowGfx.lineBetween(maxX, minY, maxX, maxY); // Right Wall
             }
-            glowGfx.setDepth(1);
+            glowGfx.setDepth(1000); // High depth within the layer
 
             this.initialized = true;
         }
@@ -179,7 +184,7 @@ export class BaseTestScene extends Phaser.Scene {
         ParallaxSystem(this.entities, this, alpha);
         
         SlingshotRenderSystem(this.entities, this, alpha);
-        WebRenderSystem(this.entities, this, alpha);
+        WebRenderSystem(this.entities, this, delta, alpha);
 
         this.updateDebugUI();
     }

@@ -24,6 +24,8 @@ export class BaseMenuScene extends Phaser.Scene {
         this.entities = [];
         this.menuCamX = 0;
         this.menuCamY = 0;
+        this.auxCameras = {};
+        this.auxLayers = {};
 
         // Initialize base layers for RenderSystem
         this.bgLayer = this.add.layer().setName('BG_LAYER').setDepth(50);
@@ -68,22 +70,22 @@ export class BaseMenuScene extends Phaser.Scene {
     }
 
     setupHeader() {
+        // Calculate overlay width based on title text
+        const overlayWidth = 450; // Use a fixed width for consistency
+        const overlayHeight = this.cameras.main.height * 2;
+
+        // Add a dark overlay so text is readable over background
+        const overlay = this.add.rectangle(0, 0, overlayWidth, overlayHeight, 0x000000, 0.85)
+            .setOrigin(0, 0)
+            .setScrollFactor(0);
+        this.foreLayer.add(overlay);
+
         const titleText = this.add.text(50, 50, this.title, {
             fontSize: '64px',
             fill: '#fff',
             fontFamily: 'monospace'
         }).setScrollFactor(0);
         this.foreLayer.add(titleText);
-
-        // Calculate overlay width based on title text
-        const overlayWidth = 450; // Use a fixed width for consistency
-        const overlayHeight = this.cameras.main.height * 2;
-
-        // Add a dark overlay so text is readable over background
-        const overlay = this.add.rectangle(0, 0, overlayWidth, overlayHeight, 0x000000, 0.5)
-            .setOrigin(0, 0)
-            .setScrollFactor(0);
-        this.foreLayer.add(overlay);
 
         if (this.subtitle) {
             const sub = this.add.text(55, 130, this.subtitle, {

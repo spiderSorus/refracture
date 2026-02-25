@@ -8,6 +8,16 @@ export const WebSystem = (entities, inputManager, scene) => {
     const player = findPlayer(entities);
     if (!player) return;
 
+    // --- EFFECT CYCLING (For Testing) ---
+    if (!scene._currentWebEffect) scene._currentWebEffect = 'silk';
+    const vKey = scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.V);
+    if (Phaser.Input.Keyboard.JustDown(vKey)) {
+        const effects = ['silk', 'sparkle', 'void'];
+        const idx = effects.indexOf(scene._currentWebEffect);
+        scene._currentWebEffect = effects[(idx + 1) % effects.length];
+        console.log(`🕸️ [WEB] Effect switched to: ${scene._currentWebEffect}`);
+    }
+
     const tether = player.components.WebTether;
     const currentParent = player.components.Parent;
     const pPos = player.components.Position;
@@ -32,8 +42,13 @@ export const WebSystem = (entities, inputManager, scene) => {
             const rb = inputManager.isButtonDown('LENGTHEN');
             const winchSpeed = PHYSICS.WEB_WINCH_SPEED;
 
-            if (lb) tether.maxLength = Math.max(MIN_SPOOL_LENGTH, tether.maxLength - winchSpeed);
-            if (rb) tether.maxLength = Math.min(MAX_SPOOL_LENGTH, tether.maxLength + winchSpeed);
+            // Only allow winching if NOT attached to a different platform
+            const canWinch = !currentParent || currentParent.id === tether.platformId;
+
+            if (canWinch) {
+                if (lb) tether.maxLength = Math.max(MIN_SPOOL_LENGTH, tether.maxLength - winchSpeed);
+                if (rb) tether.maxLength = Math.min(MAX_SPOOL_LENGTH, tether.maxLength + winchSpeed);
+            }
 
             if (!currentParent && pVel && dist > tether.maxLength) {
                 const nx = (pPos.x - anchorX) / dist;
@@ -74,6 +89,7 @@ export const WebSystem = (entities, inputManager, scene) => {
         if (plat && plat.components.Position && !isBackground) {
             const snappedOffset = snapOffsetInside(currentParent.offset, plat.components.Collider, 10);
             const newTether = WebTether(currentParent.id, snappedOffset);
+            newTether.effect = scene._currentWebEffect;
             newTether.maxForce *= strengthMult;
             player.components.WebTether = newTether;
             player.components.WebTether.maxLength = PHYSICS.WEB_INITIAL_LENGTH; 
@@ -112,6 +128,7 @@ export const WebSystem = (entities, inputManager, scene) => {
                 tether.platformId, { ...tether.anchorOffset }, 
                 currentParent.id, snappedOffsetB
             );
+            conn.effect = scene._currentWebEffect;
             
             conn.maxForce *= strengthMult;
             conn.fixedLength = dist * 1.15;

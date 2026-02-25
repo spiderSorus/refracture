@@ -55,47 +55,9 @@ export const PhysicsSystem = (entities, delta, scene) => {
         if (tether && pPos && pVel) {
             const platform = entities.find(e => e.id === tether.platformId);
             if (platform && platform.components.Position) {
-                const platRot = platform.components.Rotation?.angle || 0;
-                const localAnchorX = tether.anchorOffset.x;
-                const localAnchorY = tether.anchorOffset.y;
-                const ax = localAnchorX * Math.cos(platRot) - localAnchorY * Math.sin(platRot);
-                const ay = localAnchorX * Math.sin(platRot) + localAnchorY * Math.cos(platRot);
-                const targetX = platform.components.Position.x + ax;
-                const targetY = platform.components.Position.y + ay;
-                const dx = targetX - pPos.x;
-                const dy = targetY - pPos.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                
-                if (dist > tether.maxLength) {
-                    const overlap = dist - tether.maxLength;
-                    const nx = dx / dist;
-                    const ny = dy / dist;
-                    let force = overlap * tether.stiffness * 500;
-                    if (entity.components.Parent) force *= 0.1;
-                    tether.tension = force;
-                    pVel.x += (nx * force / pMass) * dt;
-                    pVel.y += (ny * force / pMass) * dt;
-
-                    const platVel = platform.components.Velocity;
-                    const platAngVel = platform.components.AngularVelocity;
-                    const isStatic = !!(platform.components.SpawnTag || platform.components.StaticTag);
-                    if (!isStatic) {
-                        const platMass = platform.components.Mass?.value || 10;
-                        if (platVel) {
-                            platVel.x -= (nx * force / platMass) * dt;
-                            platVel.y -= (ny * force / platMass) * dt;
-                        }
-                        
-                        // Apply Torque
-                        if (platAngVel) {
-                            // Torque = r x F
-                            // In 2D: torque = rx * Fy - ry * Fx
-                            // Force applied to platform is (-nx * force, -ny * force)
-                            const torque = (ax * (-ny * force) - ay * (-nx * force)) / (platMass * 100);
-                            platAngVel.rate += torque * dt;
-                        }
-                    }
-                } else { tether.tension = 0; }
+                // The WebSystem now handles the rigid rope constraint.
+                // This system no longer needs to apply spring forces.
+                tether.tension = 0; // Reset tension, WebSystem might set it for breaking logic.
             }
         }
 
