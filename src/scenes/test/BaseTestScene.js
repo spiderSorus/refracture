@@ -56,6 +56,8 @@ export class BaseTestScene extends Phaser.Scene {
         this.input.keyboard.off('keydown-ESC');
         this.accumulator = 0;
         this.initialized = false;
+        this.bgCamera = null;
+        this._camInitialized = false;
     }
 
     update(time, delta) {

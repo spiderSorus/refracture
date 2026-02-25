@@ -1,6 +1,6 @@
 import {
     Position, Velocity, Rotation, Renderable, Collider,
-    PlatformTag, SpawnTag, EntityType, Mass, ZLayer
+    PlatformTag, SpawnTag, EntityType, Mass, ZLayer, StaticTag
 } from '../components/index';
 
 /**

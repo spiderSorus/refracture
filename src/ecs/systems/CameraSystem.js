@@ -17,11 +17,6 @@ export const CameraSystem = (entities, scene, inputManager) => {
     }
     const bgCam = scene.bgCamera;
 
-    // --- SYNC CAMERAS ---
-    bgCam.setScroll(cam.scrollX, cam.scrollY);
-    bgCam.setZoom(cam.zoom);
-    bgCam.setRotation(cam.rotation);
-
     // --- LAYER IGNORING ---
     // If layers exist, set up ignoring. We do this every frame to ensure new layers are handled,
     // though usually they are created once.
@@ -58,11 +53,19 @@ export const CameraSystem = (entities, scene, inputManager) => {
     }
 
     if (!player) {
-        cam.centerOn(0, 0);
+        // Don't jump to 0,0 - just stay where you are
         return;
     }
 
     const pPos = player.components.Position;
+    
+    // --- SNAP ON INITIAL DETECT ---
+    // If the camera is at its default or a far-off position, snap it once
+    if (!scene._camInitialized) {
+        cam.centerOn(pPos.x, pPos.y);
+        scene._camInitialized = true;
+    }
+
     let targetX = pPos.x;
     let targetY = pPos.y;
 
@@ -74,4 +77,11 @@ export const CameraSystem = (entities, scene, inputManager) => {
     const newY = currentY + (targetY - currentY) * lerp;
 
     cam.centerOn(newX, newY);
+
+    // --- FINAL SYNC CAMERAS (After main camera has moved) ---
+    if (bgCam) {
+        bgCam.setScroll(cam.scrollX, cam.scrollY);
+        bgCam.setZoom(cam.zoom);
+        bgCam.setRotation(cam.rotation);
+    }
 };
