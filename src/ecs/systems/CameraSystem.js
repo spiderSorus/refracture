@@ -1,5 +1,40 @@
 export const CameraSystem = (entities, scene, inputManager) => {
     const cam = scene.cameras.main;
+    cam.setBackgroundColor('rgba(0,0,0,0)');
+    
+    // --- BACKGROUND CAMERA SETUP ---
+    if (!scene.bgCamera) {
+        // Create background camera that matches main camera size
+        scene.bgCamera = scene.cameras.add(0, 0, cam.width, cam.height).setName('BackgroundCamera');
+        
+        // Move background camera to the bottom of the render stack (index 0)
+        // We do not use scene.cameras.remove() because it destroys the camera.
+        const cameras = scene.cameras.cameras;
+        if (cameras.length > 1) {
+            const bgCamInstance = cameras.pop();
+            cameras.unshift(bgCamInstance);
+        }
+    }
+    const bgCam = scene.bgCamera;
+
+    // --- SYNC CAMERAS ---
+    bgCam.setScroll(cam.scrollX, cam.scrollY);
+    bgCam.setZoom(cam.zoom);
+    bgCam.setRotation(cam.rotation);
+
+    // --- LAYER IGNORING ---
+    // If layers exist, set up ignoring. We do this every frame to ensure new layers are handled,
+    // though usually they are created once.
+    if (scene.bgLayer) {
+        cam.ignore(scene.bgLayer);
+    }
+    if (scene.fgLayer && bgCam) {
+        bgCam.ignore(scene.fgLayer);
+    }
+    if (scene.foreLayer && bgCam) {
+        bgCam.ignore(scene.foreLayer);
+    }
+
     const player = entities.find(e => e.components.PlayerTag && e.components.Position);
 
     // --- ZOOM LOGIC ---

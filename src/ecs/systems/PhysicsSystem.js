@@ -176,7 +176,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
     const platformsForCollision = entities.filter(e => {
         const isPlatform = e.components.PlatformTag && e.components.Collider && e.components.Position;
         const zLayer = e.components.ZLayer;
-        const isBackground = zLayer && zLayer.type === 'BACK';
+        const isBackground = (zLayer && zLayer.type === 'BACK') || e.components.BackgroundTag;
         return isPlatform && !isBackground;
     });
     for (let i = 0; i < platformsForCollision.length; i++) {

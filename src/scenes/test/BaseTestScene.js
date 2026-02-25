@@ -8,7 +8,7 @@ import { MovementSystem } from '../../ecs/systems/MovementSystem';
 import { AttachmentSystem } from '../../ecs/systems/AttachmentSystem';
 import { PhysicsSystem } from '../../ecs/systems/PhysicsSystem';
 import { CameraSystem } from '../../ecs/systems/CameraSystem';
-import { LayeredRenderSystem } from '../../ecs/systems/LayeredRenderSystem';
+import { RenderSystem } from '../../ecs/systems/RenderSystem';
 import { WebRenderSystem } from '../../ecs/systems/WebRenderSystem';
 import { WebSystem } from '../../ecs/systems/WebSystem';
 import { BugAISystem } from '../../ecs/systems/BugAISystem';
@@ -136,10 +136,11 @@ export class BaseTestScene extends Phaser.Scene {
         });
 
         CameraSystem(this.entities, this, this.inputManager);
-        ParallaxSystem(this.entities, this);
         ZLayerSystem(this.entities);
 
-        LayeredRenderSystem(this.entities, this);
+        RenderSystem(this.entities, this);
+        ParallaxSystem(this.entities, this);
+        
         SlingshotRenderSystem(this.entities, this);
         WebRenderSystem(this.entities, this);
 

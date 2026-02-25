@@ -15,7 +15,12 @@ export const RaycastPlatformSystem = {
      * @param {number} maxRange - Max distance to check
      */
     findTarget: (entities, origin, direction, maxRange = 1000) => {
-        const platforms = entities.filter(e => e.components.PlatformTag && e.components.Collider);
+        const platforms = entities.filter(e => {
+            const isPlatform = e.components.PlatformTag && e.components.Collider;
+            const zLayer = e.components.ZLayer;
+            const isBackground = (zLayer && zLayer.type === 'BACK') || e.components.BackgroundTag;
+            return isPlatform && !isBackground;
+        });
 
         // Define the line segment for the ray
         const ray = new Phaser.Geom.Line(

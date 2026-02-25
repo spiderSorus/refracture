@@ -16,8 +16,8 @@ export const AttachmentSystem = (entities) => {
     const platforms = entities.filter(e => {
         const isPlatform = e.components.PlatformTag && e.components.Collider && e.components.Position;
         const zLayer = e.components.ZLayer;
-        // Never interact with background layers
-        const isBackground = zLayer && zLayer.type === 'BACK';
+        // Never interact with background layers or BackgroundTag entities
+        const isBackground = (zLayer && zLayer.type === 'BACK') || e.components.BackgroundTag;
         return isPlatform && !isBackground;
     });
     const catchBuffer = 15;

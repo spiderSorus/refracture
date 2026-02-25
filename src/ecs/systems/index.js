@@ -1,8 +1,8 @@
 // src/ecs/systems/index.js
 export * from './MovementSystem';
 export * from './PhysicsSystem';
-export * from './LayeredRenderSystem';
 export * from './CameraSystem';
+export * from './RenderSystem';
 export * from './AttachmentSystem';
 export * from './WebRenderSystem';
 export * from './WebSystem';
