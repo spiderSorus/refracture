@@ -24,6 +24,9 @@ export const LayeredRenderSystem = (entities, scene) => {
             const isVisible = viewLayers.some(view => layerKey === view || layerKey.startsWith(view + '_'));
 
             if (isVisible) {
+                if (layerKey === 'BG') {
+                    // console.log(`[RENDER] Rendering BG layer for entity ${entity.id}`);
+                }
                 // CASE A: Should be visible
                 if (!activeGraphics[layerKey]) {
                     // Create Graphic Instance
@@ -35,14 +38,13 @@ export const LayeredRenderSystem = (entities, scene) => {
                 activeGfx.update(pos, rot, config);
                 activeGfx.setVisible(true);
 
-                // --- PLAYER DEPTH OVERRIDE ---
-                if (isPlayer && activeGfx.gameObject) {
-                    const baseDepth = 5000 + (config.depth || 0);
-                    activeGfx.gameObject.setDepth(baseDepth);
+                // --- DEPTH SYNC ---
+                if (activeGfx.gameObject && config.depth !== undefined) {
+                    activeGfx.gameObject.setDepth(config.depth);
                     
-                    // If the graphic has an internal emitter, set its depth too
+                    // Sync internal components (like emitters) if they exist
                     if (activeGfx.emitter) {
-                        activeGfx.emitter.setDepth(baseDepth - 1);
+                        activeGfx.emitter.setDepth(config.depth);
                     }
                 }
 

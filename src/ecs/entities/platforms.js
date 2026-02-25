@@ -10,7 +10,7 @@ import {
 export const createSpawnPlatform = (x, y, config = {}) => {
     const width = config.width || 100;
     const height = config.height || 100;
-    const color = config.color || 0x00ff00;
+    const color = config.color || 0x888888;
 
     return [
         Position(x, y),
@@ -21,7 +21,12 @@ export const createSpawnPlatform = (x, y, config = {}) => {
         EntityType('PLATFORM'),
         Mass(config.mass || 10),
         Renderable({
-            'BASE': { type: 'rect', width, height, color }
+            'BASE': { 
+                type: 'rect', 
+                width, height, color, 
+                alpha: 1.0,
+                depth: config.depth !== undefined ? config.depth : 0 
+            }
         }),
         Collider('rect', 0, width, height)
     ];

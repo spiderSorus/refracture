@@ -8,6 +8,8 @@ import { FairyEmitterGraphic } from '../../graphics/FairyEmitterGraphic';
 import { ChaosEmitterGraphic } from '../../graphics/ChaosEmitterGraphic';
 import { TriangleGraphic } from '../../graphics/TriangleGraphic';
 import { SpiderGraphic } from '../../graphics/SpiderGraphic';
+import { WatercolorGraphic } from '../../graphics/WatercolorGraphic';
+import { EllipseGraphic } from '../../graphics/EllipseGraphic';
 
 const REGISTRY = {
     'sprite': SpriteGraphic,
@@ -19,7 +21,9 @@ const REGISTRY = {
     'fairy_emitter': FairyEmitterGraphic,
     'chaos_emitter': ChaosEmitterGraphic,
     'triangle': TriangleGraphic,
-    'spider': SpiderGraphic
+    'spider': SpiderGraphic,
+    'watercolor': WatercolorGraphic,
+    'ellipse': EllipseGraphic
 };
 
 export const RenderFactory = {

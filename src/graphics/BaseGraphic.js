@@ -3,8 +3,18 @@ export class BaseGraphic {
         this.scene = scene;
         this.gameObject = this.create(config);
 
-        // Default Z-sorting
-        this.gameObject.setDepth(config.layer === 'BASE' ? 10 : 20);
+        // Default Z-sorting: Use config.depth if provided, otherwise fallback to layer-based default
+        if (config.depth !== undefined) {
+            this.gameObject.setDepth(config.depth);
+        } else {
+            this.gameObject.setDepth(config.layer === 'BASE' ? 10 : 20);
+        }
+
+        if (config.alpha !== undefined && this.gameObject.setAlpha) {
+            this.gameObject.setAlpha(config.alpha);
+        } else if (this.gameObject.setAlpha) {
+            this.gameObject.setAlpha(1.0);
+        }
     }
 
     /**

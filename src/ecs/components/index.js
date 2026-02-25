@@ -27,8 +27,33 @@ export const Collider = (type = 'circle', radius = 50, width = 100, height = 100
     type, radius, width, height
 });
 export const PlatformTag = () => ({ _type: 'PlatformTag' });
+export const BackgroundTag = () => ({ _type: 'BackgroundTag' });
 export const SpawnTag = () => ({ _type: 'SpawnTag' });
 export const StaticTag = () => ({ _type: 'StaticTag' });
+
+export const BackgroundShape = (shapeType = 'rect', config = {}) => ({
+    _type: 'BackgroundShape',
+    shapeType,
+    width: config.width || 100,
+    height: config.height || 100,
+    color: config.color || 0xffffff,
+    alpha: config.alpha ?? 1.0,
+    depth: config.depth ?? 0
+});
+
+export const Parallax = (factor = 1.0) => ({
+    _type: 'Parallax',
+    factor,
+    originX: null,
+    originY: null
+});
+
+export const ZLayer = (type = 'PLAY', index = 0) => ({
+    _type: 'ZLayer',
+    type, // 'PLAY' or 'BACK'
+    index
+});
+
 export const Mass = (value = 1) => ({ _type: 'Mass', value });
 export const Ego = (value = 128) => ({ _type: 'Ego', value });
 export const Spin = (rate = 0) => ({ _type: 'Spin', rate }); // rate in radians per second

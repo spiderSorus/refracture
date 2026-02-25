@@ -18,7 +18,7 @@ export class FairyEmitterGraphic extends BaseGraphic {
             speed: { min: 25, max: 75 },
             lifespan: { min: 1000, max: 2000 },
             scale: { start: 0.75, end: 0 },
-            alpha: { start: 0.5, end: 0 },
+            alpha: { start: config.alpha ?? 0.5, end: 0 },
             tint: config.tints || [0x00ffff, 0xffffff, 0x0000ff],
             blendMode: 'ADD',
             emitting: true,

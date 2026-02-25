@@ -9,6 +9,9 @@ export * from './WebSystem';
 export * from './BugAISystem';
 export * from './EnergySystem';
 export * from './LifecycleSystem';
+export * from './BackgroundSystem';
+export * from './ParallaxSystem';
+export * from './ZLayerSystem';
 
 // Explicitly export these to resolve the "Conflicting Star Exports" error
 export { SlingshotSystem } from './SlingshotSystem';

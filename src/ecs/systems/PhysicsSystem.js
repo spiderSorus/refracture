@@ -151,23 +151,11 @@ export const PhysicsSystem = (entities, delta, scene) => {
             pos.x += vel.x * dt;
             pos.y += vel.y * dt;
 
-            // Player Respawn (Touching Bottom)
+            // Player World Boundary Constraints (Walls/Ceiling)
             if (isPlayer) {
                 const pRadius = 15;
-                if (pos.y + pRadius >= FLOOR_Y) {
-                    const spawnPoint = entities.find(e => e.components.SpawnTag);
-                    if (spawnPoint && spawnPoint.components.Position) {
-                        pos.x = spawnPoint.components.Position.x;
-                        pos.y = spawnPoint.components.Position.y;
-                        if (vel) { vel.x = 0; vel.y = 0; }
-                        delete entity.components.Parent;
-                        delete entity.components.WebTether;
-                    }
-                }
-                // Wall Constraints
                 if (pos.x - pRadius < minX) { pos.x = minX + pRadius; vel.x = 0; }
                 else if (pos.x + pRadius > maxX) { pos.x = maxX - pRadius; vel.x = 0; }
-                // Top Constraint
                 if (pos.y - pRadius < minY) { pos.y = minY + pRadius; vel.y = 0; }
             }
 

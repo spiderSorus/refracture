@@ -14,6 +14,9 @@ import { WebSystem } from '../../ecs/systems/WebSystem';
 import { BugAISystem } from '../../ecs/systems/BugAISystem';
 import { EnergySystem } from '../../ecs/systems/EnergySystem';
 import { LifecycleSystem } from '../../ecs/systems/LifecycleSystem';
+import { BackgroundSystem } from '../../ecs/systems/BackgroundSystem';
+import { ParallaxSystem } from '../../ecs/systems/ParallaxSystem';
+import { ZLayerSystem } from '../../ecs/systems/ZLayerSystem';
 import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
 import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
 import { RecordingSystem } from '../../ecs/systems/RecordingSystem'; 
@@ -127,10 +130,13 @@ export class BaseTestScene extends Phaser.Scene {
             this.accumulator -= PHYSICS.STEP;
         }
 
+        CameraSystem(this.entities, this, this.inputManager);
+        ParallaxSystem(this.entities, this);
+        ZLayerSystem(this.entities);
+
         LayeredRenderSystem(this.entities, this);
         SlingshotRenderSystem(this.entities, this);
         WebRenderSystem(this.entities, this);
-        CameraSystem(this.entities, this, this.inputManager);
 
         this.updateDebugUI();
     }
