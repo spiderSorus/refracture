@@ -37,7 +37,13 @@ export const LayeredRenderSystem = (entities, scene) => {
 
                 // --- PLAYER DEPTH OVERRIDE ---
                 if (isPlayer && activeGfx.gameObject) {
-                    activeGfx.gameObject.setDepth(5000 + (config.depth || 0));
+                    const baseDepth = 5000 + (config.depth || 0);
+                    activeGfx.gameObject.setDepth(baseDepth);
+                    
+                    // If the graphic has an internal emitter, set its depth too
+                    if (activeGfx.emitter) {
+                        activeGfx.emitter.setDepth(baseDepth - 1);
+                    }
                 }
 
             } else {

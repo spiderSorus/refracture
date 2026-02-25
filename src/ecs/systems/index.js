@@ -8,6 +8,7 @@ export * from './WebRenderSystem';
 export * from './WebSystem';
 export * from './BugAISystem';
 export * from './EnergySystem';
+export * from './LifecycleSystem';
 
 // Explicitly export these to resolve the "Conflicting Star Exports" error
 export { SlingshotSystem } from './SlingshotSystem';

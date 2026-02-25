@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { UI } from '../../core/UIManager';
 import { InputManager } from '../../core/Input';
 import { GRID, PHYSICS } from '../../core/Constants';
+import { spawnPlayer } from '../../ecs/entities/player';
 
 import { MovementSystem } from '../../ecs/systems/MovementSystem';
 import { AttachmentSystem } from '../../ecs/systems/AttachmentSystem';
@@ -12,6 +13,7 @@ import { WebRenderSystem } from '../../ecs/systems/WebRenderSystem';
 import { WebSystem } from '../../ecs/systems/WebSystem';
 import { BugAISystem } from '../../ecs/systems/BugAISystem';
 import { EnergySystem } from '../../ecs/systems/EnergySystem';
+import { LifecycleSystem } from '../../ecs/systems/LifecycleSystem';
 import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
 import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
 import { RecordingSystem } from '../../ecs/systems/RecordingSystem'; 
@@ -65,39 +67,28 @@ export class BaseTestScene extends Phaser.Scene {
 
             // BAKE-IN ATTACHMENT: Start player attached to spawnpoint
             if (player) {
-                // Force player to spawn position
-                player.components.Position.x = spawnPoint.components.Position.x;
-                player.components.Position.y = spawnPoint.components.Position.y;
-                
-                // Create Parent component
-                player.components.Parent = {
-                    _type: 'Parent',
-                    id: spawnPoint.id,
-                    offset: { x: 0, y: 0 }
-                };
-                
-                // Reset Slingshot
-                if (player.components.SlingshotJump) {
-                    player.components.SlingshotJump.canJump = true;
-                }
-                
-                console.log(`[BASE] Baked-in attachment: Player -> ${spawnPoint.id}`);
+                // If player already exists (from scene setup), we just re-spawn/re-attach them properly
+                // But typically we should just use spawnPlayer if they don't exist yet or to reset them.
+                // For now, let's just make sure they are attached.
+                player.toDestroy = true; // Clear the existing one and use spawnPlayer for consistency
+                spawnPlayer(this, spawnPoint);
             }
 
             // --- GLOW EFFECTS (Floor & Walls) ---
             const glowGfx = this.add.graphics();
             const cam = this.cameras.main;
-            const bounds = cam.getBounds();
-            const minX = bounds.x;
-            const maxX = bounds.x + bounds.width;
-            const minY = bounds.y;
-            const maxY = bounds.y + bounds.height;
+            
+            // Use camera bounds if available, otherwise fallback to viewport
+            const minX = cam.useBounds ? cam._bounds.x : 0;
+            const maxX = cam.useBounds ? cam._bounds.x + cam._bounds.width : cam.width;
+            const minY = cam.useBounds ? cam._bounds.y : 0;
+            const maxY = cam.useBounds ? cam._bounds.y + cam._bounds.height : cam.height;
 
             for (let i = 1; i <= 5; i++) {
                 glowGfx.lineStyle(i * 6, 0x0000ff, 0.5 / i);
-                glowGfx.lineBetween(minX - 5000, maxY, maxX + 5000, maxY); 
-                glowGfx.lineBetween(minX, minY, minX, maxY);
-                glowGfx.lineBetween(maxX, minY, maxX, maxY);
+                glowGfx.lineBetween(minX, maxY, maxX, maxY); // Floor
+                glowGfx.lineBetween(minX, minY, minX, maxY); // Left Wall
+                glowGfx.lineBetween(maxX, minY, maxX, maxY); // Right Wall
             }
             glowGfx.setDepth(1);
 
@@ -117,6 +108,7 @@ export class BaseTestScene extends Phaser.Scene {
             EnergySystem(this.entities, dtSeconds, this);
             BugAISystem(this.entities, dtSeconds);
             AttachmentSystem(this.entities);
+            LifecycleSystem(this.entities, dtSeconds, this);
             MovementSystem(this.entities, this.inputManager, dtSeconds);
             PhysicsSystem(this.entities, PHYSICS.STEP, this);
 
@@ -138,7 +130,7 @@ export class BaseTestScene extends Phaser.Scene {
         LayeredRenderSystem(this.entities, this);
         SlingshotRenderSystem(this.entities, this);
         WebRenderSystem(this.entities, this);
-        CameraSystem(this.entities, this);
+        CameraSystem(this.entities, this, this.inputManager);
 
         this.updateDebugUI();
     }

@@ -99,3 +99,16 @@ export const SlingshotJump = (maxForce = 1500) => ({
     potentialPlatformId: null,
     lastPlatformId: null
 });
+
+// --- LIFECYCLE COMPONENTS ---
+export const Destructible = (onDestroy = null) => ({
+    _type: 'Destructible',
+    onDestroy
+});
+
+export const Respawn = (delay = 1000) => ({
+    _type: 'Respawn',
+    delay,
+    timer: 0,
+    isPending: false
+});

@@ -4,6 +4,7 @@ import { CircleGraphic } from '../../graphics/CircleGraphic';
 import { GlowGraphic } from '../../graphics/GlowGraphic';
 import { BubbleGraphic } from '../../graphics/BubbleGraphic';
 import { FairyGlowGraphic } from '../../graphics/FairyGlowGraphic';
+import { FairyEmitterGraphic } from '../../graphics/FairyEmitterGraphic';
 import { ChaosEmitterGraphic } from '../../graphics/ChaosEmitterGraphic';
 import { TriangleGraphic } from '../../graphics/TriangleGraphic';
 import { SpiderGraphic } from '../../graphics/SpiderGraphic';
@@ -15,6 +16,7 @@ const REGISTRY = {
     'glow': GlowGraphic,
     'bubble': BubbleGraphic,
     'fairy_glow': FairyGlowGraphic,
+    'fairy_emitter': FairyEmitterGraphic,
     'chaos_emitter': ChaosEmitterGraphic,
     'triangle': TriangleGraphic,
     'spider': SpiderGraphic

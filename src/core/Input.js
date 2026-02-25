@@ -144,6 +144,21 @@ export class InputManager {
         return { x, y };
     }
 
+    getZoom() {
+        let zoom = 0;
+        if (this.pad) {
+            // L2 (button 6) to zoom out, R2 (button 7) to zoom in
+            const l2 = this.pad.buttons[6]?.value || 0;
+            const r2 = this.pad.buttons[7]?.value || 0;
+            zoom = r2 - l2;
+        } else {
+            // Keyboard fallbacks for testing: I and O
+            if (this.scene.input.keyboard.addKey('I').isDown) zoom = 1;
+            if (this.scene.input.keyboard.addKey('O').isDown) zoom = -1;
+        }
+        return zoom;
+    }
+
     getRightStickRaw() {
         let x = 0, y = 0;
         if (this.pad) {
