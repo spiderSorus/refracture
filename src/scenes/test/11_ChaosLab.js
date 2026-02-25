@@ -6,14 +6,14 @@ import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
     Mass, Velocity, Spin, Rotation, StaticTag, Ego
 } from '../../ecs/components/index';
-import { FloaterGravityRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
+import { FloaterGravityRule, EgoBalanceRule, WebActivationRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
 
 export class ChaosLab extends BaseTestScene {
     constructor() {
         super('ChaosLab', 'Chaos Lab', 'Dynamic spawning, rotation, and ego.');
         this.meditationEnabled = false;
-        this.energyRules = [FloaterGravityRule, EgoBalanceRule];
+        this.energyRules = [FloaterGravityRule, EgoBalanceRule, WebActivationRule];
         this.spawnTimer = 0;
     }
 

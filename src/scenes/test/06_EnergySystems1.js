@@ -6,14 +6,14 @@ import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
     Mass, Velocity, Ego
 } from '../../ecs/components/index';
-import { WebConnectionActivationRule, FloaterGravityRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
+import { WebActivationRule, FloaterGravityRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
 
 export class EnergySystems1 extends BaseTestScene {
     constructor() {
         super('EnergySystems1', 'Energy Systems 1', 'Ego Transfer Test (255 -> 10).');
         this.meditationEnabled = false;
-        this.energyRules = [FloaterGravityRule, EgoBalanceRule];
+        this.energyRules = [WebActivationRule, FloaterGravityRule, EgoBalanceRule];
     }
 
     create() {

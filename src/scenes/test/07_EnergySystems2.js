@@ -6,7 +6,7 @@ import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
     Mass, Velocity, Ego, StaticTag
 } from '../../ecs/components/index';
-import { EgoGravityRule, EgoBalanceRule, WebConnectionActivationRule } from '../../ecs/systems/energy_logic/Rules';
+import { EgoGravityRule, EgoBalanceRule, WebActivationRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
 
 export class EnergySystems2 extends BaseTestScene {
@@ -15,7 +15,7 @@ export class EnergySystems2 extends BaseTestScene {
         this.meditationEnabled = false;
         this.floaterGravity = 980; 
         this.webStrengthMult = 10; 
-        this.energyRules = [EgoGravityRule, EgoBalanceRule];
+        this.energyRules = [EgoGravityRule, EgoBalanceRule, WebActivationRule];
     }
 
     create() {

@@ -31,3 +31,4 @@ export const EgoGravityRule = (entities, dt, constants) => {
         }
     });
 };
+EgoGravityRule.ruleName = 'EgoGravity';

@@ -1,7 +1,7 @@
 import {
     Position, Velocity, Rotation, Renderable,
     PlayerTag, InputControlled, CameraTarget,
-    Mass, Destructible, SlingshotJump, Parent, ZLayer
+    Mass, Destructible, SlingshotJump, Parent, ZLayer, Ego
 } from '../components/index';
 import { PHYSICS } from '../../core/Constants';
 
@@ -10,6 +10,7 @@ export const createPlayer = (x, y) => [
     Velocity(0, 0),
     Rotation(0),
     ZLayer('PLAY', 0),
+    Ego(128),
     Renderable({
         'BASE': {
             type: 'circle',

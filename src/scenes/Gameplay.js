@@ -17,6 +17,9 @@ export class Gameplay extends BaseTestScene {
     create() {
         super.create();
 
+        this.enableEnergyRule('EgoBalance');
+        this.enableEnergyRule('WebActivation');
+
         const WORLD_WIDTH = 3000;
         const WORLD_HEIGHT = 10000;
         this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
@@ -53,7 +56,7 @@ export class Gameplay extends BaseTestScene {
                 const oy = (Math.random() - 0.5) * 50;
 
                 const egoVal = Phaser.Math.Between(0, 255);
-                const colorVal = Phaser.Display.Color.GetColor(egoVal, egoVal, egoVal);
+                const colorVal = 0x888888;
 
                 const platformComponents = createPlatform(px + ox, py + oy, { 
                     width: 150, 
