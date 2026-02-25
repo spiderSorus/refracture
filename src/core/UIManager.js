@@ -82,6 +82,12 @@ export class UIManager {
                 <strong style="color: #0ff;">[ CAMERAS ]</strong><br>
                 ${(stateData.cameras || []).map(c => `• ${c}`).join('<br>')}
             </div>
+            <div style="margin-bottom: 10px; border-bottom: 1px solid #444; width: 100%; padding-bottom: 5px; font-size: 11px;">
+                <strong style="color: #0ff;">[ ENERGY RULES ]</strong><br>
+                ${(stateData.energyRules || []).length > 0 
+                    ? stateData.energyRules.map(r => `• ${r}`).join('<br>') 
+                    : '<span style="color: #888;">None Active</span>'}
+            </div>
             <div style="color: #ff8400;">
                 <strong style="color: #fff;">[ SLINGSHOT ]</strong><br>
                 STATE: ${stateTag}<br>

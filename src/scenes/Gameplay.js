@@ -4,7 +4,7 @@ import { BaseTestScene } from './test/BaseTestScene';
 import { PHYSICS } from '../core/Constants';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump, ZLayer,
-    Velocity, Mass, GravityExempt
+    Velocity, Mass, GravityExempt, Ego
 } from '../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -52,12 +52,20 @@ export class Gameplay extends BaseTestScene {
                 const ox = (Math.random() - 0.5) * 100;
                 const oy = (Math.random() - 0.5) * 50;
 
-                this.addEntity(createPlatform(px + ox, py + oy, { 
+                const egoVal = Phaser.Math.Between(0, 255);
+                const colorVal = Phaser.Display.Color.GetColor(egoVal, egoVal, egoVal);
+
+                const platformComponents = createPlatform(px + ox, py + oy, { 
                     width: 150, 
                     height: 60, 
                     isStatic: true,
-                    color: 0x333333 
-                }));
+                    color: colorVal 
+                });
+
+                const platform = this.addEntity([
+                    ...platformComponents,
+                    Ego(egoVal)
+                ]);
             }
         }
 

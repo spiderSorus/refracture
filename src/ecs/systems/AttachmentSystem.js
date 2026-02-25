@@ -25,7 +25,8 @@ export const AttachmentSystem = (entities) => {
     if (sling && sling.lastPlatformId) {
         const lastPlat = entities.find(e => e.id === sling.lastPlatformId);
         if (lastPlat && lastPlat.components.Position) {
-            const isStillInside = isPointInside(pPos, lastPlat.components.Position, lastPlat.components.Collider, catchBuffer + 10);
+            const rot = lastPlat.components.Rotation?.angle || 0;
+            const isStillInside = isPointInside(pPos, lastPlat.components.Position, lastPlat.components.Collider, catchBuffer + 10, rot);
             if (!isStillInside) {
                 sling.lastPlatformId = null;
             }
@@ -37,7 +38,8 @@ export const AttachmentSystem = (entities) => {
     for (const plat of platforms) {
         if (sling && sling.lastPlatformId === plat.id) continue;
 
-        if (isPointInside(pPos, plat.components.Position, plat.components.Collider, catchBuffer)) {
+        const platRot = plat.components.Rotation?.angle || 0;
+        if (isPointInside(pPos, plat.components.Position, plat.components.Collider, catchBuffer, platRot)) {
             // --- ROTATION-AWARE ATTACHMENT ---
             // We need to calculate the local offset by rotating the world delta into local space
             const platRot = plat.components.Rotation?.angle || 0;

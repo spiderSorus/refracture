@@ -26,19 +26,11 @@ export class RectGraphic extends BaseGraphic {
         const baseW = config.width || 32;
         const baseH = config.height || 32;
 
-        let targetW = baseW * intensity;
-        let targetH = baseH * intensity;
-
-        if (intensity > 1.2) {
-            const jitter = (intensity - 1.2) * 5;
-            targetW += (Math.random() - 0.5) * jitter;
-            targetH += (Math.random() - 0.5) * jitter;
-        }
-
-        this.rect.setSize(targetW, targetH);
+        this.rect.setSize(baseW, baseH);
 
         if (config.color !== undefined) {
-            const alpha = config.alpha ?? this.rect.alpha;
+            // Modulate color/alpha with intensity instead of size
+            const alpha = (config.alpha ?? 1.0) * Phaser.Math.Clamp(intensity, 0.3, 1.0);
             this.rect.setFillStyle(config.color, alpha);
         }
     }

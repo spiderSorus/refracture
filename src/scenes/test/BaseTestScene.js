@@ -21,7 +21,6 @@ import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
 import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
 import { RecordingSystem } from '../../ecs/systems/RecordingSystem'; 
 import { EnergyRules } from '../../ecs/systems/energy_logic/Rules';
-import { cleanupWebEffects } from '../../web_effects/index';
 
 export class BaseTestScene extends Phaser.Scene {
     constructor(key, title, subtitle) {
@@ -84,9 +83,6 @@ export class BaseTestScene extends Phaser.Scene {
         this.accumulator = 0;
         this.initialized = false;
         
-        // Clean up web effects
-        cleanupWebEffects(this, new Set());
-
         // Clear custom camera/layer properties to prevent issues on re-entry
         this.auxCameras = {};
         this.auxLayers = {};
@@ -199,6 +195,9 @@ export class BaseTestScene extends Phaser.Scene {
             return `${c.name} (${c.postPipelines.map(p => p.constructor.name).join(', ') || 'Normal'})`;
         });
 
+        // Debug Energy Rules
+        const activeRules = (this.energyRules || []).map(r => r.ruleName || 'Unknown');
+
         if (player) {
             const sling = player.components.SlingshotJump || {};
             const rawStick = this.inputManager.getRightStickRaw();
@@ -212,6 +211,7 @@ export class BaseTestScene extends Phaser.Scene {
                 status: player.components.Parent ? "ATTACHED" : "FREE",
                 background: this.currentBackground || 'Default',
                 cameras: cameraInfo,
+                energyRules: activeRules,
                 sling: {
                     isCharging: sling.isCharging,
                     rawStick: rawStick,

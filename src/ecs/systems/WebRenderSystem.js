@@ -1,15 +1,118 @@
 import Phaser from 'phaser';
-import { applyWebEffect, cleanupWebEffects } from '../../web_effects/index';
+import { getImmediateGfx } from '../../utils/RenderUtils';
 
+/**
+ * WebRenderSystem
+ * Renders web tethers and connections with dynamic visuals based on endpoint properties.
+ */
 export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
-    const activeIds = new Set();
-
+    const targetLayer = scene.fgLayer;
+    const gfx = getImmediateGfx(scene, 'webGfx', 1100, targetLayer);
+    const cam = scene.cameras.main;
+    
     const getInterpPos = (pos) => ({
         x: pos.prevX !== undefined ? pos.prevX + (pos.x - pos.prevX) * interpAlpha : pos.x,
         y: pos.prevY !== undefined ? pos.prevY + (pos.y - pos.prevY) * interpAlpha : pos.y
     });
 
-    // --- PART 1: COMPLETED SLACK WEBS ---
+    gfx.clear();
+
+    /**
+     * Internal helper to draw a specific portion of the web path (from tStart to tEnd)
+     */
+    const drawPathSegment = (x1, y1, x2, y2, targetLen, dist, tStart, tEnd, thickness, color, alpha) => {
+        const segments = 20;
+        const slack = (targetLen > dist) ? (targetLen - dist) * 0.5 : 0;
+
+        gfx.lineStyle(thickness, color, alpha);
+        gfx.beginPath();
+
+        let first = true;
+        for (let i = 0; i <= segments; i++) {
+            const t = i / segments;
+            if (t < tStart || t > tEnd) {
+                if (!first) {
+                    gfx.strokePath();
+                    gfx.beginPath();
+                    first = true;
+                }
+                continue;
+            }
+
+            const cx = x1 + (x2 - x1) * t;
+            const cy = y1 + (y2 - y1) * t;
+            const dip = (targetLen > dist) ? 4 * t * (1 - t) * slack : 0;
+            const px = cx;
+            const py = cy + dip;
+
+            if (first) {
+                gfx.moveTo(px, py);
+                first = false;
+            } else {
+                gfx.lineTo(px, py);
+            }
+        }
+        gfx.strokePath();
+    };
+
+    /**
+     * Renders a dynamic web with properties derived from connected entities.
+     */
+    const drawDynamicPath = (x1, y1, x2, y2, targetLen, tension, properties) => {
+        const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
+        const { travelerSpeed = 0.8, travelerWidth = 0.15, travelerColor = 0x000000, 
+                baseColor = 0xffffff, reverse = false, scale = 1.0 } = properties;
+
+        // Tension-based coloring for base line
+        const tensionAlpha = Phaser.Math.Clamp(tension / 5000, 0, 1);
+        const interpolatedBase = Phaser.Display.Color.Interpolate.ColorWithColor(
+            Phaser.Display.Color.ValueToColor(baseColor),
+            Phaser.Display.Color.ValueToColor(0xff88ff),
+            1, tensionAlpha
+        );
+        const baseHex = Phaser.Display.Color.GetColor(interpolatedBase.r, interpolatedBase.g, interpolatedBase.b);
+
+        const time = scene.time.now * 0.001;
+        const cycle = (time * travelerSpeed) % 1.4 - 0.2;
+        const tStartRaw = reverse ? 1.0 - (cycle + travelerWidth) : cycle;
+        const tEndRaw = reverse ? 1.0 - cycle : cycle + travelerWidth;
+        
+        const tStart = Math.min(tStartRaw, tEndRaw);
+        const tEnd = Math.max(tStartRaw, tEndRaw);
+
+        const layers = 3;
+        
+        // 1. Base Diffused Layers
+        for (let i = layers; i >= 1; i--) {
+            const alpha = (0.15 / i);
+            const thickness = (i * 2 * scale) / cam.zoom;
+            drawPathSegment(x1, y1, x2, y2, targetLen, dist, 0, 1, thickness, baseHex, alpha);
+        }
+
+        // 2. Traveling Segment
+        if (tEnd > 0 && tStart < 1) {
+            for (let i = layers; i >= 1; i--) {
+                const alpha = (0.3 / i);
+                const thickness = (i * 3 * scale) / cam.zoom;
+                drawPathSegment(x1, y1, x2, y2, targetLen, dist, Math.max(0, tStart), Math.min(1, tEnd), thickness, travelerColor, alpha);
+            }
+            // Traveler Core
+            drawPathSegment(x1, y1, x2, y2, targetLen, dist, Math.max(0, tStart), Math.min(1, tEnd), (1 * scale) / cam.zoom, travelerColor, 1.0);
+        }
+
+        // 3. Core Web Line
+        drawPathSegment(x1, y1, x2, y2, targetLen, dist, 0, 1, (1 * scale) / cam.zoom, baseHex, 0.8);
+    };
+
+    const getEntityColor = (entity) => {
+        const rend = entity.components.Renderable;
+        if (rend && rend.definitions['BASE']) {
+            return rend.definitions['BASE'].color || 0xffffff;
+        }
+        return 0xffffff;
+    };
+
+    // --- PART 1: COMPLETED CONNECTIONS (Platform A <-> Platform B) ---
     entities.forEach(e => {
         const conn = e.components.WebConnection;
         if (conn) {
@@ -33,21 +136,33 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
                 const x2 = posB.x + bx;
                 const y2 = posB.y + by;
 
-                activeIds.add(e.id);
-                applyWebEffect(conn.effect || 'silk', scene, {
-                    id: e.id,
-                    x1, y1, x2, y2,
-                    tension: conn.tension,
-                    maxLength: conn.fixedLength,
-                    currentLength: Phaser.Math.Distance.Between(x1, y1, x2, y2),
-                    isTether: false,
-                    dt: delta
+                // Energy Flow Logic
+                const egoA = entA.components.Ego?.value ?? 0;
+                const egoB = entB.components.Ego?.value ?? 0;
+                
+                // Direction: Higher Ego flows to Lower Ego
+                const reverse = egoB > egoA;
+                const source = reverse ? entB : entA;
+                const travelerColor = 0x000000;
+                const baseColor = getEntityColor(source);
+
+                // Speed and size based on Ego transfer rate/values
+                const diff = Math.abs(egoA - egoB);
+                const travelerSpeed = 0.5 + (diff * 0.05);
+                const scale = 0.8 + (Math.max(egoA, egoB) / 255);
+
+                drawDynamicPath(x1, y1, x2, y2, conn.fixedLength, conn.tension, {
+                    travelerSpeed,
+                    travelerColor,
+                    baseColor,
+                    reverse,
+                    scale
                 });
             }
         }
     });
 
-    // --- PART 2: ACTIVE TETHER ---
+    // --- PART 2: ACTIVE PLAYER TETHER ---
     const player = entities.find(e => e.components.PlayerTag);
     if (player) {
         const tether = player.components.WebTether;
@@ -66,21 +181,25 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
                 const worldAX = platPos.x + ax;
                 const worldAY = platPos.y + ay;
 
-                activeIds.add(player.id + '_tether');
-                applyWebEffect(tether.effect || 'silk', scene, {
-                    id: player.id + '_tether',
-                    x1: worldAX, y1: worldAY,
-                    x2: pPos.x, y2: pPos.y,
-                    tension: tether.tension,
-                    maxLength: tether.maxLength,
-                    currentLength: Phaser.Math.Distance.Between(pPos.x, pPos.y, worldAX, worldAY),
-                    isTether: true,
-                    dt: delta
+                // Player properties affect the tether
+                const pVel = player.components.Velocity || { x: 0, y: 0 };
+                const speedMag = Math.sqrt(pVel.x * pVel.x + pVel.y * pVel.y);
+                
+                // Traveler flows AWAY from player if moving fast, or TOWARDS player if charging?
+                // Let's make it flow towards the player (pulling energy)
+                const reverse = true; 
+                const travelerSpeed = 1.0 + (speedMag * 0.001);
+                const scale = 1.0;
+                const baseColor = getEntityColor(platform);
+
+                drawDynamicPath(worldAX, worldAY, pPos.x, pPos.y, tether.maxLength, tether.tension, {
+                    travelerSpeed,
+                    travelerColor: 0x000000,
+                    baseColor,
+                    reverse,
+                    scale
                 });
             }
         }
     }
-
-    // --- CLEANUP ---
-    cleanupWebEffects(scene, activeIds);
 };

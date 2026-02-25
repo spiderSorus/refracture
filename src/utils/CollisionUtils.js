@@ -14,23 +14,35 @@ export const pointToSegmentDist = (px, py, x1, y1, x2, y2) => {
 
 /**
  * Checks if a point is inside a collider.
- * @param {Object} point - {x, y}
- * @param {Object} colliderPos - {x, y}
+ * @param {Object} point - {x, y} (World Space)
+ * @param {Object} colliderPos - {x, y} (World Space)
  * @param {Object} collider - {type, radius, width, height}
  * @param {number} buffer - Extra padding
+ * @param {number} rotation - Rotation of the collider in radians
  */
-export const isPointInside = (point, colliderPos, collider, buffer = 0) => {
+export const isPointInside = (point, colliderPos, collider, buffer = 0, rotation = 0) => {
     if (collider.type === 'circle') {
         const distSq = (point.x - colliderPos.x) ** 2 + (point.y - colliderPos.y) ** 2;
         const limit = (collider.radius || 0) + buffer;
         return distSq <= limit * limit;
     } 
     else if (collider.type === 'rect') {
+        // Transform point into collider's local space
+        const dx = point.x - colliderPos.x;
+        const dy = point.y - colliderPos.y;
+        
+        // Rotate by NEGATIVE rotation to un-rotate the world point into local axis-aligned space
+        const cos = Math.cos(-rotation);
+        const sin = Math.sin(-rotation);
+        const localX = dx * cos - dy * sin;
+        const localY = dx * sin + dy * cos;
+
         const hw = ((collider.width || 0) / 2) + buffer;
         const hh = ((collider.height || 0) / 2) + buffer;
+        
         return (
-            point.x >= colliderPos.x - hw && point.x <= colliderPos.x + hw &&
-            point.y >= colliderPos.y - hh && point.y <= colliderPos.y + hh
+            localX >= -hw && localX <= hw &&
+            localY >= -hh && localY <= hh
         );
     }
     return false;
