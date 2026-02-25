@@ -60,7 +60,7 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
      */
     const drawDynamicPath = (x1, y1, x2, y2, targetLen, tension, properties) => {
         const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
-        const { travelerSpeed = 0.8, travelerWidth = 0.15, travelerColor = 0x000000, 
+        const { travelerSpeed = 0.8, travelerWidth = 0.06, travelerColor = 0xff0000, 
                 baseColor = 0xffffff, reverse = false, scale = 1.0 } = properties;
 
         // Tension-based coloring for base line
@@ -73,35 +73,38 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
         const baseHex = Phaser.Display.Color.GetColor(interpolatedBase.r, interpolatedBase.g, interpolatedBase.b);
 
         const time = scene.time.now * 0.001;
-        const cycle = (time * travelerSpeed) % 1.4 - 0.2;
+        // Use a base speed in pixels per second, then convert to normalized progress (0.0 to 1.0)
+        const speedInPixelsPerSecond = travelerSpeed * 200; 
+        const cycle = (time * (speedInPixelsPerSecond / Math.max(1, dist))) % 1.4 - 0.2;
+        
         const tStartRaw = reverse ? 1.0 - (cycle + travelerWidth) : cycle;
         const tEndRaw = reverse ? 1.0 - cycle : cycle + travelerWidth;
         
         const tStart = Math.min(tStartRaw, tEndRaw);
         const tEnd = Math.max(tStartRaw, tEndRaw);
 
-        const layers = 3;
+        const layers = 2;
         
         // 1. Base Diffused Layers
         for (let i = layers; i >= 1; i--) {
-            const alpha = (0.15 / i);
+            const alpha = (0.12 / i);
             const thickness = (i * 2 * scale) / cam.zoom;
             drawPathSegment(x1, y1, x2, y2, targetLen, dist, 0, 1, thickness, baseHex, alpha);
         }
 
-        // 2. Traveling Segment
+        // 2. Core Web Line
+        drawPathSegment(x1, y1, x2, y2, targetLen, dist, 0, 1, (1.0 * scale) / cam.zoom, baseHex, 0.8);
+
+        // 3. Traveling Segment (Color March) - Drawn last to be on top
         if (tEnd > 0 && tStart < 1) {
             for (let i = layers; i >= 1; i--) {
-                const alpha = (0.3 / i);
-                const thickness = (i * 3 * scale) / cam.zoom;
+                const alpha = (0.5 / i);
+                const thickness = (i * 3.5 * scale) / cam.zoom;
                 drawPathSegment(x1, y1, x2, y2, targetLen, dist, Math.max(0, tStart), Math.min(1, tEnd), thickness, travelerColor, alpha);
             }
             // Traveler Core
-            drawPathSegment(x1, y1, x2, y2, targetLen, dist, Math.max(0, tStart), Math.min(1, tEnd), (1 * scale) / cam.zoom, travelerColor, 1.0);
+            drawPathSegment(x1, y1, x2, y2, targetLen, dist, Math.max(0, tStart), Math.min(1, tEnd), (1.8 * scale) / cam.zoom, travelerColor, 1.0);
         }
-
-        // 3. Core Web Line
-        drawPathSegment(x1, y1, x2, y2, targetLen, dist, 0, 1, (1 * scale) / cam.zoom, baseHex, 0.8);
     };
 
     const getEntityColor = (entity) => {
@@ -143,12 +146,12 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
                 // Direction: Higher Ego flows to Lower Ego
                 const reverse = egoB > egoA;
                 const source = reverse ? entB : entA;
-                const travelerColor = 0x000000;
+                const travelerColor = 0xff0000;
                 const baseColor = getEntityColor(source);
 
                 // Speed and size based on Ego transfer rate/values
                 const diff = Math.abs(egoA - egoB);
-                const travelerSpeed = 0.5 + (diff * 0.05);
+                const travelerSpeed = 0.2 + (diff * 0.01);
                 const scale = 0.8 + (Math.max(egoA, egoB) / 255);
 
                 drawDynamicPath(x1, y1, x2, y2, conn.fixedLength, conn.tension, {
@@ -188,13 +191,13 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
                 // Traveler flows AWAY from player if moving fast, or TOWARDS player if charging?
                 // Let's make it flow towards the player (pulling energy)
                 const reverse = true; 
-                const travelerSpeed = 1.0 + (speedMag * 0.001);
+                const travelerSpeed = 0.4 + (speedMag * 0.0002);
                 const scale = 1.0;
                 const baseColor = getEntityColor(platform);
 
                 drawDynamicPath(worldAX, worldAY, pPos.x, pPos.y, tether.maxLength, tether.tension, {
                     travelerSpeed,
-                    travelerColor: 0x000000,
+                    travelerColor: 0xff0000,
                     baseColor,
                     reverse,
                     scale

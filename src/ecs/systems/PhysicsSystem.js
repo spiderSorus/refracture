@@ -170,12 +170,13 @@ export const PhysicsSystem = (entities, delta, scene) => {
             // Platform World Boundary Bouncing
             if (entity.components.PlatformTag && entity.components.Collider) {
                 const col = entity.components.Collider;
-                const radius = col.type === 'circle' ? col.radius : Math.max(col.width, col.height) / 2;
+                const halfW = col.type === 'circle' ? col.radius : (col.width / 2);
+                const halfH = col.type === 'circle' ? col.radius : (col.height / 2);
                 const damping = 0.8;
-                if (pos.x - radius < minX) { pos.x = minX + radius; vel.x = Math.abs(vel.x) * damping; }
-                else if (pos.x + radius > maxX) { pos.x = maxX - radius; vel.x = -Math.abs(vel.x) * damping; }
-                if (pos.y - radius < minY) { pos.y = minY + radius; vel.y = Math.abs(vel.y) * damping; }
-                else if (pos.y + radius > maxY) { pos.y = maxY - radius; vel.y = -Math.abs(vel.y) * damping; }
+                if (pos.x - halfW < minX) { pos.x = minX + halfW; vel.x = Math.abs(vel.x) * damping; }
+                else if (pos.x + halfW > maxX) { pos.x = maxX - halfW; vel.x = -Math.abs(vel.x) * damping; }
+                if (pos.y - halfH < minY) { pos.y = minY + halfH; vel.y = Math.abs(vel.y) * damping; }
+                else if (pos.y + halfH > maxY) { pos.y = maxY - halfH; vel.y = -Math.abs(vel.y) * damping; }
             }
         }
     });

@@ -39,6 +39,11 @@ export const EnergySystem = (entities, dt, scene) => {
         }
 
         col.radius = newRadius;
+        if (col.type === 'rect') {
+            col.width = newRadius * 2;
+            col.height = newRadius * 2;
+        }
+
         if (rend && rend.definitions['BASE']) {
             const base = rend.definitions['BASE'];
             if (base.type === 'circle') base.radius = newRadius;
