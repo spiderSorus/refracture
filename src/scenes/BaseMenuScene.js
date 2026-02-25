@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { InputManager } from '../core/Input';
 import { loadBackground } from '../backgrounds/index';
 import { RenderSystem, ParallaxSystem, CameraSystem, ZLayerSystem } from '../ecs/systems/index';
+import { RecordingSystem } from '../ecs/systems/RecordingSystem';
 import { PHYSICS } from '../core/Constants';
 import { UI } from '../core/UIManager';
 
@@ -23,6 +24,11 @@ export class BaseMenuScene extends Phaser.Scene {
         this.entities = [];
         this.menuCamX = 0;
         this.menuCamY = 0;
+
+        // Initialize base layers for RenderSystem
+        this.bgLayer = this.add.layer().setName('BG_LAYER').setDepth(50);
+        this.fgLayer = this.add.layer().setName('FG_LAYER').setDepth(100);
+        this.foreLayer = this.add.layer().setName('FORE_LAYER').setDepth(200);
 
         // Match visual style of gameplay scenes
         this.cameras.main.setZoom(0.8);
@@ -53,11 +59,6 @@ export class BaseMenuScene extends Phaser.Scene {
         this.setupMenu();
         this.updateSelection();
 
-        // Initialize base layers for RenderSystem
-        this.bgLayer = this.add.layer().setName('BG_LAYER').setDepth(50);
-        this.fgLayer = this.add.layer().setName('FG_LAYER').setDepth(100);
-        this.foreLayer = this.add.layer().setName('FORE_LAYER').setDepth(200);
-
         this.input.keyboard.on('keydown-TAB', () => {
             UI.toggleDebug();
         });
@@ -71,25 +72,26 @@ export class BaseMenuScene extends Phaser.Scene {
             fontSize: '64px',
             fill: '#fff',
             fontFamily: 'monospace'
-        }).setScrollFactor(0).setDepth(10);
+        }).setScrollFactor(0);
+        this.foreLayer.add(titleText);
 
         // Calculate overlay width based on title text
-        const overlayWidth = titleText.width + 100;
+        const overlayWidth = 450; // Use a fixed width for consistency
         const overlayHeight = this.cameras.main.height * 2;
 
         // Add a dark overlay so text is readable over background
-        // Fixed to screen, width matched to text
-        this.add.rectangle(0, 0, overlayWidth, overlayHeight, 0x000000, 0.5)
+        const overlay = this.add.rectangle(0, 0, overlayWidth, overlayHeight, 0x000000, 0.5)
             .setOrigin(0, 0)
-            .setScrollFactor(0)
-            .setDepth(5);
+            .setScrollFactor(0);
+        this.foreLayer.add(overlay);
 
         if (this.subtitle) {
-            this.add.text(55, 130, this.subtitle, {
+            const sub = this.add.text(55, 130, this.subtitle, {
                 fontSize: '24px',
                 fill: '#0ff',
                 fontFamily: 'monospace'
-            }).setScrollFactor(0).setDepth(10);
+            }).setScrollFactor(0);
+            this.foreLayer.add(sub);
         }
     }
 
@@ -103,13 +105,15 @@ export class BaseMenuScene extends Phaser.Scene {
                 fontSize: '24px',
                 fill: '#fff',
                 fontFamily: 'monospace'
-            }).setScrollFactor(0).setDepth(10);
+            }).setScrollFactor(0);
+            this.foreLayer.add(text);
             this.textObjects.push(text);
         });
     }
 
     update(time, delta) {
         this.inputManager.update();
+        RecordingSystem(this, this.inputManager);
 
         if (this.inputManager.getAction('UP')) {
             this.navigate(-1);

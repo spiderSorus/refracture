@@ -82,7 +82,14 @@ export class BaseTestScene extends Phaser.Scene {
         this.input.keyboard.off('keydown-ESC');
         this.accumulator = 0;
         this.initialized = false;
-        this.bgCamera = null;
+        
+        // Clear custom camera/layer properties to prevent issues on re-entry
+        this.auxCameras = {};
+        this.auxLayers = {};
+        this.currentBackground = null;
+        this.backgroundColor = null;
+        this.atmosphereColor = null;
+
         this._camInitialized = false;
     }
 

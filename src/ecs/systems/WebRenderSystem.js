@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import { getImmediateGfx } from '../../utils/RenderUtils';
 
 export const WebRenderSystem = (entities, scene, interpAlpha = 1.0) => {
-    const gfx = getImmediateGfx(scene, 'webGfx', 1100, scene.fgLayer);
+    const targetLayer = scene.auxLayers && scene.auxLayers['web_rainbow'] ? scene.auxLayers['web_rainbow'] : scene.fgLayer;
+    const gfx = getImmediateGfx(scene, 'webGfx', 1100, targetLayer);
     const cam = scene.cameras.main;
     const thickness = 2 / cam.zoom;
 

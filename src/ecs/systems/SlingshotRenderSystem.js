@@ -2,7 +2,9 @@
 import { getImmediateGfx } from '../../utils/RenderUtils';
 
 export const SlingshotRenderSystem = (entities, scene, interpAlpha = 1.0) => {
-    const gfx = getImmediateGfx(scene, 'slingGfx', 2000, scene.fgLayer);
+    // Check for the specific web_rainbow layer created by CameraSystem
+    const targetLayer = scene.auxLayers && scene.auxLayers['web_rainbow'] ? scene.auxLayers['web_rainbow'] : null;
+    const gfx = getImmediateGfx(scene, 'slingGfx', 2000, targetLayer);
 
     const player = entities.find(e => e.components.PlayerTag && e.components.SlingshotJump);
     if (!player) return;
