@@ -8,9 +8,9 @@ import { RenderFactory } from './RenderFactory';
  */
 export const RenderSystem = (entities, scene, alpha = 1.0) => {
     // 1. Initialize Scene Layers if not present
-    if (!scene.bgLayer || !scene.bgLayer.list) scene.bgLayer = scene.add.layer().setName('BG_LAYER').setDepth(50);
-    if (!scene.fgLayer || !scene.fgLayer.list) scene.fgLayer = scene.add.layer().setName('FG_LAYER').setDepth(100);
-    if (!scene.foreLayer || !scene.foreLayer.list) scene.foreLayer = scene.add.layer().setName('FORE_LAYER').setDepth(200);
+    if (!scene.bgLayer) scene.bgLayer = scene.add.layer().setName('BG_LAYER').setDepth(50);
+    if (!scene.fgLayer) scene.fgLayer = scene.add.layer().setName('FG_LAYER').setDepth(100);
+    if (!scene.foreLayer) scene.foreLayer = scene.add.layer().setName('FORE_LAYER').setDepth(200);
 
     entities.forEach(entity => {
         const { Position: pos, Rotation: rot, Renderable: renderable, ZLayer: zlayer } = entity.components;
@@ -44,11 +44,11 @@ export const RenderSystem = (entities, scene, alpha = 1.0) => {
                 
                 // Add to the appropriate Phaser Layer
                 [gfx.gameObject, gfx.emitter, gfx.tracerGfx].forEach(item => {
-                    if (!item || (item.scene && item.scene !== scene)) return;
+                    if (!item) return;
 
-                    // If we have a target layer with a valid list, add it there
-                    // Check for type === 'Layer' to be absolutely sure
-                    if (targetLayer && (targetLayer.type === 'Layer' || targetLayer.list) && typeof targetLayer.add === 'function') {
+                    // Ensure targetLayer is valid and has an 'add' function.
+                    // If it's destroyed or invalid, targetLayer.scene will be null.
+                    if (targetLayer && targetLayer.scene && typeof targetLayer.add === 'function') {
                         try {
                             targetLayer.add(item);
                         } catch (e) {

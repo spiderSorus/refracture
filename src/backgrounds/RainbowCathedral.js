@@ -54,4 +54,9 @@ export const RainbowCathedral = (scene, config = {}) => {
     });
 
     console.log(`[BACKGROUND] Loaded Rainbow Cathedral with ${layers.reduce((acc, l) => acc + l.count, 0)} columns.`);
+
+    return {
+        backgroundColor: 0x000000,
+        atmosphereColor: null
+    };
 };

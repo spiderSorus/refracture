@@ -44,4 +44,10 @@ export const ComplexityBackground = (scene, config = {}) => {
     }
 
     console.log(`[BACKGROUND] Complexity Loaded.`);
+
+    return {
+        backgroundColor: 0xffffff,
+        atmosphereColor: 0xffffff,
+        atmosphereIntensity: 0.8
+    };
 };

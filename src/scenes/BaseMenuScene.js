@@ -3,6 +3,7 @@ import { InputManager } from '../core/Input';
 import { loadBackground } from '../backgrounds/index';
 import { RenderSystem, ParallaxSystem, CameraSystem, ZLayerSystem } from '../ecs/systems/index';
 import { PHYSICS } from '../core/Constants';
+import { UI } from '../core/UIManager';
 
 export class BaseMenuScene extends Phaser.Scene {
     constructor(key, title = 'MENU', subtitle = '') {
@@ -41,6 +42,7 @@ export class BaseMenuScene extends Phaser.Scene {
         
         // Pass the custom layer name to the background loader if it supports it
         const layerName = randomBg === 'stained_rainbow' ? 'bg_glass' : 'bg_watercolor';
+        
         loadBackground(randomBg, this, { 
             worldSize: 4000, 
             layerName: layerName 
@@ -54,6 +56,10 @@ export class BaseMenuScene extends Phaser.Scene {
         this.bgLayer = this.add.layer().setName('BG_LAYER').setDepth(50);
         this.fgLayer = this.add.layer().setName('FG_LAYER').setDepth(100);
         this.foreLayer = this.add.layer().setName('FORE_LAYER').setDepth(200);
+
+        this.input.keyboard.on('keydown-TAB', () => {
+            UI.toggleDebug();
+        });
 
         // Dedicated ESC listener for reliability
         this.input.keyboard.on('keydown-ESC', () => this.handleBack());
@@ -136,6 +142,26 @@ export class BaseMenuScene extends Phaser.Scene {
         ZLayerSystem(this.entities);
         RenderSystem(this.entities, this, 1.0);
         ParallaxSystem(this.entities, this, 1.0);
+
+        this.updateDebugUI();
+    }
+
+    updateDebugUI() {
+        // Debug Camera Info
+        const cameraInfo = this.cameras.cameras.map(c => {
+            return `${c.name} (${c.postPipelines.map(p => p.constructor.name).join(', ') || 'Normal'})`;
+        });
+
+        UI.updateDebug({
+            scene: this.scene.key,
+            x: Math.round(this.menuCamX),
+            y: Math.round(this.menuCamY)
+        }, {
+            fps: Math.round(this.game.loop.actualFps),
+            status: "MENU",
+            background: this.currentBackground || 'Default',
+            cameras: cameraInfo
+        });
     }
 
     navigate(dir) {

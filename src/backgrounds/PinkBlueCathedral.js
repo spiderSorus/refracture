@@ -44,4 +44,9 @@ export const PinkBlueCathedral = (scene, config = {}) => {
     });
 
     console.log(`[BACKGROUND] Loaded Pink & Blue Cathedral.`);
+
+    return {
+        backgroundColor: 0x000000,
+        atmosphereColor: null
+    };
 };

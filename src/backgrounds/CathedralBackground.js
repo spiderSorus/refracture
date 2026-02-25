@@ -42,4 +42,9 @@ export const CathedralBackground = (scene, config = {}) => {
     });
 
     console.log(`[BACKGROUND] Loaded Cathedral with ${layers.reduce((acc, l) => acc + l.count, 0)} columns.`);
+
+    return {
+        backgroundColor: 0x000000,
+        atmosphereColor: null
+    };
 };

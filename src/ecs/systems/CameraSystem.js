@@ -8,7 +8,6 @@ import Phaser from 'phaser';
  */
 export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
     const mainCam = scene.cameras.main;
-    mainCam.setBackgroundColor('rgba(0,0,0,0)');
     
     // 1. DYNAMIC CAMERA INITIALIZATION
     if (!scene.auxCameras) scene.auxCameras = {};
@@ -18,6 +17,14 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
     const configs = scene.cameraConfigs || [
         { name: 'BackgroundCamera', layer: 'bgLayer', type: 'BACK' }
     ];
+
+    // Determine if we have any BACK cameras that would be obscured by mainCam background
+    const hasBackCameras = configs.some(cfg => cfg.type === 'BACK');
+    if (hasBackCameras) {
+        mainCam.setBackgroundColor('rgba(0,0,0,0)');
+    } else if (scene.backgroundColor !== undefined) {
+        mainCam.setBackgroundColor(scene.backgroundColor);
+    }
 
     configs.forEach(cfg => {
         // Create Camera if missing or invalid
@@ -45,10 +52,20 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
             }
         }
 
+        const cam = scene.auxCameras[cfg.name];
+
+        // Ensure the LOWEST camera (first in cameras array) has the scene background color
+        const cams = scene.cameras.cameras;
+        if (cams[0] === cam && scene.backgroundColor !== undefined) {
+            cam.setBackgroundColor(scene.backgroundColor);
+        } else {
+            cam.setBackgroundColor('rgba(0,0,0,0)');
+        }
+
         // Create Layer if missing
-        if (!scene.auxLayers[cfg.layer] || !scene.auxLayers[cfg.layer].list) {
+        if (!scene.auxLayers[cfg.layer]) {
             // Check if scene already has this layer by name (e.g. from create())
-            if (scene[cfg.layer] && scene[cfg.layer] instanceof Phaser.GameObjects.Layer && scene[cfg.layer].list) {
+            if (scene[cfg.layer] && scene[cfg.layer] instanceof Phaser.GameObjects.Layer) {
                 scene.auxLayers[cfg.layer] = scene[cfg.layer];
             } else {
                 scene.auxLayers[cfg.layer] = scene.add.layer().setName(cfg.layer.toUpperCase());
@@ -56,7 +73,6 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
         }
 
         // Ensure cameras ignore the right layers
-        const cam = scene.auxCameras[cfg.name];
         const layer = scene.auxLayers[cfg.layer];
 
         // Main camera ignores all auxiliary layers

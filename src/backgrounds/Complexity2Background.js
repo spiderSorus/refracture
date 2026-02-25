@@ -41,4 +41,10 @@ export const Complexity2Background = (scene, config = {}) => {
     }
 
     console.log(`[BACKGROUND] Complexity 2 Loaded with ${count} hard shapes.`);
+
+    return {
+        backgroundColor: 0xffffff,
+        atmosphereColor: 0xffffff,
+        atmosphereIntensity: 0.8
+    };
 };

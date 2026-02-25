@@ -75,14 +75,18 @@ export class UIManager {
                 <strong style="color: #0ff;">[ ${playerData.scene || 'SCENE'} ]</strong><br>
                 FPS: ${stateData.fps || 0}<br>
                 POS: ${playerData.x}, ${playerData.y}<br>
-                REALITY: <span style="color: #fff; font-size: 16px;">${stateData.reality || 0}</span><br>
+                BG: <span style="color: #fff;">${stateData.background || 'None'}</span><br>
                 STATUS: ${stateData.status}
+            </div>
+            <div style="margin-bottom: 10px; border-bottom: 1px solid #444; width: 100%; padding-bottom: 5px; font-size: 11px;">
+                <strong style="color: #0ff;">[ CAMERAS ]</strong><br>
+                ${(stateData.cameras || []).map(c => `• ${c}`).join('<br>')}
             </div>
             <div style="color: #ff8400;">
                 <strong style="color: #fff;">[ SLINGSHOT ]</strong><br>
                 STATE: ${stateTag}<br>
                 RAW MAG: ${mag.toFixed(3)}<br>
-                LOCKED VEC: ${sling.vecX.toFixed(2)}, ${sling.vecY.toFixed(2)}<br>
+                LOCKED VEC: ${(sling.vecX ?? 0).toFixed(2)}, ${(sling.vecY ?? 0).toFixed(2)}<br>
                 <br>
                 <strong style="color: #fff;">[ DIAGNOSTICS ]</strong><br>
                 STICK X: ${raw.x.toFixed(3)}<br>

@@ -181,6 +181,12 @@ export class BaseTestScene extends Phaser.Scene {
 
     updateDebugUI() {
         const player = this.entities.find(e => e.components.PlayerTag);
+        
+        // Debug Camera Info
+        const cameraInfo = this.cameras.cameras.map(c => {
+            return `${c.name} (${c.postPipelines.map(p => p.constructor.name).join(', ') || 'Normal'})`;
+        });
+
         if (player) {
             const sling = player.components.SlingshotJump || {};
             const rawStick = this.inputManager.getRightStickRaw();
@@ -192,6 +198,8 @@ export class BaseTestScene extends Phaser.Scene {
             }, {
                 fps: Math.round(this.game.loop.actualFps),
                 status: player.components.Parent ? "ATTACHED" : "FREE",
+                background: this.currentBackground || 'Default',
+                cameras: cameraInfo,
                 sling: {
                     isCharging: sling.isCharging,
                     rawStick: rawStick,

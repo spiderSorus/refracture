@@ -24,7 +24,6 @@ export class Renderama extends BaseTestScene {
 
         this.cameras.main.setBounds(-WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setZoom(0.8);
-        this.cameras.main.setBackgroundColor(0x000000); // Black background for rainbow contrast
         
         // Define dynamic camera configuration
         this.cameraConfigs = [
