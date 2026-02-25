@@ -173,7 +173,12 @@ export const PhysicsSystem = (entities, delta, scene) => {
     });
 
     // 3. RESOLVE COLLISIONS
-    const platformsForCollision = entities.filter(e => e.components.PlatformTag && e.components.Collider && e.components.Position);
+    const platformsForCollision = entities.filter(e => {
+        const isPlatform = e.components.PlatformTag && e.components.Collider && e.components.Position;
+        const zLayer = e.components.ZLayer;
+        const isBackground = zLayer && zLayer.type === 'BACK';
+        return isPlatform && !isBackground;
+    });
     for (let i = 0; i < platformsForCollision.length; i++) {
         for (let j = i + 1; j < platformsForCollision.length; j++) {
             const A = platformsForCollision[i];

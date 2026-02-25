@@ -1,7 +1,7 @@
 import {
     Position, Rotation, Renderable, ViewLayers,
     EntityType, PlatformTag, Collider, Parallax, ZLayer
-} from '../../components/index';
+} from '../components/index';
 
 /**
  * Creates a cathedral column entity for backgrounds.

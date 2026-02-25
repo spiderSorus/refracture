@@ -5,7 +5,8 @@ precision mediump float;
 
 uniform sampler2D uMainSampler;
 varying vec2 outTexCoord;
-uniform float uTime;
+uniform float uScrollX;
+uniform float uScrollY;
 uniform float uAmplitude;
 uniform float uFrequency;
 
@@ -45,26 +46,33 @@ float snoise(vec2 v) {
 void main() {
     vec2 uv = outTexCoord;
     
+    // Use camera scroll for world-space noise pinning
+    vec2 worldUV = uv + vec2(uScrollX, uScrollY) * 0.0001;
+    
     // Original color at this pixel
     vec4 baseColor = texture2D(uMainSampler, uv);
 
-    // Target color to apply effect to (Shades of Red)
-    // We check if it's "mostly red"
-    bool isTarget = (baseColor.r > baseColor.g * 1.5 && baseColor.r > baseColor.b * 1.5 && baseColor.a > 0.0);
+    // Target color to apply effect to (Shades of Red/Pink and Blue)
+    bool isRedPink = (baseColor.r > baseColor.g * 1.2 && baseColor.r > baseColor.b * 0.8 && baseColor.a > 0.0);
+    bool isBlue = (baseColor.b > baseColor.r * 1.2 && baseColor.b > baseColor.g * 1.2 && baseColor.a > 0.0);
+    bool isTarget = isRedPink || isBlue;
 
     if (isTarget) {
-        // Displacement based on noise (Aquarelle style)
-        float n = snoise(uv * uFrequency + uTime * 0.1) * 3.14159;
+        // Displacement based on noise tied to WORLD UV
+        float n = snoise(worldUV * uFrequency) * 3.14159;
         vec2 offset = vec2(cos(n), sin(n)) * uAmplitude;
         
         // Multiple octaves of noise for the "bleed" edge
-        float n2 = snoise(uv * 20.0 + uTime * 0.05);
+        float n2 = snoise(worldUV * 20.0);
         vec2 bleed = vec2(cos(n2), sin(n2)) * 0.02;
         
         vec4 distortedColor = texture2D(uMainSampler, uv + offset + bleed);
         
-        // Only keep the distorted color if it's also red (don't bleed onto non-red)
-        if (distortedColor.r > distortedColor.g * 1.2 && distortedColor.r > distortedColor.b * 1.2) {
+        // Match the target color logic for distortion persistence
+        bool distRedPink = (distortedColor.r > distortedColor.g * 1.1 && distortedColor.r > distortedColor.b * 0.7);
+        bool distBlue = (distortedColor.b > distortedColor.r * 1.1 && distortedColor.b > distortedColor.g * 1.1);
+
+        if (distRedPink || distBlue) {
              gl_FragColor = distortedColor;
         } else {
              gl_FragColor = baseColor;
@@ -83,7 +91,8 @@ export class AquarellePipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPip
             fragShader,
             uniforms: [
                 'uMainSampler',
-                'uTime',
+                'uScrollX',
+                'uScrollY',
                 'uAmplitude',
                 'uFrequency'
             ]
@@ -93,7 +102,12 @@ export class AquarellePipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPip
     }
 
     onPreRender() {
-        this.set1f('uTime', this.game.loop.time * 0.001);
+        const scenes = this.game.scene.getScenes(true);
+        if (scenes.length > 0) {
+            const cam = scenes[0].cameras.main;
+            this.set1f('uScrollX', cam.scrollX);
+            this.set1f('uScrollY', cam.scrollY);
+        }
         this.set1f('uAmplitude', this.amplitude);
         this.set1f('uFrequency', this.frequency);
     }

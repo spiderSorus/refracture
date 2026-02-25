@@ -68,7 +68,9 @@ export const WebSystem = (entities, inputManager, scene) => {
     // CREATE TETHER
     if (yJustPressed && !tether && currentParent) {
         const plat = entities.find(e => e.id === currentParent.id);
-        if (plat && plat.components.Position) {
+        const isBackground = plat?.components.ZLayer?.type === 'BACK';
+        
+        if (plat && plat.components.Position && !isBackground) {
             const snappedOffset = snapOffsetInside(currentParent.offset, plat.components.Collider, 10);
             const newTether = WebTether(currentParent.id, snappedOffset);
             newTether.maxForce *= strengthMult;
@@ -94,7 +96,10 @@ export const WebSystem = (entities, inputManager, scene) => {
         const platA = entities.find(e => e.id === tether.platformId);
         const platB = entities.find(e => e.id === currentParent.id);
         
-        if (platA && platB && platA.components.Position && platB.components.Position) {
+        const isBackA = platA?.components.ZLayer?.type === 'BACK';
+        const isBackB = platB?.components.ZLayer?.type === 'BACK';
+        
+        if (platA && platB && platA.components.Position && platB.components.Position && !isBackA && !isBackB) {
             const snappedOffsetB = snapOffsetInside(currentParent.offset, platB.components.Collider, 10);
             const x1 = platA.components.Position.x + tether.anchorOffset.x;
             const y1 = platA.components.Position.y + tether.anchorOffset.y;

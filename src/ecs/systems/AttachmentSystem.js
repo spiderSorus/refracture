@@ -22,7 +22,13 @@ export const AttachmentSystem = (entities) => {
         return;
     }
 
-    const platforms = entities.filter(e => e.components.PlatformTag && e.components.Collider && e.components.Position);
+    const platforms = entities.filter(e => {
+        const isPlatform = e.components.PlatformTag && e.components.Collider && e.components.Position;
+        const zLayer = e.components.ZLayer;
+        // Never interact with background layers
+        const isBackground = zLayer && zLayer.type === 'BACK';
+        return isPlatform && !isBackground;
+    });
     const catchBuffer = 15;
 
     if (sling && sling.lastPlatformId) {
