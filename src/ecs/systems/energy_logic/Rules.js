@@ -52,6 +52,7 @@ export const FloaterGravityRule = (entities, dt, constants) => {
         }
     });
 };
+FloaterGravityRule.ruleName = 'FloaterGravity';
 
 export const EgoGravityRule = (entities, dt, constants) => {
     const { GRAVITY } = constants;
@@ -83,6 +84,7 @@ export const EgoGravityRule = (entities, dt, constants) => {
         }
     });
 };
+EgoGravityRule.ruleName = 'EgoGravity';
 
 export const EgoBalanceRule = (entities, dt) => {
     const currentLevel = getPlayerLevel(entities);
@@ -106,6 +108,7 @@ export const EgoBalanceRule = (entities, dt) => {
         }
     });
 };
+EgoBalanceRule.ruleName = 'EgoBalance';
 
 /**
  * WebConnectionActivationRule
@@ -164,6 +167,7 @@ export const WebConnectionActivationRule = (entities, dt, constants) => {
         }
     });
 };
+WebConnectionActivationRule.ruleName = 'WebConnectionActivation';
 
 /**
  * DynamicStaticToggleRule
@@ -196,4 +200,13 @@ export const DynamicStaticToggleRule = (entities, dt, constants) => {
             // NO GRAVITY FOR FLOATERS IN THIS RULE
         }
     });
+};
+DynamicStaticToggleRule.ruleName = 'DynamicStaticToggle';
+
+export const EnergyRules = {
+    'FloaterGravity': FloaterGravityRule,
+    'EgoGravity': EgoGravityRule,
+    'EgoBalance': EgoBalanceRule,
+    'WebConnectionActivation': WebConnectionActivationRule,
+    'DynamicStaticToggle': DynamicStaticToggleRule
 };

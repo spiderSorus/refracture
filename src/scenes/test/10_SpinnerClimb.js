@@ -40,11 +40,11 @@ export class SpinnerClimb extends BaseTestScene {
         // 2. PROCEDURAL SPINNER PATH
         let lastY = spawnY;
         for (let i = 0; i < 50; i++) {
-            const dist = Phaser.Math.Between(400, 900);
+            const dist = Phaser.Math.Between(800, 1800); // Increased distance for larger platforms
             const nextY = lastY - dist;
             const nextX = Phaser.Math.Between(400, WORLD_WIDTH - 400);
             const isCircle = Math.random() > 0.4;
-            const size = Phaser.Math.Between(70, 160);
+            const size = Phaser.Math.Between(140, 320); // Doubled size
             const spinRate = Phaser.Math.FloatBetween(0.3, 2.0) * (Math.random() > 0.5 ? 1 : -1);
             const color = Phaser.Display.Color.RandomRGB(40).color;
 
@@ -62,7 +62,7 @@ export class SpinnerClimb extends BaseTestScene {
                 comps.push(Renderable({ 'BASE': { type: 'circle', radius: size, color: color } }));
                 comps.push(Collider('circle', size));
             } else {
-                const w = size * 2.2; const h = Phaser.Math.Between(30, 80);
+                const w = size * 2.2; const h = Phaser.Math.Between(60, 160); // Doubled height range
                 comps.push(Renderable({ 'BASE': { type: 'rect', width: w, height: h, color: color } }));
                 comps.push(Collider('rect', 0, w, h));
             }

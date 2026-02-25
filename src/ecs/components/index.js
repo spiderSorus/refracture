@@ -2,6 +2,7 @@ import { PHYSICS } from '../../core/Constants';
 
 export const Position = (x = 0, y = 0) => ({ _type: 'Position', x, y });
 export const Velocity = (x = 0, y = 0) => ({ _type: 'Velocity', x, y });
+export const AngularVelocity = (rate = 0) => ({ _type: 'AngularVelocity', rate }); // rate in radians per second
 export const Rotation = (angle = 0) => ({ _type: 'Rotation', angle });
 
 export const Renderable = (definitions = {}) => ({
@@ -69,7 +70,7 @@ export const WebTether = (platformId, anchorOffset = { x: 0, y: 0 }) => ({
     anchorOffset,
     maxLength: PHYSICS.WEB_MAX_LENGTH,
     currentLength: PHYSICS.WEB_INITIAL_LENGTH,
-    stiffness: 0.05,
+    stiffness: PHYSICS.WEB_STIFFNESS,
     damping: 0.05,
     maxForce: 5000,
     tension: 0,
@@ -84,7 +85,7 @@ export const WebConnection = (fromId, fromOffset, toId, toOffset) => ({
     toId,
     toOffset,
     fixedLength: 100,
-    stiffness: 0.05,
+    stiffness: PHYSICS.WEB_STIFFNESS,
     maxForce: 8000,
     tension: 0,
     transferRate: 10, // Ego flow per second

@@ -1,6 +1,7 @@
 import {
     Position, Velocity, Rotation, Renderable, Collider,
-    PlatformTag, SpawnTag, EntityType, Mass, ZLayer, StaticTag
+    PlatformTag, SpawnTag, EntityType, Mass, ZLayer, StaticTag,
+    AngularVelocity
 } from '../components/index';
 
 /**
@@ -16,6 +17,7 @@ export const createPlatform = (x, y, config = {}) => {
     const components = [
         Position(x, y),
         Velocity(0, 0),
+        AngularVelocity(0),
         Rotation(0),
         ZLayer('PLAY', 0),
         PlatformTag(),
@@ -51,6 +53,7 @@ export const createSpawnPlatform = (x, y, config = {}) => {
     return [
         Position(x, y),
         Velocity(0, 0),
+        AngularVelocity(0),
         Rotation(0),
         ZLayer('PLAY', 0),
         PlatformTag(),

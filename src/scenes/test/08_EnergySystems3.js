@@ -6,7 +6,7 @@ import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
     Mass, Velocity, Ego
 } from '../../ecs/components/index';
-import { DynamicStaticToggleRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
+import { DynamicStaticToggleRule, EgoBalanceRule, WebConnectionActivationRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
 
 export class EnergySystems3 extends BaseTestScene {

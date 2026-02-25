@@ -1,4 +1,4 @@
-import { createPlayer } from '../../ecs/entities/player';
+import { createPlayer, spawnPlayer } from '../../ecs/entities/player';
 import { createSpawnPlatform, createPlatform } from '../../ecs/entities/platforms';
 import { loadBackground } from '../../backgrounds/index';
 import { BaseTestScene } from './BaseTestScene';
@@ -64,11 +64,8 @@ export class WatercolorScene extends BaseTestScene {
             }));
         }
 
-        this.addEntity([
-            ...createPlayer(spawnX, spawnY),
-            SlingshotJump(PHYSICS.SLINGSHOT_FORCE),
-            ZLayer('PLAY', 0)
-        ]);
+        // 2. PLAYER
+        spawnPlayer(this, spawnPlat);
         
         this.cameras.main.centerOn(spawnX, spawnY);
     }

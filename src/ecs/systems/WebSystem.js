@@ -16,7 +16,7 @@ export const WebSystem = (entities, inputManager, scene) => {
     const MAX_SPOOL_LENGTH = PHYSICS.WEB_MAX_LENGTH;
     const MIN_SPOOL_LENGTH = PHYSICS.WEB_MIN_LENGTH;
     
-    const strengthMult = scene?.webStrengthMult || 1.0;
+    const strengthMult = PHYSICS.WEB_STRENGTH_MULT;
 
     // --- 1. WINCH & DANGLE PHYSICS ---
     if (tether) {

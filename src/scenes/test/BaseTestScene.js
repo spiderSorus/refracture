@@ -20,6 +20,7 @@ import { ZLayerSystem } from '../../ecs/systems/ZLayerSystem';
 import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
 import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
 import { RecordingSystem } from '../../ecs/systems/RecordingSystem'; 
+import { EnergyRules } from '../../ecs/systems/energy_logic/Rules';
 
 export class BaseTestScene extends Phaser.Scene {
     constructor(key, title, subtitle) {
@@ -39,6 +40,19 @@ export class BaseTestScene extends Phaser.Scene {
 
     removeEnergyRule(rule) {
         this.energyRules = this.energyRules.filter(r => r !== rule);
+    }
+
+    enableEnergyRule(ruleName) {
+        const rule = EnergyRules[ruleName];
+        if (rule) {
+            this.addEnergyRule(rule);
+        } else {
+            console.warn(`[ENERGY] Rule not found: ${ruleName}`);
+        }
+    }
+
+    disableEnergyRule(ruleName) {
+        this.energyRules = this.energyRules.filter(r => r.ruleName !== ruleName);
     }
 
     create() {

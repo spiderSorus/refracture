@@ -27,12 +27,21 @@ export const PhysicsSystem = (entities, delta, scene) => {
         }
     });
 
-    // --- 0. UPDATE ROTATION (Spin) ---
+    // --- 0. UPDATE ROTATION (Spin & AngularVelocity) ---
     entities.forEach(entity => {
         const spin = entity.components.Spin;
+        const angVel = entity.components.AngularVelocity;
         const rot = entity.components.Rotation;
-        if (spin && rot) {
-            rot.angle += spin.rate * dt;
+        
+        if (rot) {
+            if (spin) {
+                rot.angle += spin.rate * dt;
+            }
+            if (angVel) {
+                rot.angle += angVel.rate * dt;
+                // Apply angular damping
+                angVel.rate *= 0.98;
+            }
         }
     });
 
@@ -68,11 +77,23 @@ export const PhysicsSystem = (entities, delta, scene) => {
                     pVel.y += (ny * force / pMass) * dt;
 
                     const platVel = platform.components.Velocity;
+                    const platAngVel = platform.components.AngularVelocity;
                     const isStatic = !!(platform.components.SpawnTag || platform.components.StaticTag);
-                    if (platVel && !isStatic) {
+                    if (!isStatic) {
                         const platMass = platform.components.Mass?.value || 10;
-                        platVel.x -= (nx * force / platMass) * dt;
-                        platVel.y -= (ny * force / platMass) * dt;
+                        if (platVel) {
+                            platVel.x -= (nx * force / platMass) * dt;
+                            platVel.y -= (ny * force / platMass) * dt;
+                        }
+                        
+                        // Apply Torque
+                        if (platAngVel) {
+                            // Torque = r x F
+                            // In 2D: torque = rx * Fy - ry * Fx
+                            // Force applied to platform is (-nx * force, -ny * force)
+                            const torque = (ax * (-ny * force) - ay * (-nx * force)) / (platMass * 100);
+                            platAngVel.rate += torque * dt;
+                        }
                     }
                 } else { tether.tension = 0; }
             }
@@ -108,13 +129,29 @@ export const PhysicsSystem = (entities, delta, scene) => {
                     const massB = entB.components.Mass?.value || 10;
                     const staticA = !!(entA.components.SpawnTag || entA.components.StaticTag);
                     const staticB = !!(entB.components.SpawnTag || entB.components.StaticTag);
-                    if (entA.components.Velocity && !staticA) {
-                        entA.components.Velocity.x += (nx * force / massA) * dt;
-                        entA.components.Velocity.y += (ny * force / massA) * dt;
+                    
+                    if (!staticA) {
+                        if (entA.components.Velocity) {
+                            entA.components.Velocity.x += (nx * force / massA) * dt;
+                            entA.components.Velocity.y += (ny * force / massA) * dt;
+                        }
+                        if (entA.components.AngularVelocity) {
+                            // Force on A is (+nx * force, +ny * force)
+                            const torqueA = (ax * (ny * force) - ay * (nx * force)) / (massA * 100);
+                            entA.components.AngularVelocity.rate += torqueA * dt;
+                        }
                     }
-                    if (entB.components.Velocity && !staticB) {
-                        entB.components.Velocity.x -= (nx * force / massB) * dt;
-                        entB.components.Velocity.y -= (ny * force / massB) * dt;
+                    
+                    if (!staticB) {
+                        if (entB.components.Velocity) {
+                            entB.components.Velocity.x -= (nx * force / massB) * dt;
+                            entB.components.Velocity.y -= (ny * force / massB) * dt;
+                        }
+                        if (entB.components.AngularVelocity) {
+                            // Force on B is (-nx * force, -ny * force)
+                            const torqueB = (bx * (-ny * force) - by * (-nx * force)) / (massB * 100);
+                            entB.components.AngularVelocity.rate += torqueB * dt;
+                        }
                     }
                 } else { conn.tension = 0; }
             }
