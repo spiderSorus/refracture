@@ -1,6 +1,6 @@
 import {
     Position, Velocity, Rotation, Renderable, Collider,
-    PlatformTag, SpawnTag, EntityType, Mass
+    PlatformTag, SpawnTag, EntityType, Mass, ZLayer
 } from '../components/index';
 
 /**
@@ -16,6 +16,7 @@ export const createSpawnPlatform = (x, y, config = {}) => {
         Position(x, y),
         Velocity(0, 0),
         Rotation(0),
+        ZLayer('PLAY', 0),
         PlatformTag(),
         SpawnTag(),
         EntityType('PLATFORM'),

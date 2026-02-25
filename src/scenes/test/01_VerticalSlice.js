@@ -27,7 +27,8 @@ export class VerticalSlice extends BaseTestScene {
             gfx.strokeRect(0, 0, 100, 100);
             gfx.generateTexture('bg_grid', 100, 100);
         }
-        this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
+        const grid = this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
+        if (this.bgLayer) this.bgLayer.add(grid);
 
         const spawnX = WORLD_WIDTH / 2;
         const spawnY = -WORLD_HEIGHT / 2;
@@ -57,7 +58,12 @@ export class VerticalSlice extends BaseTestScene {
             const isCircle = Math.random() > 0.4;
             const size = Phaser.Math.Between(80, 180);
             const color = Phaser.Display.Color.RandomRGB(40).color;
-            const components = [Position(nextX, nextY), PlatformTag(), EntityType('PLATFORM')];
+            const components = [
+                Position(nextX, nextY), 
+                PlatformTag(), 
+                EntityType('PLATFORM'),
+                ZLayer('PLAY', 0)
+            ];
             if (isCircle) {
                 components.push(Renderable({ 'BASE': { type: 'circle', radius: size, color: color } }));
                 components.push(Collider('circle', size));

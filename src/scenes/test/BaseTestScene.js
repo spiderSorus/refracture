@@ -83,6 +83,7 @@ export class BaseTestScene extends Phaser.Scene {
 
             // --- GLOW EFFECTS (Floor & Walls) ---
             const glowGfx = this.add.graphics();
+            if (this.bgLayer) this.bgLayer.add(glowGfx);
             const cam = this.cameras.main;
             
             // Use camera bounds if available, otherwise fallback to viewport
@@ -119,24 +120,24 @@ export class BaseTestScene extends Phaser.Scene {
             MovementSystem(this.entities, this.inputManager, dtSeconds);
             PhysicsSystem(this.entities, PHYSICS.STEP, this);
 
-            CameraSystem(this.entities, this, this.inputManager);
-            ParallaxSystem(this.entities, this);
-            ZLayerSystem(this.entities);
-
-            this.entities = this.entities.filter(e => {
-                if (e.toDestroy) {
-                    const renderable = e.components.Renderable;
-                    if (renderable && renderable.activeVisuals) {
-                        Object.values(renderable.activeVisuals).forEach(v => v.destroy());
-                    }
-                    return false;
-                }
-                return true;
-            });
-
             this.fixedUpdate(time, PHYSICS.STEP);
             this.accumulator -= PHYSICS.STEP;
         }
+
+        this.entities = this.entities.filter(e => {
+            if (e.toDestroy) {
+                const renderable = e.components.Renderable;
+                if (renderable && renderable.activeVisuals) {
+                    Object.values(renderable.activeVisuals).forEach(v => v.destroy());
+                }
+                return false;
+            }
+            return true;
+        });
+
+        CameraSystem(this.entities, this, this.inputManager);
+        ParallaxSystem(this.entities, this);
+        ZLayerSystem(this.entities);
 
         LayeredRenderSystem(this.entities, this);
         SlingshotRenderSystem(this.entities, this);

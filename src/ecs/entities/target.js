@@ -1,4 +1,4 @@
-import { Position, Renderable, Rotation, EntityType } from '../components/index';
+import { Position, Renderable, Rotation, EntityType, ZLayer } from '../components/index';
 
 export const createTarget = (x, y, type = 'A') => {
     // Determine configuration based on type
@@ -11,6 +11,7 @@ export const createTarget = (x, y, type = 'A') => {
     return [
         Position(x, y),
         Rotation(0),
+        ZLayer('PLAY', 0),
         Renderable({
             'BASE': {
                 type: config.type,

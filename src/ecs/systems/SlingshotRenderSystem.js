@@ -2,7 +2,7 @@
 import { getImmediateGfx } from '../../utils/RenderUtils';
 
 export const SlingshotRenderSystem = (entities, scene) => {
-    const gfx = getImmediateGfx(scene, 'slingGfx', 2000);
+    const gfx = getImmediateGfx(scene, 'slingGfx', 2000, scene.fgLayer);
 
     const player = entities.find(e => e.components.PlayerTag && e.components.SlingshotJump);
     if (!player) return;

@@ -1,6 +1,6 @@
 import {
     Position, Rotation, Renderable,
-    EntityType, PlatformTag, Collider, Parallax, ZLayer
+    EntityType, PlatformTag, Collider, Parallax, ZLayer, BackgroundTag
 } from '../components/index';
 
 /**
@@ -17,6 +17,7 @@ export const createCathedralColumn = (x, y, config = {}) => {
         Position(x, y),
         Rotation(config.rotation || 0),
         PlatformTag(), // For system consistency
+        BackgroundTag(),
         EntityType('CATHEDRAL_COLUMN'),
         Parallax(parallaxFactor),
         ZLayer(zLayerType, zLayerIndex),

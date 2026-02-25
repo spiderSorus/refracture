@@ -27,9 +27,11 @@ export class PlayerTest extends BaseTestScene {
             gfx.strokeRect(0, 0, 100, 100);
             gfx.generateTexture('bg_grid', 100, 100);
         }
-        this.add.tileSprite(0, 0, WORLD_SIZE, WORLD_SIZE, 'bg_grid').setDepth(0);
+        const grid = this.add.tileSprite(0, 0, WORLD_SIZE, WORLD_SIZE, 'bg_grid').setDepth(0);
+        if (this.bgLayer) this.bgLayer.add(grid);
 
         const borderGfx = this.add.graphics();
+        if (this.bgLayer) this.bgLayer.add(borderGfx);
         borderGfx.lineStyle(4, 0xffffff, 1);
         borderGfx.strokeRect(-WORLD_SIZE / 2, -WORLD_SIZE / 2, WORLD_SIZE, WORLD_SIZE);
 

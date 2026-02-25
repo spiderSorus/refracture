@@ -3,6 +3,10 @@ export class BaseGraphic {
         this.scene = scene;
         this.gameObject = this.create(config);
 
+        if (this.gameObject.setScrollFactor) {
+            this.gameObject.setScrollFactor(1);
+        }
+
         // Default Z-sorting: Use config.depth if provided, otherwise fallback to layer-based default
         if (config.depth !== undefined) {
             this.gameObject.setDepth(config.depth);
