@@ -73,6 +73,7 @@ export class UIManager {
         debugEl.innerHTML = `
             <div style="margin-bottom: 10px; border-bottom: 1px solid #444; width: 100%; padding-bottom: 5px;">
                 <strong style="color: #0ff;">[ ${playerData.scene || 'SCENE'} ]</strong><br>
+                FPS: ${stateData.fps || 0}<br>
                 POS: ${playerData.x}, ${playerData.y}<br>
                 REALITY: <span style="color: #fff; font-size: 16px;">${stateData.reality || 0}</span><br>
                 STATUS: ${stateData.status}

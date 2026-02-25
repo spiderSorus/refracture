@@ -8,11 +8,6 @@ export const Renderable = (definitions = {}) => ({
     activeVisuals: {}
 });
 
-export const ViewLayers = (layers = ['BASE']) => ({
-    _type: 'ViewLayers',
-    layers
-});
-
 export const PlayerTag = () => ({ _type: 'PlayerTag' });
 export const InputControlled = () => ({ _type: 'InputControlled' });
 export const CameraTarget = () => ({ _type: 'CameraTarget' });

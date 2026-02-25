@@ -49,37 +49,17 @@ void main() {
     // Use camera scroll for world-space noise pinning
     vec2 worldUV = uv + vec2(uScrollX, uScrollY) * 0.0001;
     
-    // Original color at this pixel
-    vec4 baseColor = texture2D(uMainSampler, uv);
-
-    // Target color to apply effect to (Shades of Red/Pink and Blue)
-    bool isRedPink = (baseColor.r > baseColor.g * 1.2 && baseColor.r > baseColor.b * 0.8 && baseColor.a > 0.0);
-    bool isBlue = (baseColor.b > baseColor.r * 1.2 && baseColor.b > baseColor.g * 1.2 && baseColor.a > 0.0);
-    bool isTarget = isRedPink || isBlue;
-
-    if (isTarget) {
-        // Displacement based on noise tied to WORLD UV
-        float n = snoise(worldUV * uFrequency) * 3.14159;
-        vec2 offset = vec2(cos(n), sin(n)) * uAmplitude;
-        
-        // Multiple octaves of noise for the "bleed" edge
-        float n2 = snoise(worldUV * 20.0);
-        vec2 bleed = vec2(cos(n2), sin(n2)) * 0.02;
-        
-        vec4 distortedColor = texture2D(uMainSampler, uv + offset + bleed);
-        
-        // Match the target color logic for distortion persistence
-        bool distRedPink = (distortedColor.r > distortedColor.g * 1.1 && distortedColor.r > distortedColor.b * 0.7);
-        bool distBlue = (distortedColor.b > distortedColor.r * 1.1 && distortedColor.b > distortedColor.g * 1.1);
-
-        if (distRedPink || distBlue) {
-             gl_FragColor = distortedColor;
-        } else {
-             gl_FragColor = baseColor;
-        }
-    } else {
-        gl_FragColor = baseColor;
-    }
+    // Displacement based on noise tied to WORLD UV
+    float n = snoise(worldUV * uFrequency) * 3.14159;
+    vec2 offset = vec2(cos(n), sin(n)) * uAmplitude;
+    
+    // Multiple octaves of noise for the "bleed" edge
+    float n2 = snoise(worldUV * 20.0);
+    vec2 bleed = vec2(cos(n2), sin(n2)) * 0.02;
+    
+    vec4 distortedColor = texture2D(uMainSampler, uv + offset + bleed);
+    
+    gl_FragColor = distortedColor;
 }
 `;
 

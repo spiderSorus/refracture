@@ -13,15 +13,6 @@ export const AttachmentSystem = (entities) => {
     const pPos = player.components.Position;
     const sling = player.components.SlingshotJump;
 
-    // 1. Hard Floor check
-    if (pPos.y >= -2) {
-        if (sling) {
-            sling.canJump = true;
-            sling.lastPlatformId = null;
-        }
-        return;
-    }
-
     const platforms = entities.filter(e => {
         const isPlatform = e.components.PlatformTag && e.components.Collider && e.components.Position;
         const zLayer = e.components.ZLayer;

@@ -10,6 +10,7 @@ import { SpinnerClimb } from './10_SpinnerClimb';
 import { ChaosLab } from './11_ChaosLab';
 import { PlayerTest } from './12_PlayerTest';
 import { WatercolorScene } from './13_Watercolor';
+import { RedCathedralScene } from './14_RedCathedral';
 
 export const TestScenes = [
     VerticalSlice,
@@ -23,5 +24,6 @@ export const TestScenes = [
     SpinnerClimb,
     ChaosLab,
     PlayerTest,
-    WatercolorScene
+    WatercolorScene,
+    RedCathedralScene
 ];

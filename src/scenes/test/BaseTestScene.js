@@ -34,6 +34,10 @@ export class BaseTestScene extends Phaser.Scene {
         this.entities = [];
         this.inputManager = new InputManager(this);
 
+        // Create isolated layers for post-processing
+        this.bgLayer = this.add.layer().setName('BG_LAYER');
+        this.fgLayer = this.add.layer().setName('FG_LAYER');
+
         UI.showTitle(this.testTitle, this.testSubtitle);
 
         this.input.keyboard.on('keydown-TAB', () => UI.toggleDebug());
@@ -115,6 +119,10 @@ export class BaseTestScene extends Phaser.Scene {
             MovementSystem(this.entities, this.inputManager, dtSeconds);
             PhysicsSystem(this.entities, PHYSICS.STEP, this);
 
+            CameraSystem(this.entities, this, this.inputManager);
+            ParallaxSystem(this.entities, this);
+            ZLayerSystem(this.entities);
+
             this.entities = this.entities.filter(e => {
                 if (e.toDestroy) {
                     const renderable = e.components.Renderable;
@@ -129,10 +137,6 @@ export class BaseTestScene extends Phaser.Scene {
             this.fixedUpdate(time, PHYSICS.STEP);
             this.accumulator -= PHYSICS.STEP;
         }
-
-        CameraSystem(this.entities, this, this.inputManager);
-        ParallaxSystem(this.entities, this);
-        ZLayerSystem(this.entities);
 
         LayeredRenderSystem(this.entities, this);
         SlingshotRenderSystem(this.entities, this);
@@ -154,6 +158,7 @@ export class BaseTestScene extends Phaser.Scene {
                 x: Math.round(player.components.Position.x),
                 y: Math.round(player.components.Position.y)
             }, {
+                fps: Math.round(this.game.loop.actualFps),
                 status: player.components.Parent ? "ATTACHED" : "FREE",
                 sling: {
                     isCharging: sling.isCharging,

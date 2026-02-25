@@ -1,5 +1,5 @@
 import {
-    Position, Rotation, Renderable, ViewLayers,
+    Position, Rotation, Renderable,
     BackgroundTag, EntityType, PlatformTag,
     Collider, Parallax
 } from '../components/index';
@@ -31,7 +31,6 @@ export const createBackgroundShape = (x, y, shapeType, config = {}) => {
                 depth: depth
             }
         }),
-        Collider(shapeType === 'oval' ? 'circle' : 'rect', 1, 1, 1),
-        ViewLayers([layer])
+        Collider(shapeType === 'oval' ? 'circle' : 'rect', 1, 1, 1)
     ];
 };

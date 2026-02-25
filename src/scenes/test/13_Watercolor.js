@@ -4,7 +4,7 @@ import { loadBackground } from '../../backgrounds/index';
 import { BaseTestScene } from './BaseTestScene';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    Mass, Velocity, ViewLayers, ZLayer
+    Mass, Velocity, ZLayer
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -19,7 +19,12 @@ export class WatercolorScene extends BaseTestScene {
         const WORLD_SIZE = 8000;
         this.cameras.main.setBounds(-WORLD_SIZE / 2, -WORLD_SIZE / 2, WORLD_SIZE, WORLD_SIZE);
         this.cameras.main.setZoom(0.8);
-        this.cameras.main.setPostPipeline('AquarellePipeline');
+        this.cameras.main.setBackgroundColor(0xffffff); // White background
+        
+        // Apply effect to the background layer specifically
+        if (this.bgLayer) {
+            this.bgLayer.setPostPipeline('AquarellePipeline');
+        }
         
         // --- LOAD BACKGROUND ---
         loadBackground('cathedral_pink_blue', this, { worldSize: WORLD_SIZE });
@@ -34,7 +39,6 @@ export class WatercolorScene extends BaseTestScene {
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
             SlingshotJump(3500),
-            ViewLayers(['BASE', 'FAIRY']),
             ZLayer('PLAY', 0)
         ]);
         

@@ -1,5 +1,5 @@
 import {
-    Position, Rotation, Renderable, ViewLayers,
+    Position, Rotation, Renderable,
     EntityType, PlatformTag, Collider, Parallax, ZLayer
 } from '../components/index';
 
@@ -31,7 +31,6 @@ export const createCathedralColumn = (x, y, config = {}) => {
                 layers: 6
             }
         }),
-        Collider('rect', 1, 1, 1),
-        ViewLayers([layer])
+        Collider('rect', 1, 1, 1)
     ];
 };

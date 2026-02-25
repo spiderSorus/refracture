@@ -22,8 +22,8 @@ export const SlingshotSystem = (entities, inputManager) => {
 
     // --- 1. CHARGING STATE ---
     if (mag >= ARM_THRESHOLD) {
-        // Can only start charging if attached or on ground
-        if (!sling.isCharging && (parent || (pos && pos.y >= 0))) {
+        // Can only start charging if attached to a platform
+        if (!sling.isCharging && parent) {
             sling.isCharging = true;
             sling.peakMagnitude = 0;
             sling.lockedAim = null;

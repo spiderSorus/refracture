@@ -1,6 +1,6 @@
 import {
     Position, Velocity, Rotation, Renderable,
-    PlayerTag, InputControlled, CameraTarget, ViewLayers,
+    PlayerTag, InputControlled, CameraTarget,
     Mass, Destructible, SlingshotJump, Parent
 } from '../components/index';
 
@@ -10,26 +10,27 @@ export const createPlayer = (x, y) => [
     Rotation(0),
     Renderable({
         'BASE': {
+            type: 'circle',
+            radius: 15,
+            color: 0x000000,
+            alpha: 1.0,
+            depth: 0
+        }
+        /*
+        'BASE': {
             type: 'spider',
             color: 0x222222,
             size: 1.0,
             alpha: 1.0,
             depth: 0
-        },
-        'FAIRY': {
-            type: 'fairy_emitter',
-            tints: [0x00ffff, 0xffffff, 0x4444ff],
-            intensity: 1.5,
-            alpha: 0.05,
-            depth: -10
         }
+        */
     }),
     PlayerTag(),
     Mass(1.5),
     InputControlled(),
     CameraTarget(),
-    Destructible(),
-    ViewLayers(['BASE', 'FAIRY'])
+    Destructible()
 ];
 
 export const spawnPlayer = (scene, spawnPoint) => {
