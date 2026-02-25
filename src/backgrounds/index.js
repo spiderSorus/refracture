@@ -1,9 +1,11 @@
 import { CathedralBackground } from './CathedralBackground';
 import { PinkBlueCathedral } from './PinkBlueCathedral';
+import { RainbowCathedral } from './RainbowCathedral';
 
 const REGISTRY = {
     'cathedral': CathedralBackground,
-    'cathedral_pink_blue': PinkBlueCathedral
+    'cathedral_pink_blue': PinkBlueCathedral,
+    'rainbow_cathedral': RainbowCathedral
 };
 
 /**

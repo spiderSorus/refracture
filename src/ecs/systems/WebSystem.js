@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { WebTether, WebConnection } from '../components/index';
 import { findPlayer } from '../entities/player';
 import { snapOffsetInside } from '../../utils/CollisionUtils';
+import { PHYSICS } from '../../core/Constants';
 
 export const WebSystem = (entities, inputManager, scene) => {
     const player = findPlayer(entities);
@@ -12,8 +13,8 @@ export const WebSystem = (entities, inputManager, scene) => {
     const pPos = player.components.Position;
     const pVel = player.components.Velocity;
 
-    const MAX_SPOOL_LENGTH = 1000;
-    const MIN_SPOOL_LENGTH = 10;
+    const MAX_SPOOL_LENGTH = PHYSICS.WEB_MAX_LENGTH;
+    const MIN_SPOOL_LENGTH = PHYSICS.WEB_MIN_LENGTH;
     
     const strengthMult = scene?.webStrengthMult || 1.0;
 
@@ -29,7 +30,7 @@ export const WebSystem = (entities, inputManager, scene) => {
 
             const lb = inputManager.isButtonDown('SHORTEN');
             const rb = inputManager.isButtonDown('LENGTHEN');
-            const winchSpeed = 4;
+            const winchSpeed = PHYSICS.WEB_WINCH_SPEED;
 
             if (lb) tether.maxLength = Math.max(MIN_SPOOL_LENGTH, tether.maxLength - winchSpeed);
             if (rb) tether.maxLength = Math.min(MAX_SPOOL_LENGTH, tether.maxLength + winchSpeed);
@@ -75,7 +76,7 @@ export const WebSystem = (entities, inputManager, scene) => {
             const newTether = WebTether(currentParent.id, snappedOffset);
             newTether.maxForce *= strengthMult;
             player.components.WebTether = newTether;
-            player.components.WebTether.maxLength = MAX_SPOOL_LENGTH; 
+            player.components.WebTether.maxLength = PHYSICS.WEB_INITIAL_LENGTH; 
             return;
         }
     }

@@ -1,11 +1,11 @@
 // src/ecs/systems/MovementSystem.js
-import { GRID, PHYSICS } from '../../core/Constants';
+import { GRID, PHYSICS, PLAYER } from '../../core/Constants';
 import { isPointInside } from '../../utils/CollisionUtils';
 
 export const MovementSystem = (entities, inputManager, dt) => {
     if (!inputManager) return;
     const move = inputManager.getMovement();
-    const walkSpeed = GRID.SPEED * GRID.UNIT * 2;
+    const walkSpeed = PLAYER.WALK_SPEED;
 
     entities.forEach(entity => {
         const { Position: pos, Velocity: vel, Parent: parent, Rotation: rot, SlingshotJump: sling, WebTether: tether, PlayerTag: isPlayer } = entity.components;
@@ -67,7 +67,7 @@ export const MovementSystem = (entities, inputManager, dt) => {
             const isGrounded = !!parent;
 
             if (isGrounded) {
-                vel.x += (move.x * walkSpeed * 10) * dt;
+                vel.x += (move.x * PLAYER.GROUND_ACCEL) * dt;
                 vel.x *= PHYSICS.GROUND_FRICTION;
             } else {
                 const fricX = tether ? PHYSICS.TETHER_AIR_RESISTANCE_X : PHYSICS.AIR_RESISTANCE_X;
