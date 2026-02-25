@@ -44,12 +44,18 @@ export const SlingshotSystem = (entities, inputManager) => {
     }
     // --- 2. RELEASE STATE ---
     else if (sling.isCharging && mag < RELEASE_THRESHOLD) {
-        // Only launch if we reached a minimum peak (prevents accidental tiny bumps)
-        if (sling.lockedAim && sling.peakMagnitude > 0.4) {
+        const MIN_CHARGE = 0.3;
+        
+        // Only launch if we reached a minimum peak
+        if (sling.lockedAim && sling.peakMagnitude > MIN_CHARGE) {
             const launchDir = { x: -sling.lockedAim.x, y: -sling.lockedAim.y };
             
-            // Calculate force based on peak magnitude reached (clamped to 1.0)
-            const forceMult = Math.min(1.0, sling.peakMagnitude);
+            // Remap peakMagnitude from [MIN_CHARGE, 1.0] to [0.0, 1.0]
+            const chargeRange = 1.0 - MIN_CHARGE;
+            const normalizedCharge = Math.min(1.0, (sling.peakMagnitude - MIN_CHARGE) / chargeRange);
+            
+            // Use a quadratic curve for more "snap" and better low-power control
+            const forceMult = Math.pow(normalizedCharge, 2);
 
             if (parent) {
                 // Set lastPlatformId so AttachmentSystem knows to ignore this platform briefly
