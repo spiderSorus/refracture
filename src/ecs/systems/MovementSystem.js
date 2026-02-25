@@ -61,18 +61,16 @@ export const MovementSystem = (entities, inputManager, dt) => {
             parent.offset.x = nextOffsetX;
             parent.offset.y = nextOffsetY;
         } 
-        // --- 3. FREEFALL FRICTION LOGIC ---
+        // --- 3. FREEFALL & GROUND FRICTION ---
         else if (vel) {
-            const isGrounded = pos.y >= 0;
+            // Player is grounded only if they have a Parent (attached to a platform)
+            const isGrounded = !!parent;
 
             if (isGrounded) {
                 vel.x += (move.x * walkSpeed * 10) * dt;
-                vel.x *= 0.85;
-            } else {
-                const friction = tether ? 0.999 : 0.95;
-                vel.x *= friction;
-                vel.y *= (tether ? 0.999 : 0.99);
+                vel.x *= 0.85; // Ground friction
             }
+            // In the air (no parent), we apply no friction or steering to maintain the parabola
         }
     });
 };

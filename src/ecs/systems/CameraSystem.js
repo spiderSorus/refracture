@@ -1,14 +1,16 @@
-export const CameraSystem = (entities, scene, inputManager) => {
+export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
     const cam = scene.cameras.main;
     cam.setBackgroundColor('rgba(0,0,0,0)');
     
     // --- BACKGROUND CAMERA SETUP ---
-    if (!scene.bgCamera) {
+    // Check if background camera exists and is still valid/active in the current scene
+    const isBgCamValid = scene.bgCamera && scene.cameras.cameras.includes(scene.bgCamera);
+    
+    if (!isBgCamValid) {
         // Create background camera that matches main camera size
         scene.bgCamera = scene.cameras.add(0, 0, cam.width, cam.height).setName('BackgroundCamera');
         
         // Move background camera to the bottom of the render stack (index 0)
-        // We do not use scene.cameras.remove() because it destroys the camera.
         const cameras = scene.cameras.cameras;
         if (cameras.length > 1) {
             const bgCamInstance = cameras.pop();
@@ -66,8 +68,9 @@ export const CameraSystem = (entities, scene, inputManager) => {
         scene._camInitialized = true;
     }
 
-    let targetX = pPos.x;
-    let targetY = pPos.y;
+    // Use interpolated position for camera target
+    const targetX = pPos.prevX !== undefined ? pPos.prevX + (pPos.x - pPos.prevX) * alpha : pPos.x;
+    const targetY = pPos.prevY !== undefined ? pPos.prevY + (pPos.y - pPos.prevY) * alpha : pPos.y;
 
     const lerp = 0.1;
     const currentX = cam.scrollX + cam.width / 2;

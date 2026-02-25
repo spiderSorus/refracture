@@ -1,10 +1,15 @@
 import Phaser from 'phaser';
 import { getImmediateGfx } from '../../utils/RenderUtils';
 
-export const WebRenderSystem = (entities, scene) => {
+export const WebRenderSystem = (entities, scene, interpAlpha = 1.0) => {
     const gfx = getImmediateGfx(scene, 'webGfx', 1100, scene.fgLayer);
     const cam = scene.cameras.main;
     const thickness = 2 / cam.zoom;
+
+    const getInterpPos = (pos) => ({
+        x: pos.prevX !== undefined ? pos.prevX + (pos.x - pos.prevX) * interpAlpha : pos.x,
+        y: pos.prevY !== undefined ? pos.prevY + (pos.y - pos.prevY) * interpAlpha : pos.y
+    });
 
     // --- PART 1: COMPLETED SLACK WEBS ---
     entities.forEach(e => {
@@ -14,6 +19,9 @@ export const WebRenderSystem = (entities, scene) => {
             const entB = entities.find(ent => ent.id === conn.toId);
 
             if (entA && entB && entA.components.Position && entB.components.Position) {
+                const posA = getInterpPos(entA.components.Position);
+                const posB = getInterpPos(entB.components.Position);
+
                 // ACCOUNT FOR ROTATION OF BOTH PLATFORMS
                 const rotA = entA.components.Rotation?.angle || 0;
                 const rotB = entB.components.Rotation?.angle || 0;
@@ -23,10 +31,10 @@ export const WebRenderSystem = (entities, scene) => {
                 const bx = conn.toOffset.x * Math.cos(rotB) - conn.toOffset.y * Math.sin(rotB);
                 const by = conn.toOffset.x * Math.sin(rotB) + conn.toOffset.y * Math.cos(rotB);
 
-                const worldX1 = entA.components.Position.x + ax;
-                const worldY1 = entA.components.Position.y + ay;
-                const worldX2 = entB.components.Position.x + bx;
-                const worldY2 = entB.components.Position.y + by;
+                const worldX1 = posA.x + ax;
+                const worldY1 = posA.y + ay;
+                const worldX2 = posB.x + bx;
+                const worldY2 = posB.y + by;
 
                 const dist = Phaser.Math.Distance.Between(worldX1, worldY1, worldX2, worldY2);
                 const ropeLength = conn.fixedLength || dist;
@@ -61,11 +69,14 @@ export const WebRenderSystem = (entities, scene) => {
     const player = entities.find(e => e.components.PlayerTag);
     if (!player) return;
     const tether = player.components.WebTether;
-    const pPos = player.components.Position;
+    const pPosComp = player.components.Position;
 
-    if (tether && pPos) {
+    if (tether && pPosComp) {
         const platform = entities.find(e => e.id === tether.platformId);
         if (platform && platform.components.Position) {
+            const pPos = getInterpPos(pPosComp);
+            const platPos = getInterpPos(platform.components.Position);
+
             // ACCOUNT FOR ROTATION OF THE TETHERED PLATFORM
             const platRot = platform.components.Rotation?.angle || 0;
             const ax_local = tether.anchorOffset.x;
@@ -74,8 +85,8 @@ export const WebRenderSystem = (entities, scene) => {
             const ax = ax_local * Math.cos(platRot) - ay_local * Math.sin(platRot);
             const ay = ax_local * Math.sin(platRot) + ay_local * Math.cos(platRot);
 
-            const worldAX = platform.components.Position.x + ax;
-            const worldAY = platform.components.Position.y + ay;
+            const worldAX = platPos.x + ax;
+            const worldAY = platPos.y + ay;
             const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, worldAX, worldAY);
 
             gfx.lineStyle(thickness, 0xffffff, 0.8);

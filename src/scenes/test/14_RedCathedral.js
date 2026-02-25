@@ -1,5 +1,5 @@
 import { createPlayer, spawnPlayer } from '../../ecs/entities/player';
-import { createSpawnPlatform } from '../../ecs/entities/platforms';
+import { createSpawnPlatform, createPlatform } from '../../ecs/entities/platforms';
 import { loadBackground } from '../../backgrounds/index';
 import { BaseTestScene } from './BaseTestScene';
 import {
@@ -39,30 +39,29 @@ export class RedCathedralScene extends BaseTestScene {
 
         // 1. GENERATE CLIMBING PLATFORMS
         let currentY = spawnY - 600;
+        const colors = [0x440000, 0x660000, 0x333333, 0x222222, 0x550000];
+
         while (currentY > -WORLD_HEIGHT / 2 + 1000) {
             const x = Phaser.Math.Between(-WORLD_WIDTH / 2 + 500, WORLD_WIDTH / 2 - 500);
-            const radius = Phaser.Math.Between(80, 200);
-            
-            this.addEntity([
-                Position(x, currentY),
-                Velocity(0, 0),
-                Rotation(0),
-                PlatformTag(),
-                EntityType('PLATFORM'),
-                Mass(10),
-                Renderable({
-                    'BASE': {
-                        type: 'circle',
-                        radius: radius,
-                        color: 0x333333,
-                        alpha: 1.0
-                    }
-                }),
-                Collider('circle', radius),
-                ZLayer('PLAY', 10)
-            ]);
+            const w = Phaser.Math.Between(150, 400);
+            const h = Phaser.Math.Between(40, 100);
+            const color = colors[Phaser.Math.Between(0, colors.length - 1)];
+            const shape = Phaser.Math.Between(0, 10) > 7 ? 'circle' : 'rect';
 
-            currentY -= Phaser.Math.Between(400, 800); // Gap between platforms
+            this.addEntity(createPlatform(x, currentY, {
+                width: w,
+                height: h,
+                color: color,
+                shape: shape,
+                isStatic: true,
+                depth: 10
+            }));
+
+            // Sync ZLayer for these platforms
+            const lastEnt = this.entities[this.entities.length - 1];
+            lastEnt.components.ZLayer = ZLayer('PLAY', 10);
+
+            currentY -= Phaser.Math.Between(350, 600); // Tighter gaps for easier climbing
         }
 
         // 2. PLAYER

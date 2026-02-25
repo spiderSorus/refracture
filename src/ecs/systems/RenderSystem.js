@@ -4,8 +4,9 @@ import { RenderFactory } from './RenderFactory';
  * RenderSystem
  * Handles standard rendering of entities using Renderable definitions.
  * Assigns objects to Phaser layers based on ZLayer or BackgroundTag.
+ * Uses alpha for interpolation between physics steps.
  */
-export const RenderSystem = (entities, scene) => {
+export const RenderSystem = (entities, scene, alpha = 1.0) => {
     // 1. Initialize Scene Layers if not present
     if (!scene.bgLayer) scene.bgLayer = scene.add.layer().setName('BG_LAYER').setDepth(50);
     if (!scene.fgLayer) scene.fgLayer = scene.add.layer().setName('FG_LAYER').setDepth(100);
@@ -47,9 +48,11 @@ export const RenderSystem = (entities, scene) => {
 
             const activeGfx = activeGraphics[layerKey];
 
-            // Update with world position
+            // Update with interpolated position
             if (pos) {
-                activeGfx.update({ x: pos.x, y: pos.y }, rot, config);
+                const renderX = pos.prevX !== undefined ? pos.prevX + (pos.x - pos.prevX) * alpha : pos.x;
+                const renderY = pos.prevY !== undefined ? pos.prevY + (pos.y - pos.prevY) * alpha : pos.y;
+                activeGfx.update({ x: renderX, y: renderY }, rot, config);
             }
             activeGfx.setVisible(true);
 

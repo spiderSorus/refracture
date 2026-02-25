@@ -7,5 +7,6 @@ export const GRID = {
 export const PHYSICS = {
     FPS: 60,
     STEP: 1000 / 60, // ~16.66ms per tick
-    GRAVITY: 980,    // 9.8m/s^2 scaled up for pixel coordinates
+    GRAVITY: 9800,    // Increased for a fast, snappy fall
+    SLINGSHOT_FORCE: 5000,
 };

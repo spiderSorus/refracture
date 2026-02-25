@@ -3,6 +3,7 @@ import {
     PlayerTag, InputControlled, CameraTarget,
     Mass, Destructible, SlingshotJump, Parent, ZLayer
 } from '../components/index';
+import { PHYSICS } from '../../core/Constants';
 
 export const createPlayer = (x, y) => [
     Position(x, y),
@@ -39,7 +40,7 @@ export const spawnPlayer = (scene, spawnPoint) => {
 
     const player = scene.addEntity([
         ...createPlayer(spawnPoint.components.Position.x, spawnPoint.components.Position.y),
-        SlingshotJump(3500),
+        SlingshotJump(PHYSICS.SLINGSHOT_FORCE),
         Parent(spawnPoint.id, { x: 0, y: 0 })
     ]);
 

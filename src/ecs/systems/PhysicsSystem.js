@@ -18,6 +18,15 @@ export const PhysicsSystem = (entities, delta, scene) => {
     // FLOOR_Y is now the bottom of the world bounds
     const FLOOR_Y = maxY;
 
+    // --- STORE PREVIOUS POSITION FOR INTERPOLATION ---
+    entities.forEach(entity => {
+        const pos = entity.components.Position;
+        if (pos) {
+            pos.prevX = pos.x;
+            pos.prevY = pos.y;
+        }
+    });
+
     // --- 0. UPDATE ROTATION (Spin) ---
     entities.forEach(entity => {
         const spin = entity.components.Spin;

@@ -1,3 +1,5 @@
+import { PHYSICS } from '../../core/Constants';
+
 export const Position = (x = 0, y = 0) => ({ _type: 'Position', x, y });
 export const Velocity = (x = 0, y = 0) => ({ _type: 'Velocity', x, y });
 export const Rotation = (angle = 0) => ({ _type: 'Rotation', angle });
@@ -106,7 +108,7 @@ export const BugAI = () => ({
 });
 
 // --- SLINGSHOT MECHANIC ---
-export const SlingshotJump = (maxForce = 1500) => ({
+export const SlingshotJump = (maxForce = PHYSICS.SLINGSHOT_FORCE) => ({
     _type: 'SlingshotJump',
     isCharging: false,
     vector: { x: 0, y: 0 },

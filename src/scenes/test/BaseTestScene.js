@@ -137,14 +137,16 @@ export class BaseTestScene extends Phaser.Scene {
             return true;
         });
 
-        CameraSystem(this.entities, this, this.inputManager);
+        const alpha = this.accumulator / PHYSICS.STEP;
+
+        CameraSystem(this.entities, this, this.inputManager, alpha);
         ZLayerSystem(this.entities);
 
-        RenderSystem(this.entities, this);
-        ParallaxSystem(this.entities, this);
+        RenderSystem(this.entities, this, alpha);
+        ParallaxSystem(this.entities, this, alpha);
         
-        SlingshotRenderSystem(this.entities, this);
-        WebRenderSystem(this.entities, this);
+        SlingshotRenderSystem(this.entities, this, alpha);
+        WebRenderSystem(this.entities, this, alpha);
 
         this.updateDebugUI();
     }

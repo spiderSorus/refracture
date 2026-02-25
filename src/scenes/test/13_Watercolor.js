@@ -2,6 +2,7 @@ import { createPlayer } from '../../ecs/entities/player';
 import { createSpawnPlatform, createPlatform } from '../../ecs/entities/platforms';
 import { loadBackground } from '../../backgrounds/index';
 import { BaseTestScene } from './BaseTestScene';
+import { PHYSICS } from '../../core/Constants';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
     Mass, Velocity, ZLayer
@@ -65,7 +66,7 @@ export class WatercolorScene extends BaseTestScene {
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
-            SlingshotJump(3500),
+            SlingshotJump(PHYSICS.SLINGSHOT_FORCE),
             ZLayer('PLAY', 0)
         ]);
         
