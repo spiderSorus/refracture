@@ -4,9 +4,11 @@
  */
 
 import { AquarelleEffect } from './AquarelleEffect';
+import { GrayscaleEffect } from './GrayscaleEffect';
 
 const REGISTRY = {
     'watercolor': AquarelleEffect,
+    'grayscale': GrayscaleEffect,
 };
 
 export const applyCameraEffect = (name, camera, scene, config = {}) => {

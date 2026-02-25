@@ -46,9 +46,9 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
         }
 
         // Create Layer if missing
-        if (!scene.auxLayers[cfg.layer]) {
+        if (!scene.auxLayers[cfg.layer] || !scene.auxLayers[cfg.layer].list) {
             // Check if scene already has this layer by name (e.g. from create())
-            if (scene[cfg.layer] && scene[cfg.layer] instanceof Phaser.GameObjects.Layer) {
+            if (scene[cfg.layer] && scene[cfg.layer] instanceof Phaser.GameObjects.Layer && scene[cfg.layer].list) {
                 scene.auxLayers[cfg.layer] = scene[cfg.layer];
             } else {
                 scene.auxLayers[cfg.layer] = scene.add.layer().setName(cfg.layer.toUpperCase());

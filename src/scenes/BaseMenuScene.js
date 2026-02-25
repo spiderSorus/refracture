@@ -30,7 +30,8 @@ export class BaseMenuScene extends Phaser.Scene {
 
         // Define dynamic camera configuration
         this.cameraConfigs = [
-            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACK' }
+            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACK' },
+            { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'FORE' }
         ];
 
         // --- RANDOM BACKGROUND ---
@@ -46,6 +47,18 @@ export class BaseMenuScene extends Phaser.Scene {
         this.setupHeader();
         this.setupMenu();
         this.updateSelection();
+
+        // --- TEST ENTITY FOR FOREGROUND ---
+        this.addEntity([
+            { _type: 'Position', x: 200, y: 200 },
+            { _type: 'ZLayer', type: 'FORE', index: 0, layerName: 'fg_grayscale' },
+            { _type: 'Renderable', definitions: { 'BASE': { type: 'circle', color: 0xff0000, radius: 40 } }, activeVisuals: {} }
+        ]);
+
+        // Initialize base layers for RenderSystem
+        this.bgLayer = this.add.layer().setName('BG_LAYER').setDepth(50);
+        this.fgLayer = this.add.layer().setName('FG_LAYER').setDepth(100);
+        this.foreLayer = this.add.layer().setName('FORE_LAYER').setDepth(200);
 
         // Dedicated ESC listener for reliability
         this.input.keyboard.on('keydown-ESC', () => this.handleBack());

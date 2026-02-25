@@ -12,6 +12,7 @@ import { PlayerTest } from './12_PlayerTest';
 import { WatercolorScene } from './13_Watercolor';
 import { RedCathedralScene } from './14_RedCathedral';
 import { RainbowCathedralScene } from './15_RainbowCathedral';
+import { Renderama } from './16_Renderama';
 
 export const TestScenes = [
     VerticalSlice,
@@ -27,5 +28,6 @@ export const TestScenes = [
     PlayerTest,
     WatercolorScene,
     RedCathedralScene,
-    RainbowCathedralScene
+    RainbowCathedralScene,
+    Renderama
 ];

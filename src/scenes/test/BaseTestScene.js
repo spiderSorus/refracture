@@ -60,8 +60,9 @@ export class BaseTestScene extends Phaser.Scene {
         this.inputManager = new InputManager(this);
 
         // Create isolated layers for post-processing
-        this.bgLayer = this.add.layer().setName('BG_LAYER');
-        this.fgLayer = this.add.layer().setName('FG_LAYER');
+        this.bgLayer = this.add.layer().setName('BG_LAYER').setDepth(50);
+        this.fgLayer = this.add.layer().setName('FG_LAYER').setDepth(100);
+        this.foreLayer = this.add.layer().setName('FORE_LAYER').setDepth(200);
 
         UI.showTitle(this.testTitle, this.testSubtitle);
 

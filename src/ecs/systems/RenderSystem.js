@@ -8,9 +8,9 @@ import { RenderFactory } from './RenderFactory';
  */
 export const RenderSystem = (entities, scene, alpha = 1.0) => {
     // 1. Initialize Scene Layers if not present
-    if (!scene.bgLayer) scene.bgLayer = scene.add.layer().setName('BG_LAYER').setDepth(50);
-    if (!scene.fgLayer) scene.fgLayer = scene.add.layer().setName('FG_LAYER').setDepth(100);
-    if (!scene.foreLayer) scene.foreLayer = scene.add.layer().setName('FORE_LAYER').setDepth(200);
+    if (!scene.bgLayer || !scene.bgLayer.list) scene.bgLayer = scene.add.layer().setName('BG_LAYER').setDepth(50);
+    if (!scene.fgLayer || !scene.fgLayer.list) scene.fgLayer = scene.add.layer().setName('FG_LAYER').setDepth(100);
+    if (!scene.foreLayer || !scene.foreLayer.list) scene.foreLayer = scene.add.layer().setName('FORE_LAYER').setDepth(200);
 
     entities.forEach(entity => {
         const { Position: pos, Rotation: rot, Renderable: renderable, ZLayer: zlayer } = entity.components;
@@ -42,16 +42,23 @@ export const RenderSystem = (entities, scene, alpha = 1.0) => {
                     if (zType === 'FORE') targetLayer = scene.foreLayer;
                 }
                 
-                // Add to the appropriate Phaser Layer (Defensive check for .add)
-                const addToLayer = (item) => {
-                    if (item && targetLayer && typeof targetLayer.add === 'function') {
-                        targetLayer.add(item);
-                    }
-                };
+                // Add to the appropriate Phaser Layer
+                [gfx.gameObject, gfx.emitter, gfx.tracerGfx].forEach(item => {
+                    if (!item || (item.scene && item.scene !== scene)) return;
 
-                if (gfx.gameObject) addToLayer(gfx.gameObject);
-                if (gfx.emitter) addToLayer(gfx.emitter);
-                if (gfx.tracerGfx) addToLayer(gfx.tracerGfx);
+                    // If we have a target layer with a valid list, add it there
+                    // Check for type === 'Layer' to be absolutely sure
+                    if (targetLayer && (targetLayer.type === 'Layer' || targetLayer.list) && typeof targetLayer.add === 'function') {
+                        try {
+                            targetLayer.add(item);
+                        } catch (e) {
+                            scene.add.existing(item);
+                        }
+                    } else {
+                        // Fallback to scene's display list
+                        scene.add.existing(item);
+                    }
+                });
 
                 // Default scroll factor (ParallaxSystem will override if needed)
                 if (gfx.gameObject && gfx.gameObject.setScrollFactor) {
