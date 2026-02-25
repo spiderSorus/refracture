@@ -28,6 +28,17 @@ export class BaseTestScene extends Phaser.Scene {
         this.testSubtitle = subtitle || "State & Render Sync Debug";
         this.accumulator = 0;
         this.initialized = false;
+        this.energyRules = this.energyRules || [];
+    }
+
+    addEnergyRule(rule) {
+        if (!this.energyRules.includes(rule)) {
+            this.energyRules.push(rule);
+        }
+    }
+
+    removeEnergyRule(rule) {
+        this.energyRules = this.energyRules.filter(r => r !== rule);
     }
 
     create() {

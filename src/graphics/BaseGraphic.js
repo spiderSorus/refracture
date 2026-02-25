@@ -38,6 +38,10 @@ export class BaseGraphic {
             this.gameObject.setRotation(rotation.angle);
         }
 
+        if (config.alpha !== undefined && this.gameObject.setAlpha) {
+            this.gameObject.setAlpha(config.alpha);
+        }
+
         // Hook for specific graphic logic (animations, tweens, etc.)
         this.onUpdate(config);
     }

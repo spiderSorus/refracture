@@ -1,5 +1,4 @@
 import { PHYSICS } from '../../core/Constants';
-
 export const EnergySystem = (entities, dt, scene) => {
     // 1. DYNAMIC SCALE UPDATE (Universal)
     // Every entity with an Ego component updates its scale/collider relative to value

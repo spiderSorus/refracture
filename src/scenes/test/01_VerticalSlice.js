@@ -4,7 +4,8 @@ import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { BaseTestScene } from './BaseTestScene';
 import { PHYSICS } from '../../core/Constants';
 import {
-    Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump, ZLayer
+    Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump, ZLayer,
+    Velocity, Mass, GravityExempt
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -50,21 +51,32 @@ export class VerticalSlice extends BaseTestScene {
         let lastPos = { x: spawnX, y: spawnY };
         for (let i = 0; i < 75; i++) {
             const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-            const dist = Phaser.Math.Between(450, 850);
+            const dist = Phaser.Math.Between(600, 1200); // Increased distance to spread them out
             let nextX = lastPos.x + Math.cos(angle) * dist;
             let nextY = lastPos.y + Math.sin(angle) * dist;
+            
+            // Stay within safe bounds
             nextX = Phaser.Math.Clamp(nextX, 500, WORLD_WIDTH - 500);
             nextY = Phaser.Math.Clamp(nextY, -WORLD_HEIGHT + 500, -500);
 
             const isCircle = Math.random() > 0.4;
             const size = Phaser.Math.Between(80, 180);
             const color = Phaser.Display.Color.RandomRGB(40).color;
+            
+            // Random velocity for bouncing effect
+            const vx = Phaser.Math.Between(-200, 200);
+            const vy = Phaser.Math.Between(-200, 200);
+
             const components = [
                 Position(nextX, nextY), 
+                Velocity(vx, vy),
+                Mass(10),
+                GravityExempt(), // Keep them floating
                 PlatformTag(), 
                 EntityType('PLATFORM'),
                 ZLayer('PLAY', 0)
             ];
+            
             if (isCircle) {
                 components.push(Renderable({ 'BASE': { type: 'circle', radius: size, color: color } }));
                 components.push(Collider('circle', size));

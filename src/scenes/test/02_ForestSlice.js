@@ -2,9 +2,10 @@
 import { createPlayer } from '../../ecs/entities/player';
 import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { BaseTestScene } from './BaseTestScene';
+import { PHYSICS } from '../../core/Constants';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
-    Velocity, BugTag, BugAI, GravityExempt
+    Velocity, BugTag, BugAI, GravityExempt, ZLayer
 } from '../../ecs/components/index';
 import Phaser from 'phaser';
 
@@ -18,8 +19,9 @@ export class ForestSlice extends BaseTestScene {
         super.create();
 
         const WORLD_WIDTH = 4000;
-        const WORLD_HEIGHT = 8000;
-        this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
+        const WORLD_HEIGHT = 10000;
+        // Adjust bounds so 0,0 is near the bottom
+        this.cameras.main.setBounds(-WORLD_WIDTH / 2, -WORLD_HEIGHT + 1000, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setZoom(0.5);
 
         if (!this.textures.exists('bg_grid')) {
@@ -28,50 +30,43 @@ export class ForestSlice extends BaseTestScene {
             gfx.strokeRect(0, 0, 100, 100);
             gfx.generateTexture('bg_grid', 100, 100);
         }
-        const grid = this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
+        const grid = this.add.tileSprite(0, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
         if (this.bgLayer) this.bgLayer.add(grid);
 
-        const spawnX = WORLD_WIDTH / 2;
-        const spawnY = -WORLD_HEIGHT / 2;
+        const spawnX = 0;
+        const spawnY = 100;
 
         // 0. SPAWN PLATFORM
-        this.addEntity(createSpawnPlatform(spawnX, spawnY, { color: 0x228b22 }));
+        this.addEntity(createSpawnPlatform(spawnX, spawnY, { color: 0x228b22, width: 600 }));
 
-        // 1. CENTER FLOATER
-        this.addEntity([
-            Position(WORLD_WIDTH / 2, spawnY - 500),
-            PlatformTag(),
-            EntityType('PLATFORM'),
-            Renderable({ 'BASE': { type: 'circle', radius: 120, color: 0xff00ff } }),
-            Collider('circle', 120)
-        ]);
+        // Forest-like procedural generation - PATH TO THE TOP
+        let currentY = spawnY - 500;
+        let lastX = spawnX;
 
-        // Forest-like procedural generation
-        let lastPos = { x: spawnX, y: spawnY };
         for (let i = 0; i < 60; i++) {
-            const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
-            const dist = Phaser.Math.Between(300, 700);
-            let nextX = lastPos.x + Math.cos(angle) * dist;
-            let nextY = lastPos.y + Math.sin(angle) * dist;
-            nextX = Phaser.Math.Clamp(nextX, 400, WORLD_WIDTH - 400);
-            nextY = Phaser.Math.Clamp(nextY, -WORLD_HEIGHT + 400, -400);
-
-            const size = Phaser.Math.Between(60, 120);
+            const nextX = lastX + Phaser.Math.Between(-600, 600);
+            const clampedX = Phaser.Math.Clamp(nextX, -WORLD_WIDTH / 2 + 500, WORLD_WIDTH / 2 - 500);
+            
+            const size = Phaser.Math.Between(80, 150);
             const color = 0x556b2f; 
+            
             this.addEntity([
-                Position(nextX, nextY),
+                Position(clampedX, currentY),
                 PlatformTag(),
                 EntityType('PLATFORM'),
                 Renderable({ 'BASE': { type: 'circle', radius: size, color: color } }),
-                Collider('circle', size)
+                Collider('circle', size),
+                ZLayer('PLAY', 0)
             ]);
-            lastPos = { x: nextX, y: nextY };
+
+            lastX = clampedX;
+            currentY -= Phaser.Math.Between(400, 700); // Consistent vertical gap
         }
 
         // Spawn Bugs
         for (let i = 0; i < 100; i++) {
-            const bx = Math.random() * WORLD_WIDTH;
-            const by = -(Math.random() * WORLD_HEIGHT);
+            const bx = Phaser.Math.Between(-WORLD_WIDTH / 2, WORLD_WIDTH / 2);
+            const by = Phaser.Math.Between(-WORLD_HEIGHT, 1000);
             this.addEntity([
                 Position(bx, by),
                 Velocity(0, 0),
@@ -84,7 +79,7 @@ export class ForestSlice extends BaseTestScene {
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
-            SlingshotJump(3000)
+            SlingshotJump(PHYSICS.SLINGSHOT_FORCE)
         ]);
 
         this.cameras.main.centerOn(spawnX, spawnY);

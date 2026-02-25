@@ -49,17 +49,22 @@ export class BaseMenuScene extends Phaser.Scene {
     }
 
     setupHeader() {
-        // Add a dark overlay so text is readable over background
-        // Fixed to screen
-        this.add.rectangle(0, 0, this.cameras.main.width * 2, this.cameras.main.height * 2, 0x000000, 0.5)
-            .setScrollFactor(0)
-            .setDepth(5);
-
-        this.add.text(50, 50, this.title, {
+        const titleText = this.add.text(50, 50, this.title, {
             fontSize: '64px',
             fill: '#fff',
             fontFamily: 'monospace'
         }).setScrollFactor(0).setDepth(10);
+
+        // Calculate overlay width based on title text
+        const overlayWidth = titleText.width + 100;
+        const overlayHeight = this.cameras.main.height * 2;
+
+        // Add a dark overlay so text is readable over background
+        // Fixed to screen, width matched to text
+        this.add.rectangle(0, 0, overlayWidth, overlayHeight, 0x000000, 0.5)
+            .setOrigin(0, 0)
+            .setScrollFactor(0)
+            .setDepth(5);
 
         if (this.subtitle) {
             this.add.text(55, 130, this.subtitle, {

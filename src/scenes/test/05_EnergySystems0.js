@@ -6,14 +6,14 @@ import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
     Mass, Velocity, Ego
 } from '../../ecs/components/index';
-import { FloaterGravityRule, EgoBalanceRule } from '../../ecs/systems/energy_logic/Rules';
+import { FloaterGravityRule, EgoBalanceRule, WebConnectionActivationRule } from '../../ecs/systems/energy_logic/Rules';
 import Phaser from 'phaser';
 
 export class EnergySystems0 extends BaseTestScene {
     constructor() {
         super('EnergySystems0', 'Energy Systems 0', 'Modular Energy Logic (Floater Gravity + Balance).');
         this.meditationEnabled = false;
-        this.energyRules = [FloaterGravityRule, EgoBalanceRule];
+        this.energyRules = [WebConnectionActivationRule, FloaterGravityRule, EgoBalanceRule];
     }
 
     create() {

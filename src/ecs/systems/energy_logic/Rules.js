@@ -43,7 +43,8 @@ export const FloaterGravityRule = (entities, dt, constants) => {
     const { GRAVITY } = constants;
     entities.forEach(entity => {
         if (entity.components.PlatformTag && !entity.components.SpawnTag) {
-            if (isConnectedToAnything(entity, entities)) {
+            // Floaters only respond to gravity if they are active (powered by the network)
+            if (entity.isActive) {
                 if (entity.components.Velocity) {
                     entity.components.Velocity.y += GRAVITY * dt;
                 }
@@ -101,6 +102,64 @@ export const EgoBalanceRule = (entities, dt) => {
                     const actualFlow = Math.abs(flow) > Math.abs(diff/2) ? diff/2 : flow;
                     egoA.value -= actualFlow; egoB.value += actualFlow;
                 }
+            }
+        }
+    });
+};
+
+/**
+ * WebConnectionActivationRule
+ * Platforms are Static (unmovable) and dimmed by default.
+ * They become "active" and switch to Floaters (affected by gravity) 
+ * as long as they are part of a WebConnection.
+ */
+export const WebConnectionActivationRule = (entities, dt, constants) => {
+    const { GRAVITY } = constants;
+
+    // 1. Reset all non-spawn platforms to inactive and static
+    entities.forEach(entity => {
+        if (entity.components.PlatformTag && !entity.components.SpawnTag) {
+            entity.isActive = false;
+            if (!entity.components.StaticTag) {
+                entity.components.StaticTag = { _type: 'StaticTag' };
+            }
+        }
+    });
+
+    // 2. Activate platforms that are part of ANY WebConnection
+    entities.forEach(e => {
+        const conn = e.components.WebConnection;
+        if (conn) {
+            const entA = entities.find(ent => ent.id === conn.fromId);
+            const entB = entities.find(ent => ent.id === conn.toId);
+            
+            if (entA && !entA.components.SpawnTag) entA.isActive = true;
+            if (entB && !entB.components.SpawnTag) entB.isActive = true;
+        }
+    });
+
+    // 3. Apply physics and visuals
+    entities.forEach(entity => {
+        if (!entity.components.PlatformTag || entity.components.SpawnTag) return;
+
+        if (entity.isActive) {
+            // Active platforms become floaters
+            delete entity.components.StaticTag;
+            
+            const rend = entity.components.Renderable;
+            if (rend && rend.definitions['BASE']) {
+                rend.definitions['BASE'].alpha = 1.0;
+            }
+
+            // Apply gravity
+            if (entity.components.Velocity) {
+                entity.components.Velocity.y += GRAVITY * dt;
+            }
+        } else {
+            // Inactive platforms are static and dimmed
+            const rend = entity.components.Renderable;
+            if (rend && rend.definitions['BASE']) {
+                rend.definitions['BASE'].alpha = 0.3;
             }
         }
     });
