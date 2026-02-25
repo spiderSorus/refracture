@@ -28,17 +28,30 @@ export const RenderSystem = (entities, scene, alpha = 1.0) => {
                 activeGraphics[layerKey] = RenderFactory.createGraphic(scene, { ...config, layer: layerKey });
                 const gfx = activeGraphics[layerKey];
 
-                // Determine which Phaser Layer to use (BACK, PLAY, or FORE)
-                const zType = zlayer ? zlayer.type : (entity.components.BackgroundTag ? 'BACK' : 'PLAY');
-                
+                // Determine which Phaser Layer to use
                 let targetLayer = scene.fgLayer;
-                if (zType === 'BACK') targetLayer = scene.bgLayer;
-                if (zType === 'FORE') targetLayer = scene.foreLayer;
                 
-                // Add to the appropriate Phaser Layer
-                if (gfx.gameObject) targetLayer.add(gfx.gameObject);
-                if (gfx.emitter) targetLayer.add(gfx.emitter);
-                if (gfx.tracerGfx) targetLayer.add(gfx.tracerGfx);
+                // 1. Check for explicit auxiliary layer override
+                if (zlayer && zlayer.layerName && scene.auxLayers && scene.auxLayers[zlayer.layerName]) {
+                    targetLayer = scene.auxLayers[zlayer.layerName];
+                } 
+                // 2. Fallback to standard ZType logic
+                else {
+                    const zType = zlayer ? zlayer.type : (entity.components.BackgroundTag ? 'BACK' : 'PLAY');
+                    if (zType === 'BACK') targetLayer = scene.bgLayer;
+                    if (zType === 'FORE') targetLayer = scene.foreLayer;
+                }
+                
+                // Add to the appropriate Phaser Layer (Defensive check for .add)
+                const addToLayer = (item) => {
+                    if (item && targetLayer && typeof targetLayer.add === 'function') {
+                        targetLayer.add(item);
+                    }
+                };
+
+                if (gfx.gameObject) addToLayer(gfx.gameObject);
+                if (gfx.emitter) addToLayer(gfx.emitter);
+                if (gfx.tracerGfx) addToLayer(gfx.tracerGfx);
 
                 // Default scroll factor (ParallaxSystem will override if needed)
                 if (gfx.gameObject && gfx.gameObject.setScrollFactor) {
@@ -58,9 +71,9 @@ export const RenderSystem = (entities, scene, alpha = 1.0) => {
 
             // Sync depth within the Phaser Layer
             if (config.depth !== undefined) {
-                if (activeGfx.gameObject) activeGfx.gameObject.setDepth(config.depth);
-                if (activeGfx.emitter) activeGfx.emitter.setDepth(config.depth);
-                if (activeGfx.tracerGfx) activeGfx.tracerGfx.setDepth(config.depth);
+                if (activeGfx.gameObject && activeGfx.gameObject.setDepth) activeGfx.gameObject.setDepth(config.depth);
+                if (activeGfx.emitter && activeGfx.emitter.setDepth) activeGfx.emitter.setDepth(config.depth);
+                if (activeGfx.tracerGfx && activeGfx.tracerGfx.setDepth) activeGfx.tracerGfx.setDepth(config.depth);
             }
         });
 

@@ -28,24 +28,27 @@ export class BaseMenuScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor(0x000000);
         this.cameras.main.centerOn(0, 0);
 
-        // Initialize Scene Layers
-        this.bgLayer = this.add.layer().setName('BG_LAYER').setDepth(50);
-        this.fgLayer = this.add.layer().setName('FG_LAYER').setDepth(100);
-        this.foreLayer = this.add.layer().setName('FORE_LAYER').setDepth(200);
-
-        // Apply background effects
-        if (this.bgLayer) {
-            this.bgLayer.setPostPipeline('AquarellePipeline');
-        }
+        // Define dynamic camera configuration
+        this.cameraConfigs = [
+            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACK' }
+        ];
 
         // --- RANDOM BACKGROUND ---
         const backgrounds = ['cathedral', 'cathedral_pink_blue', 'rainbow_cathedral'];
         const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
-        loadBackground(randomBg, this, { worldSize: 4000 });
+        
+        // Pass the custom layer name to the background loader if it supports it
+        loadBackground(randomBg, this, { 
+            worldSize: 4000, 
+            layerName: 'bg_watercolor' 
+        });
 
         this.setupHeader();
         this.setupMenu();
         this.updateSelection();
+
+        // Dedicated ESC listener for reliability
+        this.input.keyboard.on('keydown-ESC', () => this.handleBack());
     }
 
     setupHeader() {
@@ -93,25 +96,6 @@ export class BaseMenuScene extends Phaser.Scene {
     update(time, delta) {
         this.inputManager.update();
 
-        // --- MENU CAMERA (Stick Controlled) ---
-        const stick = this.inputManager.getRightStick();
-        const maxOffset = 150;
-        const targetX = stick.x * maxOffset;
-        const targetY = stick.y * maxOffset;
-        
-        // Lerp camera center towards target for smoothness
-        const lerp = 0.05;
-        this.menuCamX += (targetX - this.menuCamX) * lerp;
-        this.menuCamY += (targetY - this.menuCamY) * lerp;
-        this.cameras.main.centerOn(this.menuCamX, this.menuCamY);
-
-        // --- BACKGROUND RENDERING ---
-        // Minimal ECS loop for background visuals
-        CameraSystem(this.entities, this, null, 1.0); // No input manager for menu camera logic
-        ZLayerSystem(this.entities);
-        RenderSystem(this.entities, this, 1.0);
-        ParallaxSystem(this.entities, this, 1.0);
-
         if (this.inputManager.getAction('UP')) {
             this.navigate(-1);
         }
@@ -126,6 +110,24 @@ export class BaseMenuScene extends Phaser.Scene {
         if (this.inputManager.getAction('BACK')) {
             this.handleBack();
         }
+
+        // --- MENU CAMERA (Stick Controlled) ---
+        const stick = this.inputManager.getRightStick();
+        const maxOffset = 150;
+        const targetX = stick.x * maxOffset;
+        const targetY = stick.y * maxOffset;
+        
+        // Lerp camera center towards target for smoothness
+        const lerp = 0.05;
+        this.menuCamX += (targetX - this.menuCamX) * lerp;
+        this.menuCamY += (targetY - this.menuCamY) * lerp;
+        this.cameras.main.centerOn(this.menuCamX, this.menuCamY);
+
+        // --- BACKGROUND RENDERING ---
+        CameraSystem(this.entities, this, null, 1.0); 
+        ZLayerSystem(this.entities);
+        RenderSystem(this.entities, this, 1.0);
+        ParallaxSystem(this.entities, this, 1.0);
     }
 
     navigate(dir) {

@@ -46,10 +46,11 @@ export const Parallax = (factor = 1.0) => ({
     originY: null
 });
 
-export const ZLayer = (type = 'PLAY', index = 0) => ({
+export const ZLayer = (type = 'PLAY', index = 0, layerName = null) => ({
     _type: 'ZLayer',
     type, // 'PLAY' or 'BACK'
-    index
+    index,
+    layerName // Specific auxiliary layer name (e.g. 'bg_watercolor')
 });
 
 export const Mass = (value = 1) => ({ _type: 'Mass', value });

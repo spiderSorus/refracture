@@ -47,7 +47,8 @@ export const RainbowCathedral = (scene, config = {}) => {
                 alpha: l.alpha,
                 parallax: l.parallax,
                 zType: 'BACK',
-                zIndex: l.zIndex
+                zIndex: l.zIndex,
+                layerName: config.layerName
             }));
         }
     });

@@ -12,6 +12,7 @@ export const createCathedralColumn = (x, y, config = {}) => {
     const parallaxFactor = config.parallax ?? 1.0;
     const zLayerType = config.zType || 'BACK'; // 'PLAY' or 'BACK'
     const zLayerIndex = config.zIndex ?? 0;
+    const layerName = config.layerName || null;
 
     return [
         Position(x, y),
@@ -20,7 +21,7 @@ export const createCathedralColumn = (x, y, config = {}) => {
         BackgroundTag(),
         EntityType('CATHEDRAL_COLUMN'),
         Parallax(parallaxFactor),
-        ZLayer(zLayerType, zLayerIndex),
+        ZLayer(zLayerType, zLayerIndex, layerName),
         Renderable({
             [layer]: {
                 type: 'watercolor',

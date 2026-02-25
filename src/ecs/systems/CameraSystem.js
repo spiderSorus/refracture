@@ -1,35 +1,81 @@
-export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
-    const cam = scene.cameras.main;
-    cam.setBackgroundColor('rgba(0,0,0,0)');
-    
-    // --- BACKGROUND CAMERA SETUP ---
-    // Check if background camera exists and is still valid/active in the current scene
-    const isBgCamValid = scene.bgCamera && scene.cameras.cameras.includes(scene.bgCamera);
-    
-    if (!isBgCamValid) {
-        // Create background camera that matches main camera size
-        scene.bgCamera = scene.cameras.add(0, 0, cam.width, cam.height).setName('BackgroundCamera');
-        
-        // Move background camera to the bottom of the render stack (index 0)
-        const cameras = scene.cameras.cameras;
-        if (cameras.length > 1) {
-            const bgCamInstance = cameras.pop();
-            cameras.unshift(bgCamInstance);
-        }
-    }
-    const bgCam = scene.bgCamera;
+import { applyCameraEffect } from '../../camera_effects/index';
+import Phaser from 'phaser';
 
-    // --- LAYER IGNORING ---
-    // If layers exist, set up ignoring. We do this every frame to ensure new layers are handled,
-    // though usually they are created once.
-    if (scene.bgLayer) {
-        cam.ignore(scene.bgLayer);
-    }
-    if (scene.fgLayer && bgCam) {
-        bgCam.ignore(scene.fgLayer);
-    }
-    if (scene.foreLayer && bgCam) {
-        bgCam.ignore(scene.foreLayer);
+/**
+ * CameraSystem
+ * Manages the main camera and multiple auxiliary cameras for background/foreground effects.
+ * Reads from scene.cameraConfigs: Array<{ name, layer, effect, type: 'BACK'|'FORE' }>
+ */
+export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
+    const mainCam = scene.cameras.main;
+    mainCam.setBackgroundColor('rgba(0,0,0,0)');
+    
+    // 1. DYNAMIC CAMERA INITIALIZATION
+    if (!scene.auxCameras) scene.auxCameras = {};
+    if (!scene.auxLayers) scene.auxLayers = {};
+
+    // Default configuration if none provided
+    const configs = scene.cameraConfigs || [
+        { name: 'BackgroundCamera', layer: 'bgLayer', type: 'BACK' }
+    ];
+
+    configs.forEach(cfg => {
+        // Create Camera if missing or invalid
+        const existingCam = scene.auxCameras[cfg.name];
+        const isValid = existingCam && scene.cameras.cameras.includes(existingCam);
+
+        if (!isValid) {
+            const newCam = scene.cameras.add(0, 0, mainCam.width, mainCam.height).setName(cfg.name);
+            scene.auxCameras[cfg.name] = newCam;
+
+            // Sort depth
+            if (cfg.type === 'BACK') {
+                // Move to bottom of render stack
+                const cams = scene.cameras.cameras;
+                const idx = cams.indexOf(newCam);
+                if (idx > 0) {
+                    cams.splice(idx, 1);
+                    cams.unshift(newCam);
+                }
+            }
+
+            // Apply Effect
+            if (cfg.effect) {
+                applyCameraEffect(cfg.effect, newCam, scene);
+            }
+        }
+
+        // Create Layer if missing
+        if (!scene.auxLayers[cfg.layer]) {
+            // Check if scene already has this layer by name (e.g. from create())
+            if (scene[cfg.layer] && scene[cfg.layer] instanceof Phaser.GameObjects.Layer) {
+                scene.auxLayers[cfg.layer] = scene[cfg.layer];
+            } else {
+                scene.auxLayers[cfg.layer] = scene.add.layer().setName(cfg.layer.toUpperCase());
+            }
+        }
+
+        // Ensure cameras ignore the right layers
+        const cam = scene.auxCameras[cfg.name];
+        const layer = scene.auxLayers[cfg.layer];
+
+        // Main camera ignores all auxiliary layers
+        mainCam.ignore(layer);
+
+        // Auxiliary camera ignores common layers
+        if (scene.bgLayer && scene.bgLayer !== layer) cam.ignore(scene.bgLayer);
+        if (scene.fgLayer && scene.fgLayer !== layer) cam.ignore(scene.fgLayer);
+        if (scene.foreLayer && scene.foreLayer !== layer) cam.ignore(scene.foreLayer);
+        
+        // Also ignore other auxiliary layers
+        Object.values(scene.auxLayers).forEach(otherLayer => {
+            if (otherLayer !== layer) cam.ignore(otherLayer);
+        });
+    });
+
+    // Special case for backward compatibility or default bgLayer
+    if (scene.bgLayer && !Object.values(scene.auxLayers).includes(scene.bgLayer)) {
+        mainCam.ignore(scene.bgLayer);
     }
 
     const player = entities.find(e => e.components.PlayerTag && e.components.Position);
@@ -38,58 +84,51 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
     if (inputManager) {
         const zoomDelta = inputManager.getZoom();
         const zoomSpeed = 0.02;
-        let newZoom = cam.zoom + (zoomDelta * zoomSpeed);
+        let newZoom = mainCam.zoom + (zoomDelta * zoomSpeed);
         
-        // --- BOUNDS CONSTRAINT ---
-        // Calculate the minimum zoom required to fill the viewport with the world bounds
-        if (cam.useBounds) {
-            const minZoomX = cam.width / cam._bounds.width;
-            const minZoomY = cam.height / cam._bounds.height;
+        if (mainCam.useBounds) {
+            const minZoomX = mainCam.width / mainCam._bounds.width;
+            const minZoomY = mainCam.height / mainCam._bounds.height;
             const minZoom = Math.max(minZoomX, minZoomY);
             newZoom = Math.max(newZoom, minZoom);
         }
 
-        // Clamp zoom between calculated min and 4x
         newZoom = Phaser.Math.Clamp(newZoom, 0.1, 4.0);
-        cam.setZoom(newZoom);
+        mainCam.setZoom(newZoom);
     }
 
+    // --- SYNC ALL CAMERAS ---
+    const syncAux = (cam) => {
+        if (!cam) return;
+        cam.setScroll(mainCam.scrollX, mainCam.scrollY);
+        cam.setZoom(mainCam.zoom);
+        cam.setRotation(mainCam.rotation);
+    };
+
     if (!player) {
-        // Still sync cameras even if no player, in case the scene moved the camera manually
-        if (bgCam) {
-            bgCam.setScroll(cam.scrollX, cam.scrollY);
-            bgCam.setZoom(cam.zoom);
-            bgCam.setRotation(cam.rotation);
-        }
+        Object.values(scene.auxCameras).forEach(syncAux);
         return;
     }
 
     const pPos = player.components.Position;
     
-    // --- SNAP ON INITIAL DETECT ---
-    // If the camera is at its default or a far-off position, snap it once
     if (!scene._camInitialized) {
-        cam.centerOn(pPos.x, pPos.y);
+        mainCam.centerOn(pPos.x, pPos.y);
         scene._camInitialized = true;
     }
 
-    // Use interpolated position for camera target
     const targetX = pPos.prevX !== undefined ? pPos.prevX + (pPos.x - pPos.prevX) * alpha : pPos.x;
     const targetY = pPos.prevY !== undefined ? pPos.prevY + (pPos.y - pPos.prevY) * alpha : pPos.y;
 
     const lerp = 0.1;
-    const currentX = cam.scrollX + cam.width / 2;
-    const currentY = cam.scrollY + cam.height / 2;
+    const currentX = mainCam.scrollX + mainCam.width / 2;
+    const currentY = mainCam.scrollY + mainCam.height / 2;
 
     const newX = currentX + (targetX - currentX) * lerp;
     const newY = currentY + (targetY - currentY) * lerp;
 
-    cam.centerOn(newX, newY);
+    mainCam.centerOn(newX, newY);
 
-    // --- FINAL SYNC CAMERAS (After main camera has moved) ---
-    if (bgCam) {
-        bgCam.setScroll(cam.scrollX, cam.scrollY);
-        bgCam.setZoom(cam.zoom);
-        bgCam.setRotation(cam.rotation);
-    }
+    // Final Sync
+    Object.values(scene.auxCameras).forEach(syncAux);
 };
