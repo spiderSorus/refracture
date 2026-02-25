@@ -4,6 +4,7 @@ import { TestMenuScene } from './scenes/TestMenuScene';
 import { TestScenes } from './scenes/test/index'; // Import the array
 import { AquarellePipeline } from './graphics/AquarellePipeline';
 import { GrayscalePipeline } from './graphics/GrayscalePipeline';
+import { OldGlassPipeline } from './graphics/OldGlassPipeline';
 
 const config = {
     type: Phaser.AUTO,
@@ -13,7 +14,7 @@ const config = {
     transparent: true,
     parent: 'game-container',
     input: { gamepad: true },
-    pipeline: { AquarellePipeline, GrayscalePipeline },
+    pipeline: { AquarellePipeline, GrayscalePipeline, OldGlassPipeline },
     scene: [
         MenuScene,
         TestMenuScene,

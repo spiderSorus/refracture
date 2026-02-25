@@ -10,6 +10,7 @@ import { TriangleGraphic } from '../../graphics/TriangleGraphic';
 import { SpiderGraphic } from '../../graphics/SpiderGraphic';
 import { WatercolorGraphic } from '../../graphics/WatercolorGraphic';
 import { EllipseGraphic } from '../../graphics/EllipseGraphic';
+import { HardShapeGraphic } from '../../graphics/HardShapeGraphic';
 
 const REGISTRY = {
     'sprite': SpriteGraphic,
@@ -23,7 +24,8 @@ const REGISTRY = {
     'triangle': TriangleGraphic,
     'spider': SpiderGraphic,
     'watercolor': WatercolorGraphic,
-    'ellipse': EllipseGraphic
+    'ellipse': EllipseGraphic,
+    'hard_shape': HardShapeGraphic
 };
 
 export const RenderFactory = {

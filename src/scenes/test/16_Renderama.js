@@ -29,14 +29,14 @@ export class Renderama extends BaseTestScene {
         // Define dynamic camera configuration
         this.cameraConfigs = [
             { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACK' },
+            { name: 'BackgroundOldGlass', layer: 'bg_glass', effect: 'old_glass', type: 'BACK' },
             { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'FORE' }
         ];
         
         // --- LOAD BACKGROUND ---
-        loadBackground('rainbow_cathedral', this, { 
+        loadBackground('complexity2', this, { 
             worldWidth: WORLD_WIDTH, 
-            worldHeight: WORLD_HEIGHT,
-            layerName: 'bg_watercolor'
+            worldHeight: WORLD_HEIGHT
         });
 
         // 0. SPAWN PLATFORM

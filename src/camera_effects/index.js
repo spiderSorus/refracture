@@ -5,10 +5,12 @@
 
 import { AquarelleEffect } from './AquarelleEffect';
 import { GrayscaleEffect } from './GrayscaleEffect';
+import { OldGlassEffect } from './OldGlassEffect';
 
 const REGISTRY = {
     'watercolor': AquarelleEffect,
     'grayscale': GrayscaleEffect,
+    'old_glass': OldGlassEffect,
 };
 
 export const applyCameraEffect = (name, camera, scene, config = {}) => {

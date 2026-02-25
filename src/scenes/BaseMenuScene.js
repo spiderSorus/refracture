@@ -31,29 +31,24 @@ export class BaseMenuScene extends Phaser.Scene {
         // Define dynamic camera configuration
         this.cameraConfigs = [
             { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACK' },
+            { name: 'BackgroundOldGlass', layer: 'bg_glass', effect: 'old_glass', type: 'BACK' },
             { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'FORE' }
         ];
 
         // --- RANDOM BACKGROUND ---
-        const backgrounds = ['cathedral', 'cathedral_pink_blue', 'rainbow_cathedral'];
+        const backgrounds = ['cathedral', 'cathedral_pink_blue', 'rainbow_cathedral', 'stained_rainbow', 'complexity', 'complexity2'];
         const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
         
         // Pass the custom layer name to the background loader if it supports it
+        const layerName = randomBg === 'stained_rainbow' ? 'bg_glass' : 'bg_watercolor';
         loadBackground(randomBg, this, { 
             worldSize: 4000, 
-            layerName: 'bg_watercolor' 
+            layerName: layerName 
         });
 
         this.setupHeader();
         this.setupMenu();
         this.updateSelection();
-
-        // --- TEST ENTITY FOR FOREGROUND ---
-        this.addEntity([
-            { _type: 'Position', x: 200, y: 200 },
-            { _type: 'ZLayer', type: 'FORE', index: 0, layerName: 'fg_grayscale' },
-            { _type: 'Renderable', definitions: { 'BASE': { type: 'circle', color: 0xff0000, radius: 40 } }, activeVisuals: {} }
-        ]);
 
         // Initialize base layers for RenderSystem
         this.bgLayer = this.add.layer().setName('BG_LAYER').setDepth(50);
