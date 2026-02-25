@@ -51,9 +51,8 @@ export class OldGlassPipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPipe
     onPreRender() {
         this.set1f('uTime', this.game.loop.time * 0.001);
 
-        const scenes = this.game.scene.getScenes(true);
-        if (scenes.length > 0) {
-            const scene = scenes[0];
+        const scene = this.scene;
+        if (scene) {
             const player = scene.entities ? scene.entities.find(e => e.components.PlayerTag) : null;
             
             let targetVelocity = 0;

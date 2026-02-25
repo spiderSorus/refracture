@@ -29,7 +29,7 @@ export class Renderama extends BaseTestScene {
         this.cameraConfigs = [
             { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACK' },
             { name: 'BackgroundOldGlass', layer: 'bg_glass', effect: 'old_glass', type: 'BACK' },
-            { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'FORE' }
+            { name: 'ForegroundRainbow', layer: 'fg_rainbow', effect: 'rainbow', type: 'FORE' }
         ];
         
         // --- LOAD BACKGROUND ---
@@ -44,35 +44,50 @@ export class Renderama extends BaseTestScene {
             height: 100, 
             color: 0x444444 
         }));
-        spawnPlat.components.ZLayer = ZLayer('FORE', 5, 'fg_grayscale');
+        spawnPlat.components.ZLayer = ZLayer('FORE', 5, 'fg_rainbow');
 
-        // 1. GENERATE CLIMBING PLATFORMS
-        let currentY = spawnY - 600;
-        const colors = [0x440000, 0x660000, 0x333333, 0x222222, 0x550000];
+        // 1. GENERATE CLIMBING PLATFORMS (from VerticalSlice)
+        let lastPos = { x: spawnX, y: spawnY };
+        for (let i = 0; i < 150; i++) { // Increased count for the larger world
+            const angle = Phaser.Math.FloatBetween(0, Math.PI * 2);
+            const dist = Phaser.Math.Between(600, 1200);
+            let nextX = lastPos.x + Math.cos(angle) * dist;
+            let nextY = lastPos.y + Math.sin(angle) * dist;
+            
+            // Stay within world bounds
+            nextX = Phaser.Math.Clamp(nextX, -WORLD_WIDTH / 2 + 500, WORLD_WIDTH / 2 - 500);
+            nextY = Phaser.Math.Clamp(nextY, -WORLD_HEIGHT / 2 + 500, WORLD_HEIGHT / 2 - 500);
 
-        while (currentY > -WORLD_HEIGHT / 2 + 1000) {
-            const x = Phaser.Math.Between(-WORLD_WIDTH / 2 + 500, WORLD_WIDTH / 2 - 500);
-            const w = Phaser.Math.Between(150, 400);
-            const h = Phaser.Math.Between(40, 100);
-            const color = colors[Phaser.Math.Between(0, colors.length - 1)];
-            const shape = Phaser.Math.Between(0, 10) > 7 ? 'circle' : 'rect';
+            const isCircle = Math.random() > 0.4;
+            const size = Phaser.Math.Between(80, 180);
+            const color = Phaser.Display.Color.RandomRGB(40).color;
+            
+            const vx = Phaser.Math.Between(-100, 100);
+            const vy = Phaser.Math.Between(-100, 100);
 
-            this.addEntity(createPlatform(x, currentY, {
-                width: w,
-                height: h,
-                color: color,
-                shape: shape,
-                isStatic: true,
-                depth: 10
-            }));
-
-            // Sync ZLayer for these platforms
-            const lastEnt = this.entities[this.entities.length - 1];
-            lastEnt.components.ZLayer = ZLayer('FORE', 10, 'fg_grayscale');
-
-            currentY -= Phaser.Math.Between(350, 600); // Tighter gaps for easier climbing
+            const components = [
+                Position(nextX, nextY), 
+                Velocity(vx, vy),
+                Mass(10),
+                GravityExempt(),
+                PlatformTag(), 
+                EntityType('PLATFORM'),
+                ZLayer('FORE', 10, 'fg_rainbow')
+            ];
+            
+            if (isCircle) {
+                components.push(Renderable({ 'BASE': { type: 'circle', radius: size, color: color } }));
+                components.push(Collider('circle', size));
+            } else {
+                const w = size * 2.5;
+                const h = Phaser.Math.Between(60, 130);
+                components.push(Renderable({ 'BASE': { type: 'rect', width: w, height: h, color: color } }));
+                components.push(Collider('rect', 0, w, h));
+            }
+            this.addEntity(components);
+            lastPos = { x: nextX, y: nextY };
         }
-
+        
         // 2. PLAYER
         spawnPlayer(this, spawnPlat);
         

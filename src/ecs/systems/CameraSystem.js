@@ -51,17 +51,19 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
                 applyCameraEffect(cfg.effect, newCam, scene);
             }
         }
+    });
 
-        const cam = scene.auxCameras[cfg.name];
+    // --- COLOR & LAYER MANAGEMENT ---
+    // Set all aux cameras to transparent first
+    Object.values(scene.auxCameras).forEach(cam => cam.setBackgroundColor('rgba(0,0,0,0)'));
+    
+    // Set the lowest camera's background color
+    const lowestCam = scene.cameras.cameras[0];
+    if (lowestCam && lowestCam !== mainCam && scene.backgroundColor !== undefined) {
+        lowestCam.setBackgroundColor(scene.backgroundColor);
+    }
 
-        // Ensure the LOWEST camera (first in cameras array) has the scene background color
-        const cams = scene.cameras.cameras;
-        if (cams[0] === cam && scene.backgroundColor !== undefined) {
-            cam.setBackgroundColor(scene.backgroundColor);
-        } else {
-            cam.setBackgroundColor('rgba(0,0,0,0)');
-        }
-
+    configs.forEach(cfg => {
         // Create Layer if missing
         if (!scene.auxLayers[cfg.layer]) {
             // Check if scene already has this layer by name (e.g. from create())
@@ -73,6 +75,7 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
         }
 
         // Ensure cameras ignore the right layers
+        const cam = scene.auxCameras[cfg.name];
         const layer = scene.auxLayers[cfg.layer];
 
         // Main camera ignores all auxiliary layers

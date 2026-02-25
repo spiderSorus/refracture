@@ -13,8 +13,7 @@ export const Complexity2Background = (scene, config = {}) => {
         
         const width = Phaser.Math.Between(1, 50);
         const height = Phaser.Math.Between(500, 3000);
-        const grayVal = Phaser.Math.Between(0, 255);
-        const color = Phaser.Display.Color.GetColor(grayVal, grayVal, grayVal);
+        const color = Math.random() > 0.5 ? 0x000000 : 0xffffff;
         
         // Randomly choose between watercolor and glass layers
         const layerName = Math.random() > 0.5 ? 'bg_watercolor' : 'bg_glass';
@@ -34,7 +33,7 @@ export const Complexity2Background = (scene, config = {}) => {
                     width: width,
                     height: height,
                     color: color,
-                    alpha: 0.3 + Math.random() * 0.4
+                    alpha: 1.0
                 }
             })
         ]);
@@ -43,8 +42,8 @@ export const Complexity2Background = (scene, config = {}) => {
     console.log(`[BACKGROUND] Complexity 2 Loaded with ${count} hard shapes.`);
 
     return {
-        backgroundColor: 0xffffff,
-        atmosphereColor: 0xffffff,
+        backgroundColor: 0x000000,
+        enableAtmosphere: true,
         atmosphereIntensity: 0.8
     };
 };

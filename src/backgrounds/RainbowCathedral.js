@@ -57,6 +57,6 @@ export const RainbowCathedral = (scene, config = {}) => {
 
     return {
         backgroundColor: 0x000000,
-        atmosphereColor: null
+        enableAtmosphere: false
     };
 };

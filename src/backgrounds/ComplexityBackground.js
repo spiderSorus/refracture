@@ -47,7 +47,7 @@ export const ComplexityBackground = (scene, config = {}) => {
 
     return {
         backgroundColor: 0xffffff,
-        atmosphereColor: 0xffffff,
+        enableAtmosphere: true,
         atmosphereIntensity: 0.8
     };
 };

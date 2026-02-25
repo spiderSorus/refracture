@@ -44,7 +44,8 @@ export class BaseMenuScene extends Phaser.Scene {
         const layerName = randomBg === 'stained_rainbow' ? 'bg_glass' : 'bg_watercolor';
         
         loadBackground(randomBg, this, { 
-            worldSize: 4000, 
+            worldWidth: 4000, 
+            worldHeight: 8000, // Give menu scenes a consistent large height
             layerName: layerName 
         });
 

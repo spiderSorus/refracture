@@ -10,8 +10,9 @@ export const ParallaxSystem = (entities, scene, alpha = 1.0) => {
     const centerY = cam.scrollY + cam.height / 2;
 
     // Atmospheric Depth settings
-    const atmosphereColor = scene.atmosphereColor ?? null; // e.g., 0xffffff
-    const atmosphereIntensity = scene.atmosphereIntensity ?? 0.5;
+    const enableAtmosphere = scene.enableAtmosphere ?? false;
+    const atmosphereColor = scene.cameras.main.backgroundColor.color;
+    const atmosphereIntensity = scene.atmosphereIntensity ?? 0.8;
 
     entities.forEach(entity => {
         const { Position: pos, Renderable: renderable, Parallax: parallax } = entity.components;
@@ -37,7 +38,7 @@ export const ParallaxSystem = (entities, scene, alpha = 1.0) => {
                 gfx.gameObject.y = renderY;
 
                 // --- 2. ATMOSPHERIC DEPTH (TINTING) ---
-                if (atmosphereColor !== null) {
+                if (enableAtmosphere) {
                     const depthEffect = (1.0 - factor) * atmosphereIntensity;
                     if (gfx.setAtmosphere) {
                         gfx.setAtmosphere(atmosphereColor, depthEffect);

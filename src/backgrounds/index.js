@@ -29,14 +29,14 @@ export const loadBackground = (name, scene, args = {}) => {
     const config = backgroundScript(scene, args) || {};
     scene.currentBackground = name;
     
-    // If the background script specifies a color, apply it to the main camera
+    // If the background script specifies a color, set it on the scene for CameraSystem to use
     if (config.backgroundColor !== undefined) {
-        scene.cameras.main.setBackgroundColor(config.backgroundColor);
+        scene.backgroundColor = config.backgroundColor;
     }
-    
+
     // Apply atmosphere if specified
-    if (config.atmosphereColor !== undefined) {
-        scene.atmosphereColor = config.atmosphereColor;
+    if (config.enableAtmosphere !== undefined) {
+        scene.enableAtmosphere = config.enableAtmosphere;
         scene.atmosphereIntensity = config.atmosphereIntensity ?? 0.8;
     }
 
