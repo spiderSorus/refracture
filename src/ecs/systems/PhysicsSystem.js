@@ -32,15 +32,57 @@ export const PhysicsSystem = (entities, delta, scene) => {
         const spin = entity.components.Spin;
         const angVel = entity.components.AngularVelocity;
         const rot = entity.components.Rotation;
+        const isSeesaw = !!entity.components.SeesawTag;
         
         if (rot) {
             if (spin) {
                 rot.angle += spin.rate * dt;
             }
             if (angVel) {
-                rot.angle += angVel.rate * dt;
-                // Apply angular damping
-                angVel.rate *= 0.98;
+                // --- SEESAW DAMPING & FREEZING ---
+                if (isSeesaw) {
+                    const tag = entity.components.SeesawTag;
+                    
+                    // 1. Restorative force (Spring-back)
+                    if (tag.stiffness > 0) {
+                        const restorative = -rot.angle * tag.stiffness;
+                        angVel.rate += restorative * dt;
+                    }
+
+                    // 2. Interaction check for locking
+                    const hasWeb = entities.some(e => {
+                        const tether = e.components.WebTether;
+                        const conn = e.components.WebConnection;
+                        return (tether && tether.platformId === entity.id) || 
+                               (conn && (conn.fromId === entity.id || conn.toId === entity.id));
+                    });
+                    const hasPlayer = entities.some(e => e.components.Parent?.id === entity.id);
+
+                    if (!hasWeb && !hasPlayer && tag.stiffness === 0) {
+                        // "Disconnect" and no spring - freeze the rotation
+                        angVel.rate = 0;
+                    } else {
+                        // Active interaction or spring active - apply friction
+                        angVel.rate *= 0.95;
+                    }
+
+                    rot.angle += angVel.rate * dt;
+
+                    // 3. Rotation Clamping
+                    if (tag.maxRotation && tag.maxRotation > 0) {
+                        if (rot.angle > tag.maxRotation) {
+                            rot.angle = tag.maxRotation;
+                            angVel.rate = 0;
+                        } else if (rot.angle < -tag.maxRotation) {
+                            rot.angle = -tag.maxRotation;
+                            angVel.rate = 0;
+                        }
+                    }
+                } else {
+                    // Standard damping for other rotating objects
+                    angVel.rate *= 0.98;
+                    rot.angle += angVel.rate * dt;
+                }
             }
         }
     });
@@ -66,56 +108,72 @@ export const PhysicsSystem = (entities, delta, scene) => {
             const entA = entities.find(e => e.id === conn.fromId);
             const entB = entities.find(e => e.id === conn.toId);
             if (entA && entB && entA.components.Position && entB.components.Position) {
-                const rotA = entA.components.Rotation?.angle || 0;
-                const rotB = entB.components.Rotation?.angle || 0;
-                const ax = conn.fromOffset.x * Math.cos(rotA) - conn.fromOffset.y * Math.sin(rotA);
-                const ay = conn.fromOffset.x * Math.sin(rotA) + conn.fromOffset.y * Math.cos(rotA);
-                const bx = conn.toOffset.x * Math.cos(rotB) - conn.toOffset.y * Math.sin(rotB);
-                const by = conn.toOffset.x * Math.sin(rotB) + conn.toOffset.y * Math.cos(rotB);
-                const worldAX = entA.components.Position.x + ax;
-                const worldAY = entA.components.Position.y + ay;
-                const worldBX = entB.components.Position.x + bx;
-                const worldBY = entB.components.Position.y + by;
-                const dx = worldBX - worldAX;
-                const dy = worldBY - worldAY;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const restLen = conn.fixedLength || 100;
+                // Run multiple iterations for rigidity if needed, but start with 1 strong pass
+                for (let i = 0; i < 2; i++) {
+                    const rotA = entA.components.Rotation?.angle || 0;
+                    const rotB = entB.components.Rotation?.angle || 0;
+                    
+                    const ax = conn.fromOffset.x * Math.cos(rotA) - conn.fromOffset.y * Math.sin(rotA);
+                    const ay = conn.fromOffset.x * Math.sin(rotA) + conn.fromOffset.y * Math.cos(rotA);
+                    const bx = conn.toOffset.x * Math.cos(rotB) - conn.toOffset.y * Math.sin(rotB);
+                    const by = conn.toOffset.x * Math.sin(rotB) + conn.toOffset.y * Math.cos(rotB);
+                    
+                    const worldAX = entA.components.Position.x + ax;
+                    const worldAY = entA.components.Position.y + ay;
+                    const worldBX = entB.components.Position.x + bx;
+                    const worldBY = entB.components.Position.y + by;
+                    
+                    const dx = worldBX - worldAX;
+                    const dy = worldBY - worldAY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const restLen = conn.fixedLength || 100;
 
-                if (dist > restLen) {
-                    const overlap = dist - restLen;
-                    const nx = dx / dist;
-                    const ny = dy / dist;
-                    const force = overlap * conn.stiffness * 500;
-                    conn.tension = force;
-                    const massA = entA.components.Mass?.value || 10;
-                    const massB = entB.components.Mass?.value || 10;
-                    const staticA = !!(entA.components.SpawnTag || entA.components.StaticTag);
-                    const staticB = !!(entB.components.SpawnTag || entB.components.StaticTag);
-                    
-                    if (!staticA) {
-                        if (entA.components.Velocity) {
-                            entA.components.Velocity.x += (nx * force / massA) * dt;
-                            entA.components.Velocity.y += (ny * force / massA) * dt;
+                    if (dist > restLen) {
+                        const overlap = dist - restLen;
+                        const nx = dx / dist;
+                        const ny = dy / dist;
+                        
+                        const isStaticA = !!(entA.components.SpawnTag || entA.components.StaticTag);
+                        const isStaticB = !!(entB.components.SpawnTag || entB.components.StaticTag);
+                        const isSeesawA = !!entA.components.SeesawTag;
+                        const isSeesawB = !!entB.components.SeesawTag;
+
+                        // 1. POSITION CORRECTION (Verlet Style)
+                        // Static/Seesaw center is immovable (mobility 0)
+                        const mobA = (isStaticA || isSeesawA) ? 0 : 1;
+                        const mobB = (isStaticB || isSeesawB) ? 0 : 1;
+                        const totalMob = mobA + mobB;
+
+                        if (totalMob > 0) {
+                            const move = overlap / totalMob;
+                            if (mobA > 0) {
+                                entA.components.Position.x += nx * move;
+                                entA.components.Position.y += ny * move;
+                            }
+                            if (mobB > 0) {
+                                entB.components.Position.x -= nx * move;
+                                entB.components.Position.y -= ny * move;
+                            }
                         }
-                        if (entA.components.AngularVelocity) {
-                            // Force on A is (+nx * force, +ny * force)
-                            const torqueA = (ax * (ny * force) - ay * (nx * force)) / (massA * 100);
-                            entA.components.AngularVelocity.rate += torqueA * dt;
+
+                        // 2. ANGULAR IMPULSE (For Seesaws)
+                        // If one end is a Seesaw, the overlap force pulls on its rotation
+                        if (isSeesawA && entA.components.AngularVelocity) {
+                            const torque = (ax * (ny * overlap * 100) - ay * (nx * overlap * 100)) / (entA.components.Mass?.value * 10 || 1000);
+                            entA.components.AngularVelocity.rate += torque;
+                            entA.components.AngularVelocity.rate *= 0.5; // Heavy damping
                         }
+                        if (isSeesawB && entB.components.AngularVelocity) {
+                            const torque = (bx * (-ny * overlap * 100) - by * (-nx * overlap * 100)) / (entB.components.Mass?.value * 10 || 1000);
+                            entB.components.AngularVelocity.rate += torque;
+                            entB.components.AngularVelocity.rate *= 0.5;
+                        }
+                        
+                        conn.tension = overlap * 1000;
+                    } else {
+                        conn.tension = 0;
                     }
-                    
-                    if (!staticB) {
-                        if (entB.components.Velocity) {
-                            entB.components.Velocity.x -= (nx * force / massB) * dt;
-                            entB.components.Velocity.y -= (ny * force / massB) * dt;
-                        }
-                        if (entB.components.AngularVelocity) {
-                            // Force on B is (-nx * force, -ny * force)
-                            const torqueB = (bx * (-ny * force) - by * (-nx * force)) / (massB * 100);
-                            entB.components.AngularVelocity.rate += torqueB * dt;
-                        }
-                    }
-                } else { conn.tension = 0; }
+                }
             }
         }
     });
@@ -146,8 +204,9 @@ export const PhysicsSystem = (entities, delta, scene) => {
         if (vel) {
             const isPlayer = !!entity.components.PlayerTag;
             const isStatic = !!(entity.components.SpawnTag || entity.components.StaticTag);
+            const isSeesaw = !!entity.components.SeesawTag;
 
-            if (isStatic) {
+            if (isStatic || isSeesaw) {
                 vel.x = 0;
                 vel.y = 0;
             } else if (isPlayer) {
@@ -295,13 +354,20 @@ export const PhysicsSystem = (entities, delta, scene) => {
             if (dist < minDist && dist > 0) {
                 const overlap = minDist - dist;
                 const nx = (posB.x - posA.x) / dist; const ny = (posB.y - posA.y) / dist;
-                const canA = !(A.components.SpawnTag || A.components.StaticTag);
-                const canB = !(B.components.SpawnTag || B.components.StaticTag);
-                if (canA && canB) {
+                
+                const isStaticA = !!(A.components.SpawnTag || A.components.StaticTag);
+                const isStaticB = !!(B.components.SpawnTag || B.components.StaticTag);
+                const isSeesawA = !!A.components.SeesawTag;
+                const isSeesawB = !!B.components.SeesawTag;
+
+                const canMoveA = !isStaticA && !isSeesawA;
+                const canMoveB = !isStaticB && !isSeesawB;
+
+                if (canMoveA && canMoveB) {
                     posA.x -= nx * overlap * 0.5; posA.y -= ny * overlap * 0.5;
                     posB.x += nx * overlap * 0.5; posB.y += ny * overlap * 0.5;
-                } else if (canA) { posA.x -= nx * overlap; posA.y -= ny * overlap; }
-                else if (canB) { posB.x += nx * overlap; posB.y += ny * overlap; }
+                } else if (canMoveA) { posA.x -= nx * overlap; posA.y -= ny * overlap; }
+                else if (canMoveB) { posB.x += nx * overlap; posB.y += ny * overlap; }
 
                 const velA = A.components.Velocity; const velB = B.components.Velocity;
                 if (velA && velB) {
@@ -312,8 +378,26 @@ export const PhysicsSystem = (entities, delta, scene) => {
                         const massA = A.components.Mass?.value || 10; const massB = B.components.Mass?.value || 10;
                         let j = -(1 + restitution) * velAlongNormal; j /= 1 / massA + 1 / massB;
                         const impulseX = j * nx; const impulseY = j * ny;
-                        if (canA) { velA.x -= 1 / massA * impulseX; velA.y -= 1 / massA * impulseY; }
-                        if (canB) { velB.x += 1 / massB * impulseX; velB.y += 1 / massB * impulseY; }
+                        
+                        if (canMoveA) { velA.x -= 1 / massA * impulseX; velA.y -= 1 / massA * impulseY; }
+                        if (canMoveB) { velB.x += 1 / massB * impulseX; velB.y += 1 / massB * impulseY; }
+
+                        // --- SEESAW TORQUE ---
+                        if (isSeesawA && A.components.AngularVelocity) {
+                            // Approximate impact point as being at the contact normal
+                            // For a seesaw, we really want to know horizontal distance from center
+                            const rx = (posB.x - posA.x);
+                            const ry = (posB.y - posA.y);
+                            // Torque = rx * Fy - ry * Fx
+                            const torque = (rx * impulseY - ry * impulseX) / (massA * 100);
+                            A.components.AngularVelocity.rate -= torque;
+                        }
+                        if (isSeesawB && B.components.AngularVelocity) {
+                            const rx = (posA.x - posB.x);
+                            const ry = (posA.y - posB.y);
+                            const torque = (rx * (-impulseY) - ry * (-impulseX)) / (massB * 100);
+                            B.components.AngularVelocity.rate -= torque;
+                        }
                     }
                 }
             }

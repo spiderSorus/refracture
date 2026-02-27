@@ -236,6 +236,7 @@ export class BaseTestScene extends Phaser.Scene {
 
         if (player) {
             const sling = player.components.SlingshotJump || {};
+            const tether = player.components.WebTether || null;
             const rawStick = this.inputManager.getRightStickRaw();
             const cam = this.cameras.main;
             const worldBounds = cam.useBounds ? cam._bounds : { x: 0, y: 0, width: 0, height: 0 };
@@ -258,7 +259,11 @@ export class BaseTestScene extends Phaser.Scene {
                     rawStick: rawStick,
                     vecX: sling.vector ? sling.vector.x : 0,
                     vecY: sling.vector ? sling.vector.y : 0
-                }
+                },
+                web: tether ? {
+                    length: Math.round(tether.currentLength),
+                    maxLength: Math.round(tether.maxLength)
+                } : null
             });
         }
     }

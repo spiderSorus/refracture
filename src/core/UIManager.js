@@ -80,6 +80,13 @@ export class UIManager {
                 BG: <span style="color: #fff;">${stateData.background || 'None'}</span> (${stateData.bgDims || 'Auto'})<br>
                 STATUS: ${stateData.status}
             </div>
+            ${stateData.web ? `
+            <div style="margin-bottom: 10px; border-bottom: 1px solid #444; width: 100%; padding-bottom: 5px;">
+                <strong style="color: #0ff;">[ WEB ]</strong><br>
+                LENGTH: <span style="color: #fff;">${stateData.web.length}</span><br>
+                MAX: <span style="color: #fff;">${stateData.web.maxLength}</span>
+            </div>
+            ` : ''}
             <div style="margin-bottom: 10px; border-bottom: 1px solid #444; width: 100%; padding-bottom: 5px; font-size: 11px;">
                 <strong style="color: #0ff;">[ CAMERAS ]</strong><br>
                 ${(stateData.cameras || []).map(c => `${c}`).join('<br>')}

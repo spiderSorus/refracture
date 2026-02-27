@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { WebTether, WebConnection } from '../components/index';
 import { findPlayer } from '../entities/player';
-import { snapOffsetInside } from '../../utils/CollisionUtils';
+import { snapOffsetInside, pointToSegmentDist } from '../../utils/CollisionUtils';
 import { PHYSICS } from '../../core/Constants';
 
 export const WebSystem = (entities, inputManager, scene) => {
@@ -18,6 +18,51 @@ export const WebSystem = (entities, inputManager, scene) => {
     
     const strengthMult = PHYSICS.WEB_STRENGTH_MULT;
 
+    // --- 0. WEB CUTTING LOGIC ---
+    const xJustPressed = inputManager.isButtonPressed('X');
+    let cutSomething = false;
+
+    if (xJustPressed) {
+        entities.forEach(e => {
+            const conn = e.components.WebConnection;
+            if (conn) {
+                const entA = entities.find(ent => ent.id === conn.fromId);
+                const entB = entities.find(ent => ent.id === conn.toId);
+
+                if (entA && entB && entA.components.Position && entB.components.Position) {
+                    const rotA = entA.components.Rotation?.angle || 0;
+                    const rotB = entB.components.Rotation?.angle || 0;
+
+                    const ax = conn.fromOffset.x * Math.cos(rotA) - conn.fromOffset.y * Math.sin(rotA);
+                    const ay = conn.fromOffset.x * Math.sin(rotA) + conn.fromOffset.y * Math.cos(rotA);
+                    const bx = conn.toOffset.x * Math.cos(rotB) - conn.toOffset.y * Math.sin(rotB);
+                    const by = conn.toOffset.x * Math.sin(rotB) + conn.toOffset.y * Math.cos(rotB);
+
+                    const x1 = entA.components.Position.x + ax;
+                    const y1 = entA.components.Position.y + ay;
+                    const x2 = entB.components.Position.x + bx;
+                    const y2 = entB.components.Position.y + by;
+
+                    const distToWeb = pointToSegmentDist(pPos.x, pPos.y, x1, y1, x2, y2);
+                    
+                    if (distToWeb < 30) { // Catch radius for cutting
+                        console.log(`✂️ [WEB] Severed Connection: ${e.id}`);
+                        e.toDestroy = true;
+                        cutSomething = true;
+                    }
+                }
+            }
+        });
+    }
+
+    // Release player tether only if we DIDN'T just cut a different connection
+    // This allows cutting webs you are touching without losing your own anchor
+    if (xJustPressed && tether && !cutSomething) {
+        delete player.components.WebTether;
+        delete player.components.Parent;
+        return;
+    }
+
     // --- 1. WINCH & DANGLE PHYSICS ---
     if (tether) {
         const platform = entities.find(e => e.id === tether.platformId);
@@ -32,12 +77,41 @@ export const WebSystem = (entities, inputManager, scene) => {
             const rb = inputManager.isButtonDown('LENGTHEN');
             const winchSpeed = PHYSICS.WEB_WINCH_SPEED;
 
-            // Only allow winching if NOT attached to a different platform
-            const canWinch = !currentParent || currentParent.id === tether.platformId;
+            tether.isActive = false; 
+            tether.isPullable = !!platform.components.SeesawTag;
 
-            if (canWinch) {
-                if (lb) tether.maxLength = Math.max(MIN_SPOOL_LENGTH, tether.maxLength - winchSpeed);
-                if (rb) tether.maxLength = Math.min(MAX_SPOOL_LENGTH, tether.maxLength + winchSpeed);
+            // --- JUMP RECOVERY ---
+            if (!currentParent && tether._hadParent) {
+                tether.maxLength = tether.originalMaxLength || PHYSICS.WEB_INITIAL_LENGTH;
+            }
+            tether._hadParent = !!currentParent;
+
+            if (lb) {
+                tether.isActive = true;
+                tether._wasLbDown = true;
+
+                if (tether.maxLength > dist + 5) {
+                    tether.maxLength = Math.max(MIN_SPOOL_LENGTH, tether.maxLength - winchSpeed);
+                } else {
+                    tether.maxLength = dist; 
+                    
+                    const isStandingOnTarget = currentParent && currentParent.id === tether.platformId;
+                    if (tether.isPullable && !isStandingOnTarget && platform.components.SeesawTag && platform.components.AngularVelocity) {
+                        const angVel = platform.components.AngularVelocity;
+                        const tiltForce = 0.5; 
+                        const direction = tether.anchorOffset.x > 0 ? 1 : -1;
+                        angVel.rate += direction * tiltForce * (scene.game.loop.delta / 1000);
+                    }
+                }
+            } else {
+                if (tether._wasLbDown) {
+                    tether.maxLength = dist;
+                    tether._wasLbDown = false;
+                }
+            }
+
+            if (rb) {
+                tether.maxLength = Math.min(MAX_SPOOL_LENGTH, tether.maxLength + winchSpeed);
             }
 
             if (!currentParent && pVel && dist > tether.maxLength) {
@@ -68,7 +142,6 @@ export const WebSystem = (entities, inputManager, scene) => {
     }
 
     // --- 2. INPUT TRIGGERS ---
-    const xJustPressed = inputManager.isButtonPressed('X');
     const yJustPressed = inputManager.isButtonPressed('Y');
 
     // CREATE TETHER
@@ -80,20 +153,17 @@ export const WebSystem = (entities, inputManager, scene) => {
             const snappedOffset = snapOffsetInside(currentParent.offset, plat.components.Collider, 10);
             const newTether = WebTether(currentParent.id, snappedOffset);
             newTether.maxForce *= strengthMult;
+            newTether.isPullable = !!plat.components.SeesawTag;
+            newTether.maxLength = PHYSICS.WEB_INITIAL_LENGTH; 
+            newTether.originalMaxLength = PHYSICS.WEB_INITIAL_LENGTH;
+
             player.components.WebTether = newTether;
-            player.components.WebTether.maxLength = PHYSICS.WEB_INITIAL_LENGTH; 
             return;
         }
     }
 
     if (yJustPressed && tether && !currentParent) {
         delete player.components.WebTether;
-        return;
-    }
-
-    if (xJustPressed && tether) {
-        delete player.components.WebTether;
-        delete player.components.Parent;
         return;
     }
 
@@ -119,7 +189,7 @@ export const WebSystem = (entities, inputManager, scene) => {
             );
             
             conn.maxForce *= strengthMult;
-            conn.fixedLength = dist * 1.15;
+            conn.fixedLength = dist; 
             
             console.log(`🔗 [WEB] Created Connection: ${tether.platformId} <-> ${currentParent.id}`);
 

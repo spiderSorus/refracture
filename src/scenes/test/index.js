@@ -13,6 +13,7 @@ import { WatercolorScene } from './13_Watercolor';
 import { RedCathedralScene } from './14_RedCathedral';
 import { RainbowCathedralScene } from './15_RainbowCathedral';
 import { Renderama } from './16_Renderama';
+import { PullTest } from './17_PullTest';
 import { Gameplay } from '../Gameplay';
 
 export const TestScenes = [
@@ -31,5 +32,6 @@ export const TestScenes = [
     WatercolorScene,
     RedCathedralScene,
     RainbowCathedralScene,
-    Renderama
+    Renderama,
+    PullTest
 ];

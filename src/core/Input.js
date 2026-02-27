@@ -23,8 +23,14 @@ export class InputManager {
         this.pad = null;
         this.prevPadState = {};
 
+        // Immediately check for already connected pads
+        if (this.scene.input.gamepad && this.scene.input.gamepad.total > 0) {
+            this.pad = this.scene.input.gamepad.getPad(0);
+            console.log(`[INPUT] Initialized with existing gamepad: ${this.pad.id}`);
+        }
+
         this.scene.input.gamepad.on('connected', (pad) => {
-            console.log(`Gamepad connected: ${pad.id}`);
+            console.log(`[INPUT] Gamepad connected: ${pad.id}`);
             this.pad = pad;
         });
     }

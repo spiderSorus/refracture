@@ -70,10 +70,16 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
      */
     const drawDynamicPath = (x1, y1, x2, y2, targetLen, tension, properties) => {
         const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
-        const { scale = 1.0 } = properties;
+        const { scale = 1.0, isActive = false, isPullable = false } = properties;
 
-        // Single thin white line for COLOR_BURN
-        drawPathSegment(x1, y1, x2, y2, targetLen, dist, 0, 1, (1.0 * scale) / cam.zoom, 0xffffff, 1.0);
+        // Use dark red if it can be pulled, bright red if actively tugging, otherwise white
+        let color = 0xffffff;
+        if (isPullable) {
+            color = isActive ? 0xff0000 : 0x880000;
+        }
+
+        // Single thin line
+        drawPathSegment(x1, y1, x2, y2, targetLen, dist, 0, 1, (1.0 * scale) / cam.zoom, color, 1.0);
     };
 
     const getEntityColor = (entity) => {
@@ -150,7 +156,9 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
 
                 drawDynamicPath(worldAX, worldAY, pPos.x, pPos.y, tether.maxLength, tether.tension, {
                     baseColor,
-                    scale: 1.0
+                    scale: 1.0,
+                    isActive: !!tether.isActive,
+                    isPullable: !!tether.isPullable
                 });
             }
         }

@@ -252,4 +252,5 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
 
     // Final Sync
     Object.values(scene.auxCameras).forEach(syncAux);
+    if (scene.webCamera) syncAux(scene.webCamera);
 };

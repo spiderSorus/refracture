@@ -28,6 +28,11 @@ export const PlatformTag = () => ({ _type: 'PlatformTag' });
 export const BackgroundTag = () => ({ _type: 'BackgroundTag' });
 export const SpawnTag = () => ({ _type: 'SpawnTag' });
 export const StaticTag = () => ({ _type: 'StaticTag' });
+export const SeesawTag = (stiffness = 0, maxRotation = 0.8) => ({ 
+    _type: 'SeesawTag', 
+    stiffness,    // 0 = stay in place, >0 = spring back to 0 angle
+    maxRotation   // null or 0 = free spinning, >0 = clamped range
+});
 
 export const BackgroundShape = (shapeType = 'rect', config = {}) => ({
     _type: 'BackgroundShape',
