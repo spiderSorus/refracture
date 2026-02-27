@@ -22,38 +22,39 @@ export const WebSystem = (entities, inputManager, scene) => {
     const xJustPressed = inputManager.isButtonPressed('X');
     let cutSomething = false;
 
-    if (xJustPressed) {
-        entities.forEach(e => {
-            const conn = e.components.WebConnection;
-            if (conn) {
-                const entA = entities.find(ent => ent.id === conn.fromId);
-                const entB = entities.find(ent => ent.id === conn.toId);
+    entities.forEach(e => {
+        const conn = e.components.WebConnection;
+        if (conn) {
+            const entA = entities.find(ent => ent.id === conn.fromId);
+            const entB = entities.find(ent => ent.id === conn.toId);
 
-                if (entA && entB && entA.components.Position && entB.components.Position) {
-                    const rotA = entA.components.Rotation?.angle || 0;
-                    const rotB = entB.components.Rotation?.angle || 0;
+            if (entA && entB && entA.components.Position && entB.components.Position) {
+                const rotA = entA.components.Rotation?.angle || 0;
+                const rotB = entB.components.Rotation?.angle || 0;
 
-                    const ax = conn.fromOffset.x * Math.cos(rotA) - conn.fromOffset.y * Math.sin(rotA);
-                    const ay = conn.fromOffset.x * Math.sin(rotA) + conn.fromOffset.y * Math.cos(rotA);
-                    const bx = conn.toOffset.x * Math.cos(rotB) - conn.toOffset.y * Math.sin(rotB);
-                    const by = conn.toOffset.x * Math.sin(rotB) + conn.toOffset.y * Math.cos(rotB);
+                const ax = conn.fromOffset.x * Math.cos(rotA) - conn.fromOffset.y * Math.sin(rotA);
+                const ay = conn.fromOffset.x * Math.sin(rotA) + conn.fromOffset.y * Math.cos(rotA);
+                const bx = conn.toOffset.x * Math.cos(rotB) - conn.toOffset.y * Math.sin(rotB);
+                const by = conn.toOffset.x * Math.sin(rotB) + conn.toOffset.y * Math.cos(rotB);
 
-                    const x1 = entA.components.Position.x + ax;
-                    const y1 = entA.components.Position.y + ay;
-                    const x2 = entB.components.Position.x + bx;
-                    const y2 = entB.components.Position.y + by;
+                const x1 = entA.components.Position.x + ax;
+                const y1 = entA.components.Position.y + ay;
+                const x2 = entB.components.Position.x + bx;
+                const y2 = entB.components.Position.y + by;
 
-                    const distToWeb = pointToSegmentDist(pPos.x, pPos.y, x1, y1, x2, y2);
-                    
-                    if (distToWeb < 30) { // Catch radius for cutting
-                        console.log(`✂️ [WEB] Severed Connection: ${e.id}`);
-                        e.toDestroy = true;
-                        cutSomething = true;
-                    }
+                const distToWeb = pointToSegmentDist(pPos.x, pPos.y, x1, y1, x2, y2);
+                
+                // --- CONTINUOUS CHECK FOR RENDERER ---
+                conn.isCuttable = distToWeb < 30;
+
+                if (xJustPressed && conn.isCuttable) {
+                    console.log(`✂️ [WEB] Severed Connection: ${e.id}`);
+                    e.toDestroy = true;
+                    cutSomething = true;
                 }
             }
-        });
-    }
+        }
+    });
 
     // Release player tether only if we DIDN'T just cut a different connection
     // This allows cutting webs you are touching without losing your own anchor

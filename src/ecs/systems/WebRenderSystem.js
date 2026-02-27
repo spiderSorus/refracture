@@ -70,11 +70,16 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
      */
     const drawDynamicPath = (x1, y1, x2, y2, targetLen, tension, properties) => {
         const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
-        const { scale = 1.0, isActive = false, isPullable = false } = properties;
+        const { scale = 1.0, isActive = false, isPullable = false, isCuttable = false } = properties;
 
-        // Use dark red if it can be pulled, bright red if actively tugging, otherwise white
+        // Priority Color selection:
+        // 1. Yellow if within cutting range
+        // 2. Red if pullable/active
+        // 3. White (default)
         let color = 0xffffff;
-        if (isPullable) {
+        if (isCuttable) {
+            color = 0xffff00; // Yellow
+        } else if (isPullable) {
             color = isActive ? 0xff0000 : 0x880000;
         }
 
@@ -127,7 +132,8 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
 
                 drawDynamicPath(x1, y1, x2, y2, conn.fixedLength, conn.tension, {
                     baseColor,
-                    scale
+                    scale,
+                    isCuttable: !!conn.isCuttable
                 });
             }
         }
