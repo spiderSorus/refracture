@@ -5,29 +5,65 @@ import { generateBackgroundRectangles } from './BackgroundGenerator';
  * A clean, high-performance rework using dual-layered watercolor rectangles.
  */
 export const WatercolorBackground = (scene, config = {}) => {
-    // 1. Far Layer (Deep Purples)
+    const worldW = config.worldWidth || 5000;
+    const worldH = config.worldHeight || 5000;
+
+    // Density-based scaling: baseline is 5000x5000 area
+    const areaScale = (worldW * worldH) / (5000 * 5000);
+    
+    // Lowered counts for a sparser look
+    const countFar = Math.min(2000, Math.max(80, Math.round(80 * areaScale)));
+    const countNear = Math.min(1200, Math.max(50, Math.round(50 * areaScale)));
+
+    // 1. Far Horizontal Layer (Deep Blue / Parallax 0.1)
     generateBackgroundRectangles(scene, config, {
-        count: 120,
-        parallax: 0.2,
-        zIndex: 10,
+        count: Math.min(500, Math.max(30, Math.round(30 * areaScale))),
+        parallax: 0.1,
+        zIndex: 60, 
         layerName: 'bg_watercolor',
-        widthRange: [100, 400],
-        heightRange: [1000, 5000],
-        color: 0x331144,
-        alpha: 0.3,
+        widthRange: [2000, 6000], // Long horizontal beams
+        heightRange: [100, 300],
+        color: 0x112244,
+        alpha: 0.2,
         renderType: 'watercolor'
     });
 
-    // 2. Near Layer (Teals/Blues)
+    // 2. Far Vertical Columns (Deep Purple / Parallax 0.2)
     generateBackgroundRectangles(scene, config, {
-        count: 80,
-        parallax: 0.6,
-        zIndex: 20,
-        layerName: 'bg_glass',
-        widthRange: [50, 200],
-        heightRange: [500, 2500],
-        color: 0x114466,
+        count: countFar,
+        parallax: 0.2,
+        zIndex: 50, 
+        layerName: 'bg_watercolor',
+        widthRange: [200, 600],
+        heightRange: [3000, 10000],
+        color: 0x442266,
         alpha: 0.4,
+        renderType: 'watercolor'
+    });
+
+    // 3. Near Vertical Columns (Teal / Parallax 0.6)
+    generateBackgroundRectangles(scene, config, {
+        count: countNear,
+        parallax: 0.6,
+        zIndex: 20, 
+        layerName: 'bg_watercolor',
+        widthRange: [100, 400],
+        heightRange: [1500, 5000],
+        color: 0x2288aa, // Brighter teal
+        alpha: 0.5,
+        renderType: 'watercolor'
+    });
+
+    // 4. Near Horizontal Layer (Cyan / Parallax 0.8)
+    generateBackgroundRectangles(scene, config, {
+        count: Math.min(300, Math.max(20, Math.round(20 * areaScale))),
+        parallax: 0.8,
+        zIndex: 10, 
+        layerName: 'bg_watercolor',
+        widthRange: [1000, 3000],
+        heightRange: [50, 150],
+        color: 0x44aaee,
+        alpha: 0.3,
         renderType: 'watercolor'
     });
 
@@ -38,8 +74,7 @@ export const WatercolorBackground = (scene, config = {}) => {
         enableAtmosphere: true,
         atmosphereIntensity: 0.7,
         cameraConfigs: [
-            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND', includeUI: true },
-            { name: 'BackgroundGlass', layer: 'bg_glass', effect: 'old_glass', type: 'BACKGROUND', includeUI: true }
+            { name: 'Watercolor Camera', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND', includeUI: true }
         ]
     };
 };

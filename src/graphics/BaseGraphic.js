@@ -17,10 +17,7 @@ export class BaseGraphic {
         }
 
         if (config.alpha !== undefined && this.gameObject.setAlpha) {
-            // Only apply if it's not a container, or if we really want to multiply alpha
-            if (!(this.gameObject instanceof Phaser.GameObjects.Container)) {
-                this.gameObject.setAlpha(config.alpha);
-            }
+            this.gameObject.setAlpha(config.alpha);
         }
     }
 

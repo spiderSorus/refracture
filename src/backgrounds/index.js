@@ -27,6 +27,9 @@ export const loadBackground = (name, scene, args = {}) => {
         ...args
     };
 
+    // Pre-initialize auxLayers object
+    if (!scene.auxLayers) scene.auxLayers = {};
+
     const config = backgroundScript(scene, mergedArgs) || {};
     
     // Store dimensions for debug UI

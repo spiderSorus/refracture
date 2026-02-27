@@ -15,7 +15,7 @@ export class WatercolorGraphic extends BaseGraphic {
 
         for (let i = 0; i < layers; i++) {
             const jitterScale = (1 + (Math.random() * 0.4 - 0.2));
-            const alpha = 0.1 + (Math.random() * 0.2);
+            const alpha = 0.4 + (Math.random() * 0.4); // Increased from 0.1-0.3
             let blob;
 
             if (shape === 'rect') {
