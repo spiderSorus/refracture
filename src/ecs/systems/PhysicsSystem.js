@@ -7,21 +7,15 @@ export const PhysicsSystem = (entities, delta, scene) => {
     const GRAVITY = PHYSICS.GRAVITY || 980;
     
     // --- 0. PRE-CALCULATE WEB LOCKS ---
-    // Optimization: Find all platform IDs that have a web attached
     const webbedPlatformIds = new Set();
     const activelyTuggedIds = new Set();
 
     entities.forEach(e => {
         const tether = e.components.WebTether;
         if (tether) {
-            // Special Case: Don't freeze the platform if it's a small dynamic object like a Test Ball
-            // and it's being pulled by the player.
             const targetPlat = entities.find(plat => plat.id === tether.platformId);
             const isTestBall = targetPlat?.components.EntityType?.value === 'TEST_BALL';
-            
-            if (!isTestBall) {
-                webbedPlatformIds.add(tether.platformId);
-            }
+            if (!isTestBall) webbedPlatformIds.add(tether.platformId);
             if (tether.isActive) activelyTuggedIds.add(tether.platformId);
         }
         const conn = e.components.WebConnection;
@@ -31,19 +25,14 @@ export const PhysicsSystem = (entities, delta, scene) => {
         }
     });
 
-    // Fallback bounds
     const defaultBounds = { x: -5000, y: -10000, width: 10000, height: 10000 };
     const bounds = scene?.cameras.main.getBounds() || defaultBounds;
-    
     const minX = bounds.x;
     const maxX = bounds.x + bounds.width;
     const minY = bounds.y;
-    const maxY = bounds.y + bounds.height; // BOTTOM OF THE MAP
+    const maxY = bounds.y + bounds.height;
 
-    // FLOOR_Y is now the bottom of the world bounds
-    const FLOOR_Y = maxY;
-
-    // --- STORE PREVIOUS POSITION FOR INTERPOLATION ---
+    // --- STORE PREVIOUS POSITION ---
     entities.forEach(entity => {
         const pos = entity.components.Position;
         if (pos) {
@@ -52,7 +41,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
         }
     });
 
-    // --- 0. UPDATE ROTATION (Spin & AngularVelocity) ---
+    // --- 1. ROTATION UPDATE ---
     entities.forEach(entity => {
         const spin = entity.components.Spin;
         const angVel = entity.components.AngularVelocity;
@@ -64,53 +53,43 @@ export const PhysicsSystem = (entities, delta, scene) => {
                 rot.angle += spin.rate * dt;
             }
             if (angVel) {
-                // --- SEESAW DAMPING & FREEZING ---
                 if (isSeesaw) {
                     const tag = entity.components.SeesawTag;
                     const isWebbed = webbedPlatformIds.has(entity.id);
                     const isTugged = activelyTuggedIds.has(entity.id);
                     const hasPlayer = entities.some(e => e.components.Parent?.id === entity.id);
 
-                    // 1. Restorative force (Spring-back)
                     if (tag.stiffness > 0) {
                         const restorative = -rot.angle * tag.stiffness;
                         angVel.rate += restorative * dt;
                     }
 
-                    // 2. Interaction check for locking
                     if (isWebbed && !isTugged) {
-                        // "Web Freeze" - lock rotation if webbed but not being pulled
                         angVel.rate = 0;
                     } else if (!isWebbed && !hasPlayer && tag.stiffness === 0) {
-                        // "Disconnect Freeze" - lock if nothing is touching it
                         angVel.rate = 0;
                     } else {
-                        // Active interaction - apply friction
                         angVel.rate *= 0.95;
                     }
-
-                    rot.angle += angVel.rate * dt;
-
-                    // 3. Rotation Clamping
-                    if (tag.maxRotation && tag.maxRotation > 0) {
-                        if (rot.angle > tag.maxRotation) {
-                            rot.angle = tag.maxRotation;
-                            angVel.rate = 0;
-                        } else if (rot.angle < -tag.maxRotation) {
-                            rot.angle = -tag.maxRotation;
-                            angVel.rate = 0;
-                        }
-                    }
                 } else {
-                    // Standard damping for other rotating objects
                     angVel.rate *= 0.98;
-                    rot.angle += angVel.rate * dt;
+                }
+
+                // Apply angular velocity to rotation
+                rot.angle += angVel.rate * dt;
+
+                if (isSeesaw) {
+                    const tag = entity.components.SeesawTag;
+                    if (tag.maxRotation > 0) {
+                        if (rot.angle > tag.maxRotation) { rot.angle = tag.maxRotation; angVel.rate = 0; }
+                        else if (rot.angle < -tag.maxRotation) { rot.angle = -tag.maxRotation; angVel.rate = 0; }
+                    }
                 }
             }
         }
     });
 
-    // 1. RESOLVE WEB TENSION FORCES
+    // --- 2. WEB CONNECTION SOLVER ---
     entities.forEach(entity => {
         const conn = entity.components.WebConnection;
         if (conn) {
@@ -120,17 +99,14 @@ export const PhysicsSystem = (entities, delta, scene) => {
                 for (let i = 0; i < 2; i++) {
                     const rotA = entA.components.Rotation?.angle || 0;
                     const rotB = entB.components.Rotation?.angle || 0;
-                    
                     const ax = conn.fromOffset.x * Math.cos(rotA) - conn.fromOffset.y * Math.sin(rotA);
                     const ay = conn.fromOffset.x * Math.sin(rotA) + conn.fromOffset.y * Math.cos(rotA);
                     const bx = conn.toOffset.x * Math.cos(rotB) - conn.toOffset.y * Math.sin(rotB);
                     const by = conn.toOffset.x * Math.sin(rotB) + conn.toOffset.y * Math.cos(rotB);
-                    
                     const worldAX = entA.components.Position.x + ax;
                     const worldAY = entA.components.Position.y + ay;
                     const worldBX = entB.components.Position.x + bx;
                     const worldBY = entB.components.Position.y + by;
-                    
                     const dx = worldBX - worldAX;
                     const dy = worldBY - worldAY;
                     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -138,32 +114,19 @@ export const PhysicsSystem = (entities, delta, scene) => {
 
                     if (dist > restLen) {
                         const overlap = dist - restLen;
-                        const nx = dx / dist;
-                        const ny = dy / dist;
-                        
-                        const isStaticA = !!(entA.components.SpawnTag || entA.components.StaticTag);
-                        const isStaticB = !!(entB.components.SpawnTag || entB.components.StaticTag);
+                        const nx = dx / dist; const ny = dy / dist;
+                        const staticA = !!(entA.components.SpawnTag || entA.components.StaticTag);
+                        const staticB = !!(entB.components.SpawnTag || entB.components.StaticTag);
                         const isSeesawA = !!entA.components.SeesawTag;
                         const isSeesawB = !!entB.components.SeesawTag;
-
-                        // POSITION CORRECTION (Verlet Style)
-                        const mobA = (isStaticA || isSeesawA) ? 0 : 1;
-                        const mobB = (isStaticB || isSeesawB) ? 0 : 1;
+                        const mobA = (staticA || isSeesawA) ? 0 : 1;
+                        const mobB = (staticB || isSeesawB) ? 0 : 1;
                         const totalMob = mobA + mobB;
-
                         if (totalMob > 0) {
                             const move = overlap / totalMob;
-                            if (mobA > 0) {
-                                entA.components.Position.x += nx * move;
-                                entA.components.Position.y += ny * move;
-                            }
-                            if (mobB > 0) {
-                                entB.components.Position.x -= nx * move;
-                                entB.components.Position.y -= ny * move;
-                            }
+                            if (mobA > 0) { entA.components.Position.x += nx * move; entA.components.Position.y += ny * move; }
+                            if (mobB > 0) { entB.components.Position.x -= nx * move; entB.components.Position.y -= ny * move; }
                         }
-
-                        // ANGULAR IMPULSE (For Seesaws)
                         if (isSeesawA && entA.components.AngularVelocity) {
                             const torque = (ax * (ny * overlap * 100) - ay * (nx * overlap * 100)) / (entA.components.Mass?.value * 10 || 1000);
                             entA.components.AngularVelocity.rate += torque;
@@ -174,17 +137,14 @@ export const PhysicsSystem = (entities, delta, scene) => {
                             entB.components.AngularVelocity.rate += torque;
                             entB.components.AngularVelocity.rate *= 0.5;
                         }
-                        
                         conn.tension = overlap * 1000;
-                    } else {
-                        conn.tension = 0;
-                    }
+                    } else { conn.tension = 0; }
                 }
             }
         }
     });
 
-    // 2. APPLY INTEGRATION & WORLD COLLISION
+    // --- 3. INTEGRATION & WORLD COLLISION ---
     entities.forEach(entity => {
         const { Position: pos, Velocity: vel, Parent: parent } = entity.components;
         if (!pos) return;
@@ -200,10 +160,6 @@ export const PhysicsSystem = (entities, delta, scene) => {
                 pos.x = platform.components.Position.x + rx;
                 pos.y = platform.components.Position.y + ry;
             }
-            if (vel) { 
-                entity.components._lastVel = { x: vel.x, y: vel.y };
-                vel.x = 0; vel.y = 0; 
-            }
             return;
         }
 
@@ -215,17 +171,9 @@ export const PhysicsSystem = (entities, delta, scene) => {
             const isTestBall = entity.components.EntityType?.value === 'TEST_BALL';
 
             if (isStatic || isSeesaw || (isWebbed && !isTestBall)) {
-                // Linear freeze for fixed objects. 
-                // Test Balls only freeze if part of a STATIC connection (handled in webbedPlatformIds logic)
-                vel.x = 0;
-                vel.y = 0;
+                vel.x = 0; vel.y = 0;
             } else if (isPlayer || isTestBall) {
-                // Apply Gravity
                 vel.y += GRAVITY * dt;
-                
-                // Air Resistance
-                vel.x *= isPlayer ? 0.98 : 0.99;
-                vel.y *= isPlayer ? 0.99 : 0.995;
             } else if (!entity.components.GravityExempt && !entity.components.PlatformTag) {
                 vel.y += GRAVITY * dt;
             }
@@ -236,12 +184,11 @@ export const PhysicsSystem = (entities, delta, scene) => {
             // Rolling Physics for Test Balls
             if (isTestBall && entity.components.AngularVelocity) {
                 const radius = entity.components.Collider?.radius || 30;
-                // v = omega * r  => omega = v / r
-                // We'll use horizontal velocity to drive rotation
-                entity.components.AngularVelocity.rate = vel.x / (radius / 10);
+                // Perfect rolling: v = omega * r => omega = v / r
+                entity.components.AngularVelocity.rate = vel.x / radius;
             }
 
-            // Player World Boundary Constraints
+            // World Boundaries
             if (isPlayer) {
                 const pRadius = 15;
                 if (pos.x - pRadius < minX) { pos.x = minX + pRadius; vel.x = 0; }
@@ -249,75 +196,135 @@ export const PhysicsSystem = (entities, delta, scene) => {
                 if (pos.y - pRadius < minY) { pos.y = minY + pRadius; vel.y = 0; }
             }
 
-            // Platform World Boundary Bouncing
             if (entity.components.PlatformTag && entity.components.Collider) {
                 const col = entity.components.Collider;
                 const halfW = col.type === 'circle' ? col.radius : (col.width / 2);
                 const halfH = col.type === 'circle' ? col.radius : (col.height / 2);
-                const damping = 0.8;
-                if (pos.x - halfW < minX) { pos.x = minX + halfW; vel.x = Math.abs(vel.x) * damping; }
-                else if (pos.x + halfW > maxX) { pos.x = maxX - halfW; vel.x = -Math.abs(vel.x) * damping; }
-                if (pos.y - halfH < minY) { pos.y = minY + halfH; vel.y = Math.abs(vel.y) * damping; }
-                else if (pos.y + halfH > maxY) { pos.y = maxY - halfH; vel.y = -Math.abs(vel.y) * damping; }
+                if (pos.x - halfW < minX) { pos.x = minX + halfW; vel.x = Math.abs(vel.x) * 0.8; }
+                else if (pos.x + halfW > maxX) { pos.x = maxX - halfW; vel.x = -Math.abs(vel.x) * 0.8; }
+                if (pos.y - halfH < minY) { pos.y = minY + halfH; vel.y = Math.abs(vel.y) * 0.8; }
+                else if (pos.y + halfH > maxY) { pos.y = maxY - halfH; vel.y = -Math.abs(vel.y) * 0.8; }
             }
         }
     });
 
-    // 3. RESOLVE COLLISIONS
-    const platformsForCollision = entities.filter(e => {
-        const isPlatform = e.components.PlatformTag && e.components.Collider && e.components.Position;
-        if (!isPlatform) return false;
-        const isBackground = e.components.BackgroundTag || e.components.ZLayer?.type === 'BACKGROUND';
-        if (isBackground && !e.components.Velocity) return false;
-        return true;
-    });
-
-    for (let i = 0; i < platformsForCollision.length; i++) {
-        for (let j = i + 1; j < platformsForCollision.length; j++) {
-            const A = platformsForCollision[i];
-            const B = platformsForCollision[j];
-            const zA = A.components.ZLayer;
-            const zB = B.components.ZLayer;
-            if (((zA && zA.type === 'BACKGROUND') || A.components.BackgroundTag) !== ((zB && zB.type === 'BACKGROUND') || B.components.BackgroundTag)) continue;
+    // --- 4. COLLISION RESOLUTION ---
+    const collidables = entities.filter(e => e.components.PlatformTag && e.components.Collider && e.components.Position);
+    
+    for (let i = 0; i < collidables.length; i++) {
+        for (let j = i + 1; j < collidables.length; j++) {
+            const A = collidables[i];
+            const B = collidables[j];
+            if (((A.components.ZLayer?.type === 'BACKGROUND') || A.components.BackgroundTag) !== ((B.components.ZLayer?.type === 'BACKGROUND') || B.components.BackgroundTag)) continue;
             
             const posA = A.components.Position; const posB = B.components.Position;
             const colA = A.components.Collider; const colB = B.components.Collider;
-            const dist = Phaser.Math.Distance.Between(posA.x, posA.y, posB.x, posB.y);
-            const radiusA = colA.type === 'circle' ? colA.radius : Math.max(colA.width, colA.height) / 2;
-            const radiusB = colB.type === 'circle' ? colB.radius : Math.max(colB.width, colB.height) / 2;
-            const minDist = radiusA + radiusB;
+            
+            let nx = 0, ny = 0, overlap = 0;
+            let collided = false;
+            let localCollisionInfo = null;
 
-            if (dist < minDist && dist > 0) {
-                const overlap = minDist - dist;
-                const nx = (posB.x - posA.x) / dist; const ny = (posB.y - posA.y) / dist;
-                
-                const isStaticA = !!(A.components.SpawnTag || A.components.StaticTag);
-                const isStaticB = !!(B.components.SpawnTag || B.components.StaticTag);
-                const isSeesawA = !!A.components.SeesawTag;
-                const isSeesawB = !!B.components.SeesawTag;
-                const isWebbedA = webbedPlatformIds.has(A.id);
-                const isWebbedB = webbedPlatformIds.has(B.id);
+            // Case 1: Circle vs Circle
+            if (colA.type === 'circle' && colB.type === 'circle') {
+                const dx = posB.x - posA.x;
+                const dy = posB.y - posA.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const minDist = colA.radius + colB.radius;
+                if (dist < minDist && dist > 0) {
+                    collided = true;
+                    overlap = minDist - dist;
+                    nx = dx / dist;
+                    ny = dy / dist;
+                }
+            } 
+            // Case 2: Circle vs Rect (or vice versa)
+            else if ((colA.type === 'circle' && colB.type === 'rect') || (colA.type === 'rect' && colB.type === 'circle')) {
+                const circle = colA.type === 'circle' ? A : B;
+                const rect = colA.type === 'rect' ? A : B;
+                const cPos = circle.components.Position;
+                const rPos = rect.components.Position;
+                const rCol = rect.components.Collider;
+                const rRot = rect.components.Rotation?.angle || 0;
 
-                const canMoveA = !isStaticA && !isSeesawA && !isWebbedA;
-                const canMoveB = !isStaticB && !isSeesawB && !isWebbedB;
+                // Transform circle center to rect's local space
+                const dx = cPos.x - rPos.x;
+                const dy = cPos.y - rPos.y;
+                const cos = Math.cos(-rRot);
+                const sin = Math.sin(-rRot);
+                const localX = dx * cos - dy * sin;
+                const localY = dx * sin + dy * cos;
 
-                if (canMoveA && canMoveB) {
+                const hw = rCol.width / 2;
+                const hh = rCol.height / 2;
+
+                const closestX = Math.max(-hw, Math.min(hw, localX));
+                const closestY = Math.max(-hh, Math.min(hh, localY));
+
+                const ldx = localX - closestX;
+                const ldy = localY - closestY;
+                const lDistSq = ldx * ldx + ldy * ldy;
+
+                if (lDistSq < circle.components.Collider.radius * circle.components.Collider.radius) {
+                    collided = true;
+                    const lDist = Math.sqrt(lDistSq);
+                    let lnx, lny;
+
+                    if (lDist > 0) {
+                        overlap = circle.components.Collider.radius - lDist;
+                        lnx = ldx / lDist;
+                        lny = ldy / lDist;
+                    } else {
+                        // Circle center inside rect
+                        const dL = localX + hw;
+                        const dR = hw - localX;
+                        const dT = localY + hh;
+                        const dB = hh - localY;
+                        const minD = Math.min(dL, dR, dT, dB);
+                        overlap = circle.components.Collider.radius + minD;
+                        if (minD === dL) { lnx = -1; lny = 0; }
+                        else if (minD === dR) { lnx = 1; lny = 0; }
+                        else if (minD === dT) { lnx = 0; lny = -1; }
+                        else { lnx = 0; lny = 1; }
+                    }
+
+                    // Store info for torque
+                    localCollisionInfo = { rect, closestX, closestY, lnx, lny };
+
+                    // Rotate local normal back to world space
+                    const cosW = Math.cos(rRot);
+                    const sinW = Math.sin(rRot);
+                    const wnx = lnx * cosW - lny * sinW;
+                    const wny = lnx * sinW + lny * cosW;
+
+                    // nx, ny should point from A to B
+                    if (A === circle) {
+                        nx = -wnx; ny = -wny;
+                    } else {
+                        nx = wnx; ny = wny;
+                    }
+                }
+            }
+
+            if (collided) {
+                const canA = !(A.components.SpawnTag || A.components.StaticTag || A.components.SeesawTag || webbedPlatformIds.has(A.id));
+                const canB = !(B.components.SpawnTag || B.components.StaticTag || B.components.SeesawTag || webbedPlatformIds.has(B.id));
+
+                if (canA && canB) {
                     posA.x -= nx * overlap * 0.5; posA.y -= ny * overlap * 0.5;
                     posB.x += nx * overlap * 0.5; posB.y += ny * overlap * 0.5;
-                } else if (canMoveA) { posA.x -= nx * overlap; posA.y -= ny * overlap; }
-                else if (canMoveB) { posB.x += nx * overlap; posB.y += ny * overlap; }
+                } else if (canA) { posA.x -= nx * overlap; posA.y -= ny * overlap; }
+                else if (canB) { posB.x += nx * overlap; posB.y += ny * overlap; }
 
                 const velA = A.components.Velocity; const velB = B.components.Velocity;
                 if (velA && velB) {
-                    const relativeVelX = velB.x - velA.x; const relativeVelY = velB.y - velA.y;
-                    const velAlongNormal = relativeVelX * nx + relativeVelY * ny;
+                    const relVelX = velB.x - velA.x; const relVelY = velB.y - velA.y;
+                    const velAlongNormal = relVelX * nx + relVelY * ny;
                     if (velAlongNormal < 0) {
-                        const restitution = 0.8;
+                        const rest = 0.8;
                         const massA = A.components.Mass?.value || 10; const massB = B.components.Mass?.value || 10;
-                        let j = -(1 + restitution) * velAlongNormal; j /= 1 / massA + 1 / massB;
-                        const impulseX = j * nx; const impulseY = j * ny;
-                        if (canMoveA) { velA.x -= 1 / massA * impulseX; velA.y -= 1 / massA * impulseY; }
-                        if (canMoveB) { velB.x += 1 / massB * impulseX; velB.y += 1 / massB * impulseY; }
+                        let j = -(1 + rest) * velAlongNormal; j /= 1 / massA + 1 / massB;
+                        if (canA) { velA.x -= 1 / massA * j * nx; velA.y -= 1 / massA * j * ny; }
+                        if (canB) { velB.x += 1 / massB * j * nx; velB.y += 1 / massB * j * ny; }
                     }
                 }
             }

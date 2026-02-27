@@ -87,12 +87,9 @@ export class BaseMenuScene extends Phaser.Scene {
     }
 
     setupMenu() {
-        const startY = 250;
-        const spacing = 50;
-
         this.options.forEach((opt, index) => {
             const label = typeof opt === 'string' ? opt : opt.label;
-            const text = this.add.text(60, startY + (index * spacing), `  ${label}`, {
+            const text = this.add.text(60, 0, `  ${label}`, {
                 fontSize: '24px',
                 fill: '#fff',
                 fontFamily: 'monospace'
@@ -175,23 +172,72 @@ export class BaseMenuScene extends Phaser.Scene {
 
     navigate(dir) {
         const count = this.options.length;
-        if (count === 0) return;
-        this.selected = (this.selected + dir + count) % count;
+        if (count <= 1) return;
+        
+        let nextIndex = (this.selected + dir + count) % count;
+        
+        // Skip separators
+        if (this.options[nextIndex]?.isSeparator) {
+            nextIndex = (nextIndex + dir + count) % count;
+        }
+
+        this.selected = nextIndex;
         this.updateSelection();
     }
 
     updateSelection() {
+        const count = this.options.length;
+        if (count === 0) return;
+
+        const centerY = 450;
+        const spacing = 60;
+        const visibleRange = 5; // How many items above and below to show
+
         this.textObjects.forEach((text, index) => {
-            if (!text || !text.active) return;
+            // Calculate distance from selection in a circular way
+            let diff = index - this.selected;
             
+            // Adjust diff for ring buffer wrap-around
+            if (diff > count / 2) diff -= count;
+            if (diff < -count / 2) diff += count;
+
+            if (Math.abs(diff) > visibleRange) {
+                text.setVisible(false);
+                return;
+            }
+
+            text.setVisible(true);
+            const targetY = centerY + (diff * spacing);
+            
+            // Simple lerp-like positioning or immediate for now
+            text.setY(targetY);
+
             const label = typeof this.options[index] === 'string' 
                 ? this.options[index] 
                 : this.options[index].label;
 
+            // Visual effects based on distance from center
+            const dist = Math.abs(diff);
+            const alpha = 1.0 - (dist * 0.2);
+            const scale = 1.0 - (dist * 0.1);
+
+            text.setAlpha(Math.max(0, alpha));
+            text.setScale(Math.max(0.5, scale));
+
+            const isSeparator = this.options[index]?.isSeparator;
+
             if (index === this.selected) {
-                text.setColor('#ff69b4').setText(`> ${label}`); // Hot Pink
+                if (isSeparator) {
+                    text.setColor('#888').setText(`  ${label}`);
+                } else {
+                    text.setColor('#ff69b4').setText(`> ${label}`); // Hot Pink
+                }
+                text.setFontSize('32px');
+                text.setX(80);
             } else {
                 text.setColor('#fff').setText(`  ${label}`);
+                text.setFontSize('24px');
+                text.setX(60);
             }
         });
     }

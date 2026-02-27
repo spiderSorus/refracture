@@ -1,7 +1,7 @@
 import {
     Position, Velocity, Rotation, Renderable, Collider,
     PlatformTag, EntityType, Mass, ZLayer, SeesawTag,
-    AngularVelocity, GravityExempt
+    AngularVelocity, GravityExempt, AnchorTag
 } from '../components/index';
 
 /**
@@ -23,6 +23,7 @@ export const createSeesaw = (x, y, config = {}) => {
         Rotation(0),
         ZLayer('PLAY', 0),
         PlatformTag(),
+        AnchorTag(),
         SeesawTag(stiffness, maxRotation),
         GravityExempt(), // Doesn't fall, fixed at (x,y)
         EntityType('SEESAW'),

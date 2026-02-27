@@ -25,6 +25,7 @@ export const Collider = (type = 'circle', radius = 50, width = 100, height = 100
     type, radius, width, height
 });
 export const PlatformTag = () => ({ _type: 'PlatformTag' });
+export const AnchorTag = () => ({ _type: 'AnchorTag' });
 export const BackgroundTag = () => ({ _type: 'BackgroundTag' });
 export const SpawnTag = () => ({ _type: 'SpawnTag' });
 export const StaticTag = () => ({ _type: 'StaticTag' });
@@ -118,6 +119,13 @@ export const BugAI = () => ({
 export const SlingshotJump = (maxForce = PHYSICS.SLINGSHOT_FORCE) => ({
     _type: 'SlingshotJump',
     isCharging: false,
+    isAnimating: false,
+    jumpProgress: 0,
+    jumpDuration: 0,
+    jumpStart: { x: 0, y: 0 },
+    jumpTarget: { x: 0, y: 0 },
+    jumpPeak: 0,
+    jumpType: 'MISS', // 'LAND' or 'MISS'
     vector: { x: 0, y: 0 },
     lockedAim: null,      // Normalized direction of the pull
     peakMagnitude: 0,     // Highest magnitude reached during this charge

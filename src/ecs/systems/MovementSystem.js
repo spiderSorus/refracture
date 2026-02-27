@@ -11,11 +11,71 @@ export const MovementSystem = (entities, inputManager, dt) => {
         const { Position: pos, Velocity: vel, Parent: parent, Rotation: rot, SlingshotJump: sling, WebTether: tether, PlayerTag: isPlayer } = entity.components;
         if (!pos || !rot) return;
 
+        // --- 0. JUMP ANIMATION (KINEMATIC) ---
+        if (isPlayer && sling && sling.isAnimating) {
+            sling.jumpProgress += dt / (sling.jumpDuration || 1);
+            
+            if (sling.jumpProgress >= 1.0) {
+                // End of jump
+                pos.x = sling.jumpTarget.x;
+                pos.y = sling.jumpTarget.y;
+                sling.isAnimating = false;
+                
+                if (vel) {
+                    if (sling.jumpType === 'MISS') {
+                        const dx = sling.jumpTarget.x - sling.jumpStart.x;
+                        const dy = sling.jumpTarget.y - sling.jumpStart.y;
+                        const d = Math.max(1, Math.sqrt(dx * dx + dy * dy));
+                        vel.x = (dx / d) * 100;
+                        vel.y = (dy / d) * 100;
+                    } else {
+                        vel.x = 0; vel.y = 0;
+                    }
+                }
+                sling.jumpProgress = 0;
+                return;
+            }
+
+            // Calculate Linear Interpolation
+            const t = sling.jumpProgress;
+            const nextX = sling.jumpStart.x + (sling.jumpTarget.x - sling.jumpStart.x) * t;
+            const nextY = sling.jumpStart.y + (sling.jumpTarget.y - sling.jumpStart.y) * t;
+
+            // Calculate Parabolic Offset (Upward arc)
+            const h = 4 * sling.jumpPeak * t * (1 - t);
+            
+            pos.x = nextX;
+            pos.y = nextY - h; 
+
+            // --- WALL COLLISION CHECK ---
+            if (t > 0.05) {
+                const platforms = entities.filter(e => e.components.PlatformTag && e.id !== sling.lastPlatformId);
+                for (const plat of platforms) {
+                    const platRot = plat.components.Rotation?.angle || 0;
+                    if (isPointInside(pos, plat.components.Position, plat.components.Collider, 5, platRot)) {
+                        sling.isAnimating = false;
+                        if (vel) { 
+                            vel.x = 0; 
+                            vel.y = 100; // Small kick to start fall
+                        }
+                        console.log("💥 [JUMP] Hit Wall/Obstacle - Falling");
+                        return;
+                    }
+                }
+            }
+            return; 
+        }
+
         // --- 1. ROTATION LOGIC (Player Only) ---
         if (isPlayer) {
             const offset = Math.PI / 2;
             if (sling && sling.isCharging && sling.lockedAim) {
                 rot.angle = Math.atan2(-sling.lockedAim.y, -sling.lockedAim.x) + offset;
+            }
+            else if (sling && sling.isAnimating) {
+                const dx = sling.jumpTarget.x - sling.jumpStart.x;
+                const dy = sling.jumpTarget.y - sling.jumpStart.y;
+                rot.angle = Math.atan2(dy, dx) + offset;
             }
             else if (Math.abs(move.x) > 0.1 || Math.abs(move.y) > 0.1) {
                 rot.angle = Math.atan2(move.y, move.x) + offset;
@@ -71,10 +131,28 @@ export const MovementSystem = (entities, inputManager, dt) => {
                 vel.x += (move.x * PLAYER.GROUND_ACCEL) * dt;
                 vel.x *= PHYSICS.GROUND_FRICTION;
             } else if (!isBackground) {
+                // Apply standard linear friction
                 const fricX = tether ? PHYSICS.TETHER_AIR_RESISTANCE_X : PHYSICS.AIR_RESISTANCE_X;
                 const fricY = tether ? PHYSICS.TETHER_AIR_RESISTANCE_Y : PHYSICS.AIR_RESISTANCE_Y;
                 vel.x *= fricX;
                 vel.y *= fricY;
+
+                // Apply quadratic drag (primarily to X to limit jump distance without killing fall speed)
+                if (isPlayer && PHYSICS.DRAG_COEFF > 0) {
+                    const speedX = Math.abs(vel.x);
+                    const speedY = Math.abs(vel.y);
+                    
+                    if (speedX > 10) {
+                        const dragX = 1.0 - (PHYSICS.DRAG_COEFF * speedX * dt);
+                        vel.x *= Math.max(0.5, dragX);
+                    }
+                    
+                    // Much weaker drag on Y for "natural" fall
+                    if (speedY > 10) {
+                        const dragY = 1.0 - (PHYSICS.DRAG_COEFF * 0.1 * speedY * dt); 
+                        vel.y *= Math.max(0.8, dragY);
+                    }
+                }
             }
         }
     });

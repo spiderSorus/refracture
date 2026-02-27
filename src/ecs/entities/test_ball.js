@@ -1,7 +1,7 @@
 import {
     Position, Velocity, Rotation, Renderable, Collider,
     PlatformTag, EntityType, Mass, ZLayer, AngularVelocity,
-    Destructible, Ego
+    Destructible
 } from '../components/index';
 
 /**
@@ -20,12 +20,12 @@ export const createTestBall = (x, y, config = {}) => {
         ZLayer('PLAY', 0),
         PlatformTag(), // Treat as a platform for attachment/webbing
         EntityType('TEST_BALL'),
-        Ego(50),
         Mass(config.mass || 5),
         Renderable({
             'BASE': { 
                 type: 'circle', 
                 radius, color, 
+                spokeColor: 0x0000ff, // Blue spokes
                 alpha: 1.0,
                 depth: 5
             }

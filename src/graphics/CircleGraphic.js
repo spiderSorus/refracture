@@ -17,10 +17,12 @@ export class CircleGraphic extends BaseGraphic {
         // 2. Spokes (Visual only, to show rotation)
         this.spokes = [];
         const spokeCount = 4;
+        const spokeColor = config.spokeColor !== undefined ? config.spokeColor : 0x000000;
+        
         for (let i = 0; i < spokeCount; i++) {
             const angle = (i / spokeCount) * Math.PI;
-            // Spokes are thin, dark lines, centered at 0,0
-            const spoke = this.scene.add.rectangle(0, 0, radius * 2, 2, 0x000000, 0.5);
+            // Spokes are thin lines, centered at 0,0
+            const spoke = this.scene.add.rectangle(0, 0, radius * 2, 2, spokeColor, 0.5);
             spoke.setRotation(angle);
             container.add(spoke);
             this.spokes.push(spoke);

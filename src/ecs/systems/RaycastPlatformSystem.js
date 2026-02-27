@@ -65,6 +65,7 @@ export const RaycastPlatformSystem = {
                     closestHit = {
                         entity: plat,
                         point: pt,
+                        distance: d,
                         // Relative offset used for snapping/parenting
                         offset: { x: pt.x - pPos.x, y: pt.y - pPos.y }
                     };

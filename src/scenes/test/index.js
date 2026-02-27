@@ -14,6 +14,7 @@ import { RedCathedralScene } from './14_RedCathedral';
 import { RainbowCathedralScene } from './15_RainbowCathedral';
 import { Renderama } from './16_Renderama';
 import { PullTest } from './17_PullTest';
+import { PlantsScene } from './18_Plants';
 import { Gameplay } from '../Gameplay';
 
 export const TestScenes = [
@@ -33,5 +34,6 @@ export const TestScenes = [
     RedCathedralScene,
     RainbowCathedralScene,
     Renderama,
-    PullTest
+    PullTest,
+    PlantsScene
 ];

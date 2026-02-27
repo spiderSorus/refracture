@@ -19,6 +19,7 @@ export const WebSystem = (entities, inputManager, scene) => {
     const strengthMult = PHYSICS.WEB_STRENGTH_MULT;
 
     // --- 0. WEB CUTTING LOGIC ---
+    // ... (rest of cutting logic remains same)
     const xJustPressed = inputManager.isButtonPressed('X');
     let cutSomething = false;
 
@@ -156,7 +157,7 @@ export const WebSystem = (entities, inputManager, scene) => {
                         });
 
                         if (!isBlocked) {
-                            const tiltForce = 0.5; 
+                            const tiltForce = 2.0; 
                             angVel.rate += direction * tiltForce * (scene.game.loop.delta / 1000);
                             tether.isActive = true; // Signal active force to physics
                         } else {
@@ -207,20 +208,27 @@ export const WebSystem = (entities, inputManager, scene) => {
     // --- 2. INPUT TRIGGERS ---
     const yJustPressed = inputManager.isButtonPressed('Y');
 
-    if (yJustPressed && !tether && currentParent) {
-        const plat = entities.find(e => e.id === currentParent.id);
-        const isBackground = (plat?.components.ZLayer?.type === 'BACKGROUND') || plat?.components.BackgroundTag;
-        
-        if (plat && plat.components.Position && !isBackground) {
-            const snappedOffset = snapOffsetInside(currentParent.offset, plat.components.Collider, 10);
-            const newTether = WebTether(currentParent.id, snappedOffset);
-            newTether.maxForce *= strengthMult;
-            newTether.isPullable = !!plat.components.SeesawTag;
-            newTether.maxLength = PHYSICS.WEB_INITIAL_LENGTH; 
-            newTether.originalMaxLength = PHYSICS.WEB_INITIAL_LENGTH;
+    // Case A: Create Tether
+    if (yJustPressed && !tether) {
+        // ONLY drop web if currently attached to an Anchor-tagged platform
+        if (currentParent) {
+            const plat = entities.find(e => e.id === currentParent.id);
+            const isBackground = (plat?.components.ZLayer?.type === 'BACKGROUND') || plat?.components.BackgroundTag;
+            const isAnchor = !!plat?.components.AnchorTag;
+            
+            if (plat && plat.components.Position && !isBackground && isAnchor) {
+                // Attach at current player position on the platform
+                const snappedOffset = snapOffsetInside(currentParent.offset, plat.components.Collider, 10);
+                const newTether = WebTether(currentParent.id, snappedOffset);
+                newTether.maxForce *= strengthMult;
+                newTether.isPullable = !!plat.components.SeesawTag;
+                newTether.maxLength = PHYSICS.WEB_INITIAL_LENGTH; 
+                newTether.originalMaxLength = PHYSICS.WEB_INITIAL_LENGTH;
 
-            player.components.WebTether = newTether;
-            return;
+                player.components.WebTether = newTether;
+                console.log(`📍 [WEB] Dropped tether on anchor: ${plat.id}`);
+                return;
+            }
         }
     }
 
@@ -234,8 +242,10 @@ export const WebSystem = (entities, inputManager, scene) => {
         const platB = entities.find(e => e.id === currentParent.id);
         const isBackA = (platA?.components.ZLayer?.type === 'BACKGROUND') || platA?.components.BackgroundTag;
         const isBackB = (platB?.components.ZLayer?.type === 'BACKGROUND') || platB?.components.BackgroundTag;
+        const isAnchorA = !!platA?.components.AnchorTag;
+        const isAnchorB = !!platB?.components.AnchorTag;
         
-        if (platA && platB && platA.components.Position && platB.components.Position && !isBackA && !isBackB) {
+        if (platA && platB && platA.components.Position && platB.components.Position && !isBackA && !isBackB && isAnchorA && isAnchorB) {
             const snappedOffsetB = snapOffsetInside(currentParent.offset, platB.components.Collider, 10);
             const conn = WebConnection(
                 tether.platformId, { ...tether.anchorOffset }, 
