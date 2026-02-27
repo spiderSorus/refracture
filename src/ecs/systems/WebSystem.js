@@ -65,8 +65,12 @@ export const WebSystem = (entities, inputManager, scene) => {
     if (tether) {
         const platform = entities.find(e => e.id === tether.platformId);
         if (platform && platform.components.Position) {
-            const anchorX = platform.components.Position.x + tether.anchorOffset.x;
-            const anchorY = platform.components.Position.y + tether.anchorOffset.y;
+            const platRot = platform.components.Rotation?.angle || 0;
+            const ax = tether.anchorOffset.x * Math.cos(platRot) - tether.anchorOffset.y * Math.sin(platRot);
+            const ay = tether.anchorOffset.x * Math.sin(platRot) + tether.anchorOffset.y * Math.cos(platRot);
+            
+            const anchorX = platform.components.Position.x + ax;
+            const anchorY = platform.components.Position.y + ay;
 
             const dist = Phaser.Math.Distance.Between(pPos.x, pPos.y, anchorX, anchorY);
             tether.currentLength = dist;
@@ -78,37 +82,93 @@ export const WebSystem = (entities, inputManager, scene) => {
             tether.isActive = false; 
             tether.isPullable = !!platform.components.SeesawTag;
 
+            if (!currentParent && tether._hadParent) {
+                tether.maxLength = tether.originalMaxLength || PHYSICS.WEB_INITIAL_LENGTH;
+            }
+            tether._hadParent = !!currentParent;
+
             if (lb) {
                 tether.isActive = true;
+                tether._wasLbDown = true;
 
-                if (tether.isPullable) {
-                    // --- TUG SEQUENCE ---
-                    if (tether.maxLength > dist + 5) {
-                        // 1. Winch in the slack until taut
-                        tether.maxLength = Math.max(dist, tether.maxLength - winchSpeed);
-                    } else {
-                        // 2. Taut - lock visual length to distance and apply force
-                        tether.maxLength = dist;
+                if (tether.maxLength > dist + 5) {
+                    tether.maxLength = Math.max(dist, tether.maxLength - winchSpeed);
+                } else {
+                    tether.maxLength = dist;
+                    
+                    const isStandingOnTarget = currentParent && currentParent.id === tether.platformId;
+                    if (tether.isPullable && !isStandingOnTarget && platform.components.SeesawTag && platform.components.AngularVelocity) {
+                        const angVel = platform.components.AngularVelocity;
+                        const cRot = platform.components.Rotation?.angle || 0;
+
+                        // --- ADAPTIVE TUG DIRECTION ---
+                        // Determine which rotation direction actually brings the anchor closer to the player
+                        const testRot = 0.05;
                         
-                        const isStandingOnTarget = currentParent && currentParent.id === tether.platformId;
-                        if (!isStandingOnTarget && platform.components.SeesawTag && platform.components.AngularVelocity) {
-                            const angVel = platform.components.AngularVelocity;
+                        const getDistAtAngle = (angle) => {
+                            const ax = tether.anchorOffset.x * Math.cos(angle) - tether.anchorOffset.y * Math.sin(angle);
+                            const ay = tether.anchorOffset.x * Math.sin(angle) + tether.anchorOffset.y * Math.cos(angle);
+                            const worldX = platform.components.Position.x + ax;
+                            const worldY = platform.components.Position.y + ay;
+                            return Phaser.Math.Distance.Between(pPos.x, pPos.y, worldX, worldY);
+                        };
+
+                        const distCW = getDistAtAngle(cRot + testRot);
+                        const distCCW = getDistAtAngle(cRot - testRot);
+                        
+                        const direction = distCW < distCCW ? 1 : -1;
+                        
+                        // --- IMPROVED CONSTRAINT CHECK ---
+                        let isBlocked = false;
+                        entities.forEach(e => {
+                            const conn = e.components.WebConnection;
+                            if (conn && (conn.fromId === platform.id || conn.toId === platform.id)) {
+                                const otherId = conn.fromId === platform.id ? conn.toId : conn.fromId;
+                                const otherPlat = entities.find(ent => ent.id === otherId);
+                                if (otherPlat && otherPlat.components.Position) {
+                                    const localOff = conn.fromId === platform.id ? conn.fromOffset : conn.toOffset;
+                                    const otherOff = conn.fromId === platform.id ? conn.toOffset : conn.fromOffset;
+                                    
+                                    const cRot = platform.components.Rotation?.angle || 0;
+                                    const oRot = otherPlat.components.Rotation?.angle || 0;
+                                    
+                                    // Look ahead just 0.01 radians
+                                    const nextRot = cRot + (direction * 0.01);
+                                    
+                                    const nAx = localOff.x * Math.cos(nextRot) - localOff.y * Math.sin(nextRot);
+                                    const nAy = localOff.x * Math.sin(nextRot) + localOff.y * Math.cos(nextRot);
+                                    const curOx = otherOff.x * Math.cos(oRot) - otherOff.y * Math.sin(oRot);
+                                    const curOy = otherOff.x * Math.sin(oRot) + otherOff.y * Math.cos(oRot);
+                                    
+                                    const nX1 = platform.components.Position.x + nAx;
+                                    const nY1 = platform.components.Position.y + nAy;
+                                    const curX2 = otherPlat.components.Position.x + curOx;
+                                    const curY2 = otherPlat.components.Position.y + curOy;
+                                    
+                                    const nextDist = Phaser.Math.Distance.Between(nX1, nY1, curX2, curY2);
+                                    
+                                    // If rotation would exceed the rigid length, block it
+                                    if (nextDist > conn.fixedLength + 1) {
+                                        isBlocked = true;
+                                    }
+                                }
+                            }
+                        });
+
+                        if (!isBlocked) {
                             const tiltForce = 0.5; 
-                            const direction = tether.anchorOffset.x > 0 ? 1 : -1;
                             angVel.rate += direction * tiltForce * (scene.game.loop.delta / 1000);
+                            tether.isActive = true; // Signal active force to physics
+                        } else {
+                            angVel.rate = 0;
+                            tether.isActive = false; // Blocked - allow physics to freeze it
                         }
                     }
-                } else {
-                    // --- NORMAL WINCH ---
-                    tether.maxLength = Math.max(MIN_SPOOL_LENGTH, tether.maxLength - winchSpeed);
-                    // Update the "resting" length for Seesaw fallback
-                    tether.originalMaxLength = tether.maxLength;
                 }
             } else {
-                // --- RELEASE BEHAVIOR ---
-                if (tether.isPullable) {
-                    // Restore the loose length so it can go slack
-                    tether.maxLength = tether.originalMaxLength || PHYSICS.WEB_INITIAL_LENGTH;
+                if (tether._wasLbDown) {
+                    tether.maxLength = dist;
+                    tether._wasLbDown = false;
                 }
             }
 
@@ -117,7 +177,6 @@ export const WebSystem = (entities, inputManager, scene) => {
                 tether.originalMaxLength = tether.maxLength;
             }
 
-            // Rope Constraint
             if (!currentParent && pVel && dist > tether.maxLength) {
                 const nx = (pPos.x - anchorX) / dist;
                 const ny = (pPos.y - anchorY) / dist;
@@ -130,7 +189,6 @@ export const WebSystem = (entities, inputManager, scene) => {
                 }
             }
 
-            // Snap parent offset if winching while attached
             if (currentParent && currentParent.id === tether.platformId) {
                 const dx = currentParent.offset.x - tether.anchorOffset.x;
                 const dy = currentParent.offset.y - tether.anchorOffset.y;
@@ -149,14 +207,12 @@ export const WebSystem = (entities, inputManager, scene) => {
     // --- 2. INPUT TRIGGERS ---
     const yJustPressed = inputManager.isButtonPressed('Y');
 
-    // CREATE TETHER
     if (yJustPressed && !tether && currentParent) {
         const plat = entities.find(e => e.id === currentParent.id);
         const isBackground = (plat?.components.ZLayer?.type === 'BACKGROUND') || plat?.components.BackgroundTag;
         
         if (plat && plat.components.Position && !isBackground) {
             const snappedOffset = snapOffsetInside(currentParent.offset, plat.components.Collider, 10);
-            
             const newTether = WebTether(currentParent.id, snappedOffset);
             newTether.maxForce *= strengthMult;
             newTether.isPullable = !!plat.components.SeesawTag;
@@ -173,32 +229,21 @@ export const WebSystem = (entities, inputManager, scene) => {
         return;
     }
 
-    // CONNECT
     if (yJustPressed && tether && currentParent && tether.platformId !== currentParent.id) {
         const platA = entities.find(e => e.id === tether.platformId);
         const platB = entities.find(e => e.id === currentParent.id);
-        
         const isBackA = (platA?.components.ZLayer?.type === 'BACKGROUND') || platA?.components.BackgroundTag;
         const isBackB = (platB?.components.ZLayer?.type === 'BACKGROUND') || platB?.components.BackgroundTag;
         
         if (platA && platB && platA.components.Position && platB.components.Position && !isBackA && !isBackB) {
             const snappedOffsetB = snapOffsetInside(currentParent.offset, platB.components.Collider, 10);
-            const x1 = platA.components.Position.x + tether.anchorOffset.x;
-            const y1 = platA.components.Position.y + tether.anchorOffset.y;
-            const x2 = platB.components.Position.x + snappedOffsetB.x;
-            const y2 = platB.components.Position.y + snappedOffsetB.y;
-            
-            const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
             const conn = WebConnection(
                 tether.platformId, { ...tether.anchorOffset }, 
                 currentParent.id, snappedOffsetB
             );
-            
             conn.maxForce *= strengthMult;
-            conn.fixedLength = dist; 
+            conn.fixedLength = tether.maxLength; 
             
-            console.log(`🔗 [WEB] Created Connection: ${tether.platformId} <-> ${currentParent.id}`);
-
             entities.push({
                 id: crypto.randomUUID(),
                 components: { WebConnection: conn }
@@ -207,9 +252,7 @@ export const WebSystem = (entities, inputManager, scene) => {
         delete player.components.WebTether;
     }
 
-    // --- 3. BREAKING LOGIC ---
     if (tether && tether.tension > tether.maxForce) {
-        console.log("💥 Tether Snap!");
         delete player.components.WebTether;
         delete player.components.Parent;
     }
@@ -217,7 +260,6 @@ export const WebSystem = (entities, inputManager, scene) => {
     entities.forEach(e => {
         const conn = e.components.WebConnection;
         if (conn && conn.tension > conn.maxForce) {
-            console.log("💥 Web Connection Snap!");
             e.toDestroy = true;
         }
     });
