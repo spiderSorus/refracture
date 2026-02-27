@@ -68,9 +68,7 @@ export class BaseTestScene extends Phaser.Scene {
 
         // Dedicated Camera for Web Layer
         this.webCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height).setName('WEB_CAMERA');
-        this.webCamera.ignore([this.backgroundLayer, this.playground, this.foregroundLayer, this.uiLayer]);
-        this.cameras.main.ignore([this.webLayer, this.uiLayer]);
-
+        
         UI.showTitle(this.testTitle, this.testSubtitle);
 
         this.input.keyboard.on('keydown-TAB', () => UI.toggleDebug());
@@ -221,7 +219,16 @@ export class BaseTestScene extends Phaser.Scene {
         
         // Debug Camera Info
         const cameraInfo = this.cameras.cameras.map(c => {
-            return `${c.name} (${c.postPipelines.map(p => p.constructor.name).join(', ') || 'Normal'})`;
+            const baseType = c.auxType || (c === this.cameras.main ? 'PLAY' : (c === this.webCamera ? 'FOREGROUND' : '?'));
+            const isRenderingUI = c.renderedLayers && c.renderedLayers.includes('UI');
+            // If it's a dedicated UI camera, just call it UI. 
+            // If it's another camera rendering UI, call it TYPE+UI.
+            const typeStr = (isRenderingUI && baseType !== 'UI') ? `${baseType}+UI` : baseType;
+            
+            const layers = (c.renderedLayers || []).join('+') || '?';
+            const parallax = c.parallaxFactor !== undefined ? ` (P:${c.parallaxFactor.toFixed(1)})` : '';
+            const effects = c.postPipelines.map(p => p.constructor.name).join(', ') || 'Normal';
+            return `<span style="color:#0f0">[${typeStr}]</span> <span style="color:#fff">${c.name}</span> <span style="color:#888;">→ ${layers}${parallax}</span><br> &nbsp;&nbsp; <span style="color:#aaa;">FX: ${effects}</span>`;
         });
 
         // Debug Energy Rules

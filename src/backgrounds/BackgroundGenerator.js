@@ -12,8 +12,8 @@ import Phaser from 'phaser';
  * with support for parallax, physics, and overlap.
  */
 export const generateBackgroundRectangles = (scene, config, layerConfig) => {
-    const worldW = config.worldWidth || 8000;
-    const worldH = config.worldHeight || 8000;
+    const worldW = config.worldWidth || config.worldSize || 8000;
+    const worldH = config.worldHeight || config.worldSize || 8000;
     const minX = config.minX ?? 0;
     const minY = config.minY ?? -worldH;
 
@@ -42,6 +42,8 @@ export const generateBackgroundRectangles = (scene, config, layerConfig) => {
         entityType = 'BACKGROUND_RECT',
         velocityRange = [-40, 40]
     } = layerConfig;
+
+    console.log(`[BGGEN] Generating ${isGrid ? cols*rows : count} objects on layer ${layerName}. Area: (${drawMinX}, ${drawMinY}) ${drawWidth}x${drawHeight}`);
 
     const createEntity = (x, y, w, h, entityColor) => {
         const components = [

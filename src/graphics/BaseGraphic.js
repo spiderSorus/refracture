@@ -1,3 +1,5 @@
+import Phaser from 'phaser';
+
 export class BaseGraphic {
     constructor(scene, config) {
         this.scene = scene;
@@ -15,9 +17,10 @@ export class BaseGraphic {
         }
 
         if (config.alpha !== undefined && this.gameObject.setAlpha) {
-            this.gameObject.setAlpha(config.alpha);
-        } else if (this.gameObject.setAlpha) {
-            this.gameObject.setAlpha(1.0);
+            // Only apply if it's not a container, or if we really want to multiply alpha
+            if (!(this.gameObject instanceof Phaser.GameObjects.Container)) {
+                this.gameObject.setAlpha(config.alpha);
+            }
         }
     }
 

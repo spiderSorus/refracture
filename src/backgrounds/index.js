@@ -29,7 +29,7 @@ export const loadBackground = (name, scene, args = {}) => {
     }
 
     const cam = scene.cameras.main;
-    const bounds = cam.useBounds ? cam._bounds : { x: 0, y: -8000, width: 8000, height: 8000 };
+    const bounds = cam.useBounds ? cam._bounds : { x: -2500, y: -2500, width: 5000, height: 5000 };
 
     const mergedArgs = {
         minX: bounds.x,
@@ -52,9 +52,24 @@ export const loadBackground = (name, scene, args = {}) => {
         scene.bgDimensions = { w: mergedArgs.worldSize, h: mergedArgs.worldSize };
     }
 
-    // If the background script specifies a color, set it on the scene for CameraSystem to use
-    if (config.backgroundColor !== undefined) {
-        scene.backgroundColor = config.backgroundColor;
+    // If the background script specifies camera configurations, merge them
+    if (config.cameraConfigs) {
+        if (!scene.cameraConfigs) {
+            scene.cameraConfigs = config.cameraConfigs;
+        } else {
+            // Merge: avoid duplicates by layer or name if possible, but generally we want both
+            // For now, let's just prepend background cameras to the list
+            // so they are processed (and sorted) correctly.
+            const existing = scene.cameraConfigs || [];
+            const newConfigs = config.cameraConfigs;
+            
+            // Filter out existing ones that might conflict by name or layer
+            const filteredExisting = existing.filter(e => 
+                !newConfigs.some(n => n.name === e.name || n.layer === e.layer)
+            );
+            
+            scene.cameraConfigs = [...newConfigs, ...filteredExisting];
+        }
     }
 
     // Apply atmosphere if specified

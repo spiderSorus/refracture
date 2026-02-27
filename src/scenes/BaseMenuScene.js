@@ -34,16 +34,11 @@ export class BaseMenuScene extends Phaser.Scene {
         this.uiLayer = this.add.layer().setName('UI_LAYER').setDepth(2000);
 
         // Match visual style of gameplay scenes
+        const WORLD_SIZE = 5000;
+        this.cameras.main.setBounds(-WORLD_SIZE / 2, -WORLD_SIZE / 2, WORLD_SIZE, WORLD_SIZE);
         this.cameras.main.setZoom(0.8);
         this.cameras.main.setBackgroundColor(0x000000);
         this.cameras.main.centerOn(0, 0);
-
-        // Define dynamic camera configuration
-        this.cameraConfigs = [
-            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND' },
-            { name: 'BackgroundOldGlass', layer: 'bg_glass', effect: 'old_glass', type: 'BACKGROUND' },
-            { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'PLAY' }
-        ];
 
         // --- RANDOM BACKGROUND ---
         const backgrounds = ['cathedral', 'cathedral_pink_blue', 'rainbow_cathedral', 'stained_rainbow', 'complexity', 'complexity2'];
@@ -53,8 +48,6 @@ export class BaseMenuScene extends Phaser.Scene {
         const layerName = randomBg === 'stained_rainbow' ? 'bg_glass' : 'bg_watercolor';
         
         loadBackground(randomBg, this, { 
-            worldWidth: 4000, 
-            worldHeight: 8000, // Give menu scenes a consistent large height
             layerName: layerName 
         });
 
@@ -79,14 +72,14 @@ export class BaseMenuScene extends Phaser.Scene {
         const overlay = this.add.rectangle(0, 0, overlayWidth, overlayHeight, 0x000000, 0.85)
             .setOrigin(0, 0)
             .setScrollFactor(0);
-        this.playground.add(overlay);
+        this.uiLayer.add(overlay);
 
         const titleText = this.add.text(50, 50, this.title, {
             fontSize: '64px',
             fill: '#fff',
             fontFamily: 'monospace'
         }).setScrollFactor(0);
-        this.playground.add(titleText);
+        this.uiLayer.add(titleText);
 
         if (this.subtitle) {
             const sub = this.add.text(55, 130, this.subtitle, {
@@ -94,7 +87,7 @@ export class BaseMenuScene extends Phaser.Scene {
                 fill: '#0ff',
                 fontFamily: 'monospace'
             }).setScrollFactor(0);
-            this.playground.add(sub);
+            this.uiLayer.add(sub);
         }
     }
 
@@ -109,7 +102,7 @@ export class BaseMenuScene extends Phaser.Scene {
                 fill: '#fff',
                 fontFamily: 'monospace'
             }).setScrollFactor(0);
-            this.playground.add(text);
+            this.uiLayer.add(text);
             this.textObjects.push(text);
         });
     }
@@ -157,7 +150,14 @@ export class BaseMenuScene extends Phaser.Scene {
     updateDebugUI() {
         // Debug Camera Info
         const cameraInfo = this.cameras.cameras.map(c => {
-            return `${c.name} (${c.postPipelines.map(p => p.constructor.name).join(', ') || 'Normal'})`;
+            const baseType = c.auxType || (c === this.cameras.main ? 'PLAY' : '?');
+            const isRenderingUI = c.renderedLayers && c.renderedLayers.includes('UI');
+            const typeStr = (isRenderingUI && baseType !== 'UI') ? `${baseType}+UI` : baseType;
+            
+            const layers = (c.renderedLayers || []).join('+') || '?';
+            const parallax = c.parallaxFactor !== undefined ? ` (P:${c.parallaxFactor.toFixed(1)})` : '';
+            const effects = c.postPipelines.map(p => p.constructor.name).join(', ') || 'Normal';
+            return `<span style="color:#0f0">[${typeStr}]</span> <span style="color:#fff">${c.name}</span> <span style="color:#888;">→ ${layers}${parallax}</span><br> &nbsp;&nbsp; <span style="color:#aaa;">FX: ${effects}</span>`;
         });
 
         const cam = this.cameras.main;

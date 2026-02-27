@@ -21,7 +21,7 @@ export class AmorphousBlobGraphic extends BaseGraphic {
                 blobRadius,
                 blobRadius * (0.8 + Math.random() * 0.4),
                 color,
-                0.8
+                1.0
             );
             
             container.add(blob);

@@ -25,10 +25,8 @@ export class Renderama extends BaseTestScene {
         this.cameras.main.setBounds(-WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setZoom(0.8);
         
-        // Define dynamic camera configuration
+        // Define dynamic camera configuration for PLAY layers
         this.cameraConfigs = [
-            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND' },
-            { name: 'BackgroundOldGlass', layer: 'bg_glass', effect: 'old_glass', type: 'BACKGROUND' },
             { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'PLAY' },
             { name: 'WebRainbow', layer: 'web_rainbow', effect: 'rainbow', type: 'PLAY' },
             { name: 'PlayerCamera', layer: 'player_layer', type: 'PLAY' } // Renders on top

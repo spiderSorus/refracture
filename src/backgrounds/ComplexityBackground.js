@@ -36,6 +36,10 @@ export const ComplexityBackground = (scene, config = {}) => {
     return {
         backgroundColor: 0xffffff,
         enableAtmosphere: true,
-        atmosphereIntensity: 0.8
+        atmosphereIntensity: 0.8,
+        cameraConfigs: [
+            { name: 'watercolor', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND', includeUI: true },
+            { name: 'old glass', layer: 'bg_glass', effect: 'old_glass', type: 'BACKGROUND' }
+        ]
     };
 };

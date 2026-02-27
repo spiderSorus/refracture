@@ -32,7 +32,7 @@ export const RainbowCathedral = (scene, config = {}) => {
             count: l.count,
             parallax: l.parallax,
             zIndex: l.zIndex,
-            layerName: config.layerName,
+            layerName: config.layerName || 'bg_watercolor',
             widthRange: l.w,
             heightRange: l.h,
             alpha: l.alpha,
@@ -51,6 +51,10 @@ export const RainbowCathedral = (scene, config = {}) => {
 
     return {
         backgroundColor: 0x000000,
-        enableAtmosphere: false
+        enableAtmosphere: false,
+        cameraConfigs: [
+            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND', includeUI: true },
+            { name: 'BackgroundOldGlass', layer: 'bg_glass', effect: 'old_glass', type: 'BACKGROUND', includeUI: true }
+        ]
     };
 };

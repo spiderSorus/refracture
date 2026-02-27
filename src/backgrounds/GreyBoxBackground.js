@@ -32,6 +32,11 @@ export const GreyBoxBackground = (scene, config = {}) => {
 
     return {
         backgroundColor: 0xcccccc, // Light Grey
-        enableAtmosphere: false
+        enableAtmosphere: false,
+        cameraConfigs: [
+            { name: 'GreyBox Far', layer: 'bg_far', type: 'BACKGROUND' },
+            { name: 'GreyBox Mid', layer: 'bg_mid', type: 'BACKGROUND' },
+            { name: 'GreyBox Near', layer: 'bg_near', type: 'BACKGROUND' }
+        ]
     };
 };
