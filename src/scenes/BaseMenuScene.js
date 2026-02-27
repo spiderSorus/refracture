@@ -29,7 +29,7 @@ export class BaseMenuScene extends Phaser.Scene {
 
         // Initialize base layers for RenderSystem
         this.backgroundLayer = this.add.layer().setName('BACKGROUND_LAYER').setDepth(50);
-        this.playLayer = this.add.layer().setName('PLAY_LAYER').setDepth(100);
+        this.playground = this.add.layer().setName('PLAYGROUND').setDepth(100);
         this.foregroundLayer = this.add.layer().setName('FOREGROUND_LAYER').setDepth(200);
         this.uiLayer = this.add.layer().setName('UI_LAYER').setDepth(2000);
 
@@ -79,14 +79,14 @@ export class BaseMenuScene extends Phaser.Scene {
         const overlay = this.add.rectangle(0, 0, overlayWidth, overlayHeight, 0x000000, 0.85)
             .setOrigin(0, 0)
             .setScrollFactor(0);
-        this.playLayer.add(overlay);
+        this.playground.add(overlay);
 
         const titleText = this.add.text(50, 50, this.title, {
             fontSize: '64px',
             fill: '#fff',
             fontFamily: 'monospace'
         }).setScrollFactor(0);
-        this.playLayer.add(titleText);
+        this.playground.add(titleText);
 
         if (this.subtitle) {
             const sub = this.add.text(55, 130, this.subtitle, {
@@ -94,7 +94,7 @@ export class BaseMenuScene extends Phaser.Scene {
                 fill: '#0ff',
                 fontFamily: 'monospace'
             }).setScrollFactor(0);
-            this.playLayer.add(sub);
+            this.playground.add(sub);
         }
     }
 
@@ -109,7 +109,7 @@ export class BaseMenuScene extends Phaser.Scene {
                 fill: '#fff',
                 fontFamily: 'monospace'
             }).setScrollFactor(0);
-            this.playLayer.add(text);
+            this.playground.add(text);
             this.textObjects.push(text);
         });
     }

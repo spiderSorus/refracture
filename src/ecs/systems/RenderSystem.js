@@ -9,7 +9,7 @@ import { RenderFactory } from './RenderFactory';
 export const RenderSystem = (entities, scene, alpha = 1.0) => {
     // 1. Initialize Scene Layers if not present
     if (!scene.backgroundLayer) scene.backgroundLayer = scene.add.layer().setName('BACKGROUND_LAYER').setDepth(50);
-    if (!scene.playLayer) scene.playLayer = scene.add.layer().setName('PLAY_LAYER').setDepth(100);
+    if (!scene.playground) scene.playground = scene.add.layer().setName('PLAYGROUND').setDepth(100);
     if (!scene.foregroundLayer) scene.foregroundLayer = scene.add.layer().setName('FOREGROUND_LAYER').setDepth(200);
     if (!scene.uiLayer) scene.uiLayer = scene.add.layer().setName('UI_LAYER').setDepth(2000);
 
@@ -30,7 +30,7 @@ export const RenderSystem = (entities, scene, alpha = 1.0) => {
                 const gfx = activeGraphics[layerKey];
 
                 // Determine which Phaser Layer to use
-                let targetLayer = scene.playLayer;
+                let targetLayer = scene.playground;
                 
                 // 1. Check for explicit auxiliary layer override
                 if (zlayer && zlayer.layerName && scene.auxLayers && scene.auxLayers[zlayer.layerName]) {
@@ -50,7 +50,7 @@ export const RenderSystem = (entities, scene, alpha = 1.0) => {
                         if (zType === 'BACKGROUND') targetLayer = scene.backgroundLayer;
                         else if (zType === 'FOREGROUND') targetLayer = scene.foregroundLayer;
                         else if (zType === 'UI') targetLayer = scene.uiLayer;
-                        else targetLayer = scene.playLayer;
+                        else targetLayer = scene.playground;
                     }
                 }
                 

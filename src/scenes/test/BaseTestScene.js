@@ -61,14 +61,14 @@ export class BaseTestScene extends Phaser.Scene {
 
         // Create isolated layers for post-processing
         this.backgroundLayer = this.add.layer().setName('BACKGROUND_LAYER').setDepth(50);
-        this.playLayer = this.add.layer().setName('PLAY_LAYER').setDepth(100);
+        this.playground = this.add.layer().setName('PLAYGROUND').setDepth(100);
         this.foregroundLayer = this.add.layer().setName('FOREGROUND_LAYER').setDepth(200);
         this.uiLayer = this.add.layer().setName('UI_LAYER').setDepth(2000);
         this.webLayer = this.add.layer().setName('WEB_LAYER').setDepth(1100);
 
         // Dedicated Camera for Web Layer
         this.webCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height).setName('WEB_CAMERA');
-        this.webCamera.ignore([this.backgroundLayer, this.playLayer, this.foregroundLayer, this.uiLayer]);
+        this.webCamera.ignore([this.backgroundLayer, this.playground, this.foregroundLayer, this.uiLayer]);
         this.cameras.main.ignore([this.webLayer, this.uiLayer]);
 
         UI.showTitle(this.testTitle, this.testSubtitle);
@@ -145,7 +145,7 @@ export class BaseTestScene extends Phaser.Scene {
 
             // --- GLOW EFFECTS (Floor & Walls) ---
             const glowGfx = this.add.graphics();
-            if (this.playLayer) this.playLayer.add(glowGfx);
+            if (this.playground) this.playground.add(glowGfx);
             
             for (let i = 1; i <= 8; i++) {
                 glowGfx.lineStyle(i * 8, 0x0088ff, 0.4 / i);

@@ -111,7 +111,7 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
         // Ensure auxiliary cameras ignore all legacy layers and web layers unless they are the designated one
         const ignoreList = [
             scene.backgroundLayer, 
-            scene.playLayer, 
+            scene.playground, 
             scene.foregroundLayer,
             scene.uiLayer,
             scene.webLayer

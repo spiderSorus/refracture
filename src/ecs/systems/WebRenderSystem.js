@@ -7,7 +7,7 @@ import { getImmediateGfx } from '../../utils/RenderUtils';
  */
 export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
     // 1. Determine target layer (favoring explicit auxiliary layer)
-    let targetLayer = scene.webLayer || scene.playLayer;
+    let targetLayer = scene.webLayer || scene.playground;
     if (scene.webLayerName && scene.auxLayers && scene.auxLayers[scene.webLayerName]) {
         targetLayer = scene.auxLayers[scene.webLayerName];
     }

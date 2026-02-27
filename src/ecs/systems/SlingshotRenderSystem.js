@@ -3,7 +3,7 @@ import { getImmediateGfx } from '../../utils/RenderUtils';
 
 export const SlingshotRenderSystem = (entities, scene, interpAlpha = 1.0) => {
     // Determine target layer (favoring explicit auxiliary layer)
-    let targetLayer = scene.webLayer || scene.playLayer;
+    let targetLayer = scene.webLayer || scene.playground;
     const slingLayerName = scene.slingLayerName || scene.webLayerName;
     
     if (slingLayerName && scene.auxLayers && scene.auxLayers[slingLayerName]) {
