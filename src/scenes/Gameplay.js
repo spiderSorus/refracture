@@ -1,6 +1,7 @@
 import { createPlayer } from '../ecs/entities/player';
 import { createSpawnPlatform, createPlatform } from '../ecs/entities/platforms';
 import { BaseTestScene } from './test/BaseTestScene';
+import { loadBackground } from '../backgrounds/index';
 import { PHYSICS } from '../core/Constants';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump, ZLayer,
@@ -25,14 +26,18 @@ export class Gameplay extends BaseTestScene {
         this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setZoom(0.6);
 
-        if (!this.textures.exists('bg_grid')) {
-            const gfx = this.make.graphics({ x: 0, y: 0, add: false });
-            gfx.lineStyle(2, 0x1a1a1a, 1);
-            gfx.strokeRect(0, 0, 100, 100);
-            gfx.generateTexture('bg_grid', 100, 100);
-        }
-        const grid = this.add.tileSprite(WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
-        if (this.backgroundLayer) this.backgroundLayer.add(grid);
+        // Define explicit background cameras for the GreyBox layers
+        this.cameraConfigs = [
+            { name: 'BG_Far', layer: 'bg_far', type: 'BACKGROUND' },
+            { name: 'BG_Mid', layer: 'bg_mid', type: 'BACKGROUND' },
+            { name: 'BG_Near', layer: 'bg_near', type: 'BACKGROUND' }
+        ];
+
+        // --- LOAD BACKGROUND ---
+        loadBackground('greybox', this, { 
+            worldWidth: WORLD_WIDTH, 
+            worldHeight: WORLD_HEIGHT 
+        });
 
         const spawnX = WORLD_WIDTH / 2;
         const spawnY = -100; // 100 over the floor (maxY is 0)
@@ -67,14 +72,16 @@ export class Gameplay extends BaseTestScene {
 
                 const platform = this.addEntity([
                     ...platformComponents,
-                    Ego(egoVal)
+                    Ego(egoVal),
+                    ZLayer('PLAY', 10)
                 ]);
             }
         }
 
         this.addEntity([
             ...createPlayer(spawnX, spawnY),
-            SlingshotJump(PHYSICS.SLINGSHOT_FORCE)
+            SlingshotJump(PHYSICS.SLINGSHOT_FORCE),
+            ZLayer('PLAY', 0)
         ]);
 
         this.cameras.main.centerOn(spawnX, spawnY);

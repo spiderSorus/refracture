@@ -184,16 +184,102 @@ export const PhysicsSystem = (entities, delta, scene) => {
     // 3. RESOLVE COLLISIONS
     const platformsForCollision = entities.filter(e => {
         const isPlatform = e.components.PlatformTag && e.components.Collider && e.components.Position;
-        const zLayer = e.components.ZLayer;
-        const isBackground = (zLayer && zLayer.type === 'BACKGROUND') || e.components.BackgroundTag;
-        return isPlatform && !isBackground;
+        return isPlatform;
     });
+
     for (let i = 0; i < platformsForCollision.length; i++) {
         for (let j = i + 1; j < platformsForCollision.length; j++) {
             const A = platformsForCollision[i];
             const B = platformsForCollision[j];
+
+            const zA = A.components.ZLayer;
+            const zB = B.components.ZLayer;
+
+            const isBackA = (zA && zA.type === 'BACKGROUND') || A.components.BackgroundTag;
+            const isBackB = (zB && zB.type === 'BACKGROUND') || B.components.BackgroundTag;
+
+            // --- COLLISION FILTERING ---
+            // 1. Skip PLAY <-> BACKGROUND
+            if (isBackA !== isBackB) continue;
+
+            // 2. If both are BACKGROUND, only collide if they share the same layerName
+            if (isBackA && isBackB) {
+                if (zA.layerName !== zB.layerName) continue;
+            }
+
             const posA = A.components.Position; const posB = B.components.Position;
             const colA = A.components.Collider; const colB = B.components.Collider;
+
+            // --- IMPROVED AABB COLLISION FOR NON-ROTATING RECTS ---
+            const rotA = A.components.Rotation?.angle || 0;
+            const rotB = B.components.Rotation?.angle || 0;
+
+            if (colA.type === 'rect' && colB.type === 'rect' && rotA === 0 && rotB === 0) {
+                const wA = colA.width; const hA = colA.height;
+                const wB = colB.width; const hB = colB.height;
+
+                const dx = posB.x - posA.x;
+                const dy = posB.y - posA.y;
+
+                const overlapX = (wA + wB) / 2 - Math.abs(dx);
+                const overlapY = (hA + hB) / 2 - Math.abs(dy);
+
+                if (overlapX > 0 && overlapY > 0) {
+                    const canA = !(A.components.SpawnTag || A.components.StaticTag);
+                    const canB = !(B.components.SpawnTag || B.components.StaticTag);
+
+                    // Resolve along axis of least penetration
+                    if (overlapX < overlapY) {
+                        const nx = dx > 0 ? 1 : -1;
+                        if (canA && canB) {
+                            posA.x -= nx * overlapX * 0.5;
+                            posB.x += nx * overlapX * 0.5;
+                        } else if (canA) {
+                            posA.x -= nx * overlapX;
+                        } else if (canB) {
+                            posB.x += nx * overlapX;
+                        }
+                        
+                        // Bounce velocity
+                        const velA = A.components.Velocity; const velB = B.components.Velocity;
+                        if (velA && velB) {
+                            const relVelX = velB.x - velA.x;
+                            if (relVelX * nx < 0) {
+                                const rest = 0.8;
+                                const mA = A.components.Mass?.value || 10; const mB = B.components.Mass?.value || 10;
+                                let j = -(1 + rest) * relVelX; j /= 1 / mA + 1 / mB;
+                                if (canA) velA.x -= 1 / mA * j;
+                                if (canB) velB.x += 1 / mB * j;
+                            }
+                        }
+                    } else {
+                        const ny = dy > 0 ? 1 : -1;
+                        if (canA && canB) {
+                            posA.y -= ny * overlapY * 0.5;
+                            posB.y += ny * overlapY * 0.5;
+                        } else if (canA) {
+                            posA.y -= ny * overlapY;
+                        } else if (canB) {
+                            posB.y += ny * overlapY;
+                        }
+
+                        // Bounce velocity
+                        const velA = A.components.Velocity; const velB = B.components.Velocity;
+                        if (velA && velB) {
+                            const relVelY = velB.y - velA.y;
+                            if (relVelY * ny < 0) {
+                                const rest = 0.8;
+                                const mA = A.components.Mass?.value || 10; const mB = B.components.Mass?.value || 10;
+                                let j = -(1 + rest) * relVelY; j /= 1 / mA + 1 / mB;
+                                if (canA) velA.y -= 1 / mA * j;
+                                if (canB) velB.y += 1 / mB * j;
+                            }
+                        }
+                    }
+                    continue; // Skip sphere-based resolution
+                }
+            }
+
             const dist = Phaser.Math.Distance.Between(posA.x, posA.y, posB.x, posB.y);
             const radiusA = colA.type === 'circle' ? colA.radius : Math.max(colA.width, colA.height) / 2;
             const radiusB = colB.type === 'circle' ? colB.radius : Math.max(colB.width, colB.height) / 2;

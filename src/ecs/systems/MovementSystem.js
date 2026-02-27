@@ -65,11 +65,12 @@ export const MovementSystem = (entities, inputManager, dt) => {
         else if (vel) {
             // Player is grounded only if they have a Parent (attached to a platform)
             const isGrounded = !!parent;
+            const isBackground = !!entity.components.BackgroundTag;
 
             if (isGrounded) {
                 vel.x += (move.x * PLAYER.GROUND_ACCEL) * dt;
                 vel.x *= PHYSICS.GROUND_FRICTION;
-            } else {
+            } else if (!isBackground) {
                 const fricX = tether ? PHYSICS.TETHER_AIR_RESISTANCE_X : PHYSICS.AIR_RESISTANCE_X;
                 const fricY = tether ? PHYSICS.TETHER_AIR_RESISTANCE_Y : PHYSICS.AIR_RESISTANCE_Y;
                 vel.x *= fricX;

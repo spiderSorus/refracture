@@ -75,7 +75,8 @@ export class UIManager {
                 <strong style="color: #0ff;">[ ${playerData.scene || 'SCENE'} ]</strong><br>
                 FPS: ${stateData.fps || 0}<br>
                 POS: ${playerData.x}, ${playerData.y}<br>
-                BG: <span style="color: #fff;">${stateData.background || 'None'}</span><br>
+                WORLD: <span style="color: #fff;">${stateData.worldDims || '0x0'}</span><br>
+                BG: <span style="color: #fff;">${stateData.background || 'None'}</span> (${stateData.bgDims || 'Auto'})<br>
                 STATUS: ${stateData.status}
             </div>
             <div style="margin-bottom: 10px; border-bottom: 1px solid #444; width: 100%; padding-bottom: 5px; font-size: 11px;">

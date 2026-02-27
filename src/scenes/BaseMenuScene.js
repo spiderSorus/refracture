@@ -160,6 +160,9 @@ export class BaseMenuScene extends Phaser.Scene {
             return `${c.name} (${c.postPipelines.map(p => p.constructor.name).join(', ') || 'Normal'})`;
         });
 
+        const cam = this.cameras.main;
+        const worldBounds = cam.useBounds ? cam._bounds : { x: 0, y: 0, width: 0, height: 0 };
+
         UI.updateDebug({
             scene: this.scene.key,
             x: Math.round(this.menuCamX),
@@ -168,6 +171,8 @@ export class BaseMenuScene extends Phaser.Scene {
             fps: Math.round(this.game.loop.actualFps),
             status: "MENU",
             background: this.currentBackground || 'Default',
+            worldDims: `${Math.round(worldBounds.width)}x${Math.round(worldBounds.height)}`,
+            bgDims: this.bgDimensions ? `${this.bgDimensions.w}x${this.bgDimensions.h}` : 'Auto',
             cameras: cameraInfo
         });
     }

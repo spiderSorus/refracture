@@ -13,6 +13,10 @@ export class RectGraphic extends BaseGraphic {
 
         if (config.alpha !== undefined) this.rect.setAlpha(config.alpha);
         this.rect.isFilled = true;
+
+        if (config.strokeColor !== undefined) {
+            this.rect.setStrokeStyle(config.strokeWidth || 1, config.strokeColor, config.strokeAlpha || 1.0);
+        }
         
         container.add(this.rect);
 

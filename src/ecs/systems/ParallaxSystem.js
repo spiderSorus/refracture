@@ -6,8 +6,6 @@
  */
 export const ParallaxSystem = (entities, scene, alpha = 1.0) => {
     const cam = scene.cameras.main;
-    const centerX = cam.scrollX + cam.width / 2;
-    const centerY = cam.scrollY + cam.height / 2;
 
     // Atmospheric Depth settings
     const enableAtmosphere = scene.enableAtmosphere ?? false;
@@ -21,15 +19,17 @@ export const ParallaxSystem = (entities, scene, alpha = 1.0) => {
         const factor = parallax.factor;
         
         // --- 1. POSITION UPDATE ---
-        // If factor is 1.0, it moves normally with the world (no parallax needed here)
         let renderX = pos.x;
         let renderY = pos.y;
 
         if (factor !== 1.0) {
             const worldX = pos.prevX !== undefined ? pos.prevX + (pos.x - pos.prevX) * alpha : pos.x;
             const worldY = pos.prevY !== undefined ? pos.prevY + (pos.y - pos.prevY) * alpha : pos.y;
-            renderX = centerX + (worldX - centerX) * factor;
-            renderY = centerY + (worldY - centerY) * factor;
+            
+            // Standard Top-Left Anchored Parallax
+            // Visually matches Phaser's scrollFactor behavior.
+            renderX = worldX + cam.scrollX * (1.0 - factor);
+            renderY = worldY + cam.scrollY * (1.0 - factor);
         }
 
         Object.values(renderable.activeVisuals).forEach(gfx => {

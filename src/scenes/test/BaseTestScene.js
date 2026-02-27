@@ -230,6 +230,8 @@ export class BaseTestScene extends Phaser.Scene {
         if (player) {
             const sling = player.components.SlingshotJump || {};
             const rawStick = this.inputManager.getRightStickRaw();
+            const cam = this.cameras.main;
+            const worldBounds = cam.useBounds ? cam._bounds : { x: 0, y: 0, width: 0, height: 0 };
 
             UI.updateDebug({
                 scene: this.scene.key,
@@ -239,6 +241,8 @@ export class BaseTestScene extends Phaser.Scene {
                 fps: Math.round(this.game.loop.actualFps),
                 status: player.components.Parent ? "ATTACHED" : "FREE",
                 background: this.currentBackground || 'Default',
+                worldDims: `${Math.round(worldBounds.width)}x${Math.round(worldBounds.height)}`,
+                bgDims: this.bgDimensions ? `${this.bgDimensions.w}x${this.bgDimensions.h}` : 'Auto',
                 cameras: cameraInfo,
                 energyRules: activeRules,
                 sling: {
