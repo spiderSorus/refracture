@@ -12,16 +12,16 @@ export const RedCathedralBackground = (scene, config = {}) => {
 
     // 5 Deep parallax layers: 0.1 (far) to 0.9 (near)
     const layers = [
-        { parallax: 0.1, zIndex: 50, count: 40, color: [100, 150], alpha: 0.2 },
-        { parallax: 0.3, zIndex: 40, count: 50, color: [150, 200], alpha: 0.3 },
-        { parallax: 0.5, zIndex: 30, count: 60, color: [200, 255], alpha: 0.5 },
-        { parallax: 0.7, zIndex: 20, count: 50, color: [150, 200], alpha: 0.7 },
-        { parallax: 0.9, zIndex: 10, count: 20, color: [100, 150], alpha: 0.4 }
+        { parallax: 0.1, zIndex: 50, count: 200, color: [100, 150], alpha: 0.2 },
+        { parallax: 0.3, zIndex: 40, count: 250, color: [150, 200], alpha: 0.2 },
+        { parallax: 0.5, zIndex: 30, count: 300, color: [200, 255], alpha: 0.2 },
+        { parallax: 0.7, zIndex: 20, count: 250, color: [150, 200], alpha: 0.2 },
+        { parallax: 0.9, zIndex: 10, count: 100, color: [100, 150], alpha: 0.2 }
     ];
 
     layers.forEach(l => {
-        // Limit total count even in massive scenes to avoid performance issues
-        const totalCount = Math.min(1000, Math.round(l.count * areaScale));
+        // Lower cap to prevent massive over-generation
+        const totalCount = Math.min(3000, Math.round(l.count * areaScale));
         
         generateCathedralColumns(scene, config, {
             count: totalCount,
@@ -38,14 +38,14 @@ export const RedCathedralBackground = (scene, config = {}) => {
         // Add an "Atmosphere Plane" for each layer to create haze between depths
         // This is a few very large, very faint horizontal watercolor blocks
         generateBackgroundRectangles(scene, config, {
-            count: Math.max(2, Math.round(5 * areaScale)),
-            parallax: l.parallax + 0.1, // Offset further from columns
-            zIndex: l.zIndex + 1, // Just behind the columns of this layer
+            count: Math.max(4, Math.round(8 * areaScale)), // Denser fog
+            parallax: l.parallax + 0.1, 
+            zIndex: l.zIndex + 1, 
             layerName: 'bg_watercolor',
-            widthRange: [worldW * 0.8, worldW * 2.0],
-            heightRange: [worldH * 0.2, worldH * 0.5],
+            widthRange: [worldW * 1.0, worldW * 2.5],
+            heightRange: [worldH * 0.3, worldH * 0.6],
             color: 0x000000, // Black fog
-            alpha: 0.3, // Higher alpha for more "haze"
+            alpha: 0.5, // Much thicker fog
             renderType: 'watercolor'
         });
     });
@@ -55,7 +55,7 @@ export const RedCathedralBackground = (scene, config = {}) => {
     return {
         backgroundColor: 0x000000,
         enableAtmosphere: true,
-        atmosphereIntensity: 0.9,
+        atmosphereIntensity: 1.0, // Max atmosphere
         cameras: ['stainedGlass']
     };
 };

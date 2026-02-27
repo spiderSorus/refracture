@@ -16,8 +16,8 @@ export class RedCathedralScene extends BaseTestScene {
     create() {
         super.create();
 
-        const WORLD_WIDTH = 4000;
-        const WORLD_HEIGHT = 100000;
+        const WORLD_WIDTH = 2000;
+        const WORLD_HEIGHT = 50000;
         const spawnX = 0;
         const spawnY = WORLD_HEIGHT / 2 - 500; // Bottom of the coordinate system
 

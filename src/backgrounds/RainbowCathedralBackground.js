@@ -11,15 +11,15 @@ export const RainbowCathedralBackground = (scene, config = {}) => {
     const areaScale = (worldW * worldH) / (5000 * 5000);
 
     const layers = [
-        { parallax: 0.1, zIndex: 50, count: 40, alpha: 0.2 },
-        { parallax: 0.3, zIndex: 40, count: 50, alpha: 0.3 },
-        { parallax: 0.5, zIndex: 30, count: 60, alpha: 0.5 },
-        { parallax: 0.7, zIndex: 20, count: 50, alpha: 0.7 },
-        { parallax: 0.9, zIndex: 10, count: 20, alpha: 0.4 }
+        { parallax: 0.1, zIndex: 50, count: 200, alpha: 0.2 },
+        { parallax: 0.3, zIndex: 40, count: 250, alpha: 0.2 },
+        { parallax: 0.5, zIndex: 30, count: 300, alpha: 0.2 },
+        { parallax: 0.7, zIndex: 20, count: 250, alpha: 0.2 },
+        { parallax: 0.9, zIndex: 10, count: 100, alpha: 0.2 }
     ];
 
     layers.forEach(l => {
-        const totalCount = Math.min(1000, Math.round(l.count * areaScale));
+        const totalCount = Math.min(3000, Math.round(l.count * areaScale));
         
         generateRainbowCathedralColumns(scene, config, {
             count: totalCount,
@@ -29,7 +29,7 @@ export const RainbowCathedralBackground = (scene, config = {}) => {
             alpha: l.alpha
         });
 
-        // Atmosphere Plane (White fog for this background)
+        // Restore Atmosphere Plane (Black fog)
         generateBackgroundRectangles(scene, config, {
             count: Math.max(2, Math.round(5 * areaScale)),
             parallax: l.parallax + 0.1,
@@ -37,8 +37,8 @@ export const RainbowCathedralBackground = (scene, config = {}) => {
             layerName: 'bg_watercolor',
             widthRange: [worldW * 0.8, worldW * 2.0],
             heightRange: [worldH * 0.2, worldH * 0.5],
-            color: 0xffffff, // White fog
-            alpha: 0.2,
+            color: 0x000000,
+            alpha: 0.3,
             renderType: 'watercolor'
         });
     });
@@ -46,9 +46,9 @@ export const RainbowCathedralBackground = (scene, config = {}) => {
     console.log(`[BACKGROUND] Rainbow Cathedral Loaded.`);
 
     return {
-        backgroundColor: 0xffffff,
+        backgroundColor: 0x000000,
         enableAtmosphere: true,
-        atmosphereIntensity: 0.8,
-        cameras: ['stainedGlass'] // Same as red_cathedral
+        atmosphereIntensity: 0.9,
+        cameras: ['stainedGlass']
     };
 };
