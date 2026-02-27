@@ -14,7 +14,14 @@ export const PhysicsSystem = (entities, delta, scene) => {
     entities.forEach(e => {
         const tether = e.components.WebTether;
         if (tether) {
-            webbedPlatformIds.add(tether.platformId);
+            // Special Case: Don't freeze the platform if it's a small dynamic object like a Test Ball
+            // and it's being pulled by the player.
+            const targetPlat = entities.find(plat => plat.id === tether.platformId);
+            const isTestBall = targetPlat?.components.EntityType?.value === 'TEST_BALL';
+            
+            if (!isTestBall) {
+                webbedPlatformIds.add(tether.platformId);
+            }
             if (tether.isActive) activelyTuggedIds.add(tether.platformId);
         }
         const conn = e.components.WebConnection;
@@ -205,18 +212,34 @@ export const PhysicsSystem = (entities, delta, scene) => {
             const isStatic = !!(entity.components.SpawnTag || entity.components.StaticTag);
             const isSeesaw = !!entity.components.SeesawTag;
             const isWebbed = webbedPlatformIds.has(entity.id);
+            const isTestBall = entity.components.EntityType?.value === 'TEST_BALL';
 
-            if (isStatic || isSeesaw || isWebbed) {
+            if (isStatic || isSeesaw || (isWebbed && !isTestBall)) {
+                // Linear freeze for fixed objects. 
+                // Test Balls only freeze if part of a STATIC connection (handled in webbedPlatformIds logic)
                 vel.x = 0;
                 vel.y = 0;
-            } else if (isPlayer) {
+            } else if (isPlayer || isTestBall) {
+                // Apply Gravity
                 vel.y += GRAVITY * dt;
+                
+                // Air Resistance
+                vel.x *= isPlayer ? 0.98 : 0.99;
+                vel.y *= isPlayer ? 0.99 : 0.995;
             } else if (!entity.components.GravityExempt && !entity.components.PlatformTag) {
                 vel.y += GRAVITY * dt;
             }
 
             pos.x += vel.x * dt;
             pos.y += vel.y * dt;
+
+            // Rolling Physics for Test Balls
+            if (isTestBall && entity.components.AngularVelocity) {
+                const radius = entity.components.Collider?.radius || 30;
+                // v = omega * r  => omega = v / r
+                // We'll use horizontal velocity to drive rotation
+                entity.components.AngularVelocity.rate = vel.x / (radius / 10);
+            }
 
             // Player World Boundary Constraints
             if (isPlayer) {

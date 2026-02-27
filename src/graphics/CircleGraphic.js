@@ -7,6 +7,7 @@ export class CircleGraphic extends BaseGraphic {
         const color = config.color || 0xffffff;
         
         // Use a container so we can layer spokes over the circle
+        // IMPORTANT: All children must be relative to (0,0) for the container to work properly with PhysicsSystem
         const container = this.scene.add.container(0, 0);
         
         // 1. Base Circle
@@ -18,8 +19,8 @@ export class CircleGraphic extends BaseGraphic {
         const spokeCount = 4;
         for (let i = 0; i < spokeCount; i++) {
             const angle = (i / spokeCount) * Math.PI;
-            // Spokes are thin, dark lines
-            const spoke = this.scene.add.rectangle(0, 0, radius * 2, 2, 0x000000, 0.3);
+            // Spokes are thin, dark lines, centered at 0,0
+            const spoke = this.scene.add.rectangle(0, 0, radius * 2, 2, 0x000000, 0.5);
             spoke.setRotation(angle);
             container.add(spoke);
             this.spokes.push(spoke);
@@ -45,7 +46,8 @@ export class CircleGraphic extends BaseGraphic {
         // Update visual scales
         this.circle.setRadius(currentRadius);
         this.spokes.forEach(spoke => {
-            spoke.width = currentRadius * 2;
+            // Update length to match new diameter
+            spoke.setSize(currentRadius * 2, 2);
         });
     }
 }

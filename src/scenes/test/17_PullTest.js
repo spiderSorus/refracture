@@ -1,6 +1,7 @@
 import { createPlayer, spawnPlayer } from '../../ecs/entities/player';
 import { createSpawnPlatform } from '../../ecs/entities/platforms';
 import { createSeesaw } from '../../ecs/entities/seesaw';
+import { createTestBall } from '../../ecs/entities/test_ball';
 import { loadBackground } from '../../backgrounds/index';
 import { BaseTestScene } from './BaseTestScene';
 import { ZLayer } from '../../ecs/components/index';
@@ -28,7 +29,6 @@ export class PullTest extends BaseTestScene {
         });
 
         // 0. SPAWN PLATFORM
-        // User requested full scene width
         const spawnPlat = this.addEntity(createSpawnPlatform(spawnX, spawnY, { 
             width: 2000, 
             height: 200, 
@@ -37,32 +37,38 @@ export class PullTest extends BaseTestScene {
         spawnPlat.components.ZLayer = ZLayer('PLAY', 5);
 
         // 1. SEESAWS
-        
-        // Static Seesaw (Stays where you leave it)
-        this.addEntity(createSeesaw(-500, spawnY - 500, {
+        const seesawLeft = this.addEntity(createSeesaw(-500, spawnY - 500, {
             width: 600,
             mass: 50,
             stiffness: 0,
-            maxRotation: 0.8 // 45 deg
+            maxRotation: 0.8
         }));
 
-        // Spring Seesaw (Returns to horizontal)
-        this.addEntity(createSeesaw(500, spawnY - 500, {
+        const seesawRight = this.addEntity(createSeesaw(500, spawnY - 500, {
             width: 600,
             mass: 50,
             stiffness: 2.5,
-            maxRotation: 0.8 // 45 deg
+            maxRotation: 0.8
         }));
 
-        // Free Seesaw (No rotation limit, stays where left)
-        this.addEntity(createSeesaw(0, spawnY - 1000, {
+        const seesawTop = this.addEntity(createSeesaw(0, spawnY - 1000, {
             width: 800,
             mass: 50,
             stiffness: 0,
-            maxRotation: 0 // Free spinning
+            maxRotation: 0
         }));
 
-        // 2. PLAYER
+        // 2. TEST BALLS
+        // On Main Platform
+        this.addEntity(createTestBall(-800, spawnY - 150));
+        this.addEntity(createTestBall(800, spawnY - 150));
+        
+        // On Seesaws
+        this.addEntity(createTestBall(-600, spawnY - 600));
+        this.addEntity(createTestBall(600, spawnY - 600));
+        this.addEntity(createTestBall(0, spawnY - 1100));
+
+        // 3. PLAYER
         spawnPlayer(this, spawnPlat);
         
         this.cameras.main.centerOn(spawnX, spawnY);
