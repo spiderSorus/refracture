@@ -18,7 +18,7 @@ export const RaycastPlatformSystem = {
         const platforms = entities.filter(e => {
             const isPlatform = e.components.PlatformTag && e.components.Collider;
             const zLayer = e.components.ZLayer;
-            const isBackground = (zLayer && zLayer.type === 'BACK') || e.components.BackgroundTag;
+            const isBackground = (zLayer && zLayer.type === 'BACKGROUND') || e.components.BackgroundTag;
             return isPlatform && !isBackground;
         });
 

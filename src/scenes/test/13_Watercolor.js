@@ -24,7 +24,7 @@ export class WatercolorScene extends BaseTestScene {
         
         // Define dynamic camera configuration
         this.cameraConfigs = [
-            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACK' }
+            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND' }
         ];
         
         // --- LOAD BACKGROUND ---

@@ -74,7 +74,7 @@ export const WebSystem = (entities, inputManager, scene) => {
     // CREATE TETHER
     if (yJustPressed && !tether && currentParent) {
         const plat = entities.find(e => e.id === currentParent.id);
-        const isBackground = (plat?.components.ZLayer?.type === 'BACK') || plat?.components.BackgroundTag;
+        const isBackground = (plat?.components.ZLayer?.type === 'BACKGROUND') || plat?.components.BackgroundTag;
         
         if (plat && plat.components.Position && !isBackground) {
             const snappedOffset = snapOffsetInside(currentParent.offset, plat.components.Collider, 10);
@@ -102,8 +102,8 @@ export const WebSystem = (entities, inputManager, scene) => {
         const platA = entities.find(e => e.id === tether.platformId);
         const platB = entities.find(e => e.id === currentParent.id);
         
-        const isBackA = (platA?.components.ZLayer?.type === 'BACK') || platA?.components.BackgroundTag;
-        const isBackB = (platB?.components.ZLayer?.type === 'BACK') || platB?.components.BackgroundTag;
+        const isBackA = (platA?.components.ZLayer?.type === 'BACKGROUND') || platA?.components.BackgroundTag;
+        const isBackB = (platB?.components.ZLayer?.type === 'BACKGROUND') || platB?.components.BackgroundTag;
         
         if (platA && platB && platA.components.Position && platB.components.Position && !isBackA && !isBackB) {
             const snappedOffsetB = snapOffsetInside(currentParent.offset, platB.components.Collider, 10);

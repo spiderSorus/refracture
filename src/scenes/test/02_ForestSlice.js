@@ -31,7 +31,7 @@ export class ForestSlice extends BaseTestScene {
             gfx.generateTexture('bg_grid', 100, 100);
         }
         const grid = this.add.tileSprite(0, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT, 'bg_grid').setDepth(0);
-        if (this.bgLayer) this.bgLayer.add(grid);
+        if (this.backgroundLayer) this.backgroundLayer.add(grid);
 
         const spawnX = 0;
         const spawnY = 100;

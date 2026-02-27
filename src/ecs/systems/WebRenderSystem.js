@@ -6,8 +6,18 @@ import { getImmediateGfx } from '../../utils/RenderUtils';
  * Renders web tethers and connections with dynamic visuals based on endpoint properties.
  */
 export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
-    const targetLayer = scene.fgLayer;
+    // 1. Determine target layer (favoring explicit auxiliary layer)
+    let targetLayer = scene.webLayer || scene.playLayer;
+    if (scene.webLayerName && scene.auxLayers && scene.auxLayers[scene.webLayerName]) {
+        targetLayer = scene.auxLayers[scene.webLayerName];
+    }
+
     const gfx = getImmediateGfx(scene, 'webGfx', 1100, targetLayer);
+    
+    // 2. Determine blend mode
+    const blendMode = scene.webBlendMode !== undefined ? scene.webBlendMode : Phaser.BlendModes.DIFFERENCE;
+    gfx.setBlendMode(blendMode);
+    
     const cam = scene.cameras.main;
     
     const getInterpPos = (pos) => ({
@@ -60,51 +70,10 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
      */
     const drawDynamicPath = (x1, y1, x2, y2, targetLen, tension, properties) => {
         const dist = Phaser.Math.Distance.Between(x1, y1, x2, y2);
-        const { travelerSpeed = 0.8, travelerWidth = 0.06, travelerColor = 0xff0000, 
-                baseColor = 0xffffff, reverse = false, scale = 1.0 } = properties;
+        const { scale = 1.0 } = properties;
 
-        // Tension-based coloring for base line
-        const tensionAlpha = Phaser.Math.Clamp(tension / 5000, 0, 1);
-        const interpolatedBase = Phaser.Display.Color.Interpolate.ColorWithColor(
-            Phaser.Display.Color.ValueToColor(baseColor),
-            Phaser.Display.Color.ValueToColor(0xff88ff),
-            1, tensionAlpha
-        );
-        const baseHex = Phaser.Display.Color.GetColor(interpolatedBase.r, interpolatedBase.g, interpolatedBase.b);
-
-        const time = scene.time.now * 0.001;
-        // Use a base speed in pixels per second, then convert to normalized progress (0.0 to 1.0)
-        const speedInPixelsPerSecond = travelerSpeed * 200; 
-        const cycle = (time * (speedInPixelsPerSecond / Math.max(1, dist))) % 1.4 - 0.2;
-        
-        const tStartRaw = reverse ? 1.0 - (cycle + travelerWidth) : cycle;
-        const tEndRaw = reverse ? 1.0 - cycle : cycle + travelerWidth;
-        
-        const tStart = Math.min(tStartRaw, tEndRaw);
-        const tEnd = Math.max(tStartRaw, tEndRaw);
-
-        const layers = 2;
-        
-        // 1. Base Diffused Layers
-        for (let i = layers; i >= 1; i--) {
-            const alpha = (0.12 / i);
-            const thickness = (i * 2 * scale) / cam.zoom;
-            drawPathSegment(x1, y1, x2, y2, targetLen, dist, 0, 1, thickness, baseHex, alpha);
-        }
-
-        // 2. Core Web Line
-        drawPathSegment(x1, y1, x2, y2, targetLen, dist, 0, 1, (1.0 * scale) / cam.zoom, baseHex, 0.8);
-
-        // 3. Traveling Segment (Color March) - Drawn last to be on top
-        if (tEnd > 0 && tStart < 1) {
-            for (let i = layers; i >= 1; i--) {
-                const alpha = (0.5 / i);
-                const thickness = (i * 3.5 * scale) / cam.zoom;
-                drawPathSegment(x1, y1, x2, y2, targetLen, dist, Math.max(0, tStart), Math.min(1, tEnd), thickness, travelerColor, alpha);
-            }
-            // Traveler Core
-            drawPathSegment(x1, y1, x2, y2, targetLen, dist, Math.max(0, tStart), Math.min(1, tEnd), (1.8 * scale) / cam.zoom, travelerColor, 1.0);
-        }
+        // Single thin white line for COLOR_BURN
+        drawPathSegment(x1, y1, x2, y2, targetLen, dist, 0, 1, (1.0 * scale) / cam.zoom, 0xffffff, 1.0);
     };
 
     const getEntityColor = (entity) => {
@@ -146,19 +115,12 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
                 // Direction: Higher Ego flows to Lower Ego
                 const reverse = egoB > egoA;
                 const source = reverse ? entB : entA;
-                const travelerColor = 0xff0000;
                 const baseColor = getEntityColor(source);
 
-                // Speed and size based on Ego transfer rate/values
-                const diff = Math.abs(egoA - egoB);
-                const travelerSpeed = 0.2 + (diff * 0.01);
                 const scale = 0.8 + (Math.max(egoA, egoB) / 255);
 
                 drawDynamicPath(x1, y1, x2, y2, conn.fixedLength, conn.tension, {
-                    travelerSpeed,
-                    travelerColor,
                     baseColor,
-                    reverse,
                     scale
                 });
             }
@@ -184,23 +146,11 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
                 const worldAX = platPos.x + ax;
                 const worldAY = platPos.y + ay;
 
-                // Player properties affect the tether
-                const pVel = player.components.Velocity || { x: 0, y: 0 };
-                const speedMag = Math.sqrt(pVel.x * pVel.x + pVel.y * pVel.y);
-                
-                // Traveler flows AWAY from player if moving fast, or TOWARDS player if charging?
-                // Let's make it flow towards the player (pulling energy)
-                const reverse = true; 
-                const travelerSpeed = 0.4 + (speedMag * 0.0002);
-                const scale = 1.0;
                 const baseColor = getEntityColor(platform);
 
                 drawDynamicPath(worldAX, worldAY, pPos.x, pPos.y, tether.maxLength, tether.tension, {
-                    travelerSpeed,
-                    travelerColor: 0xff0000,
                     baseColor,
-                    reverse,
-                    scale
+                    scale: 1.0
                 });
             }
         }

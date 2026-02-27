@@ -48,7 +48,7 @@ export const Parallax = (factor = 1.0) => ({
 
 export const ZLayer = (type = 'PLAY', index = 0, layerName = null) => ({
     _type: 'ZLayer',
-    type, // 'PLAY' or 'BACK'
+    type, // 'PLAY', 'BACKGROUND', 'FOREGROUND', or 'UI'
     index,
     layerName // Specific auxiliary layer name (e.g. 'bg_watercolor')
 });

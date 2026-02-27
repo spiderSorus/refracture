@@ -8,9 +8,10 @@ import { RenderFactory } from './RenderFactory';
  */
 export const RenderSystem = (entities, scene, alpha = 1.0) => {
     // 1. Initialize Scene Layers if not present
-    if (!scene.bgLayer) scene.bgLayer = scene.add.layer().setName('BG_LAYER').setDepth(50);
-    if (!scene.fgLayer) scene.fgLayer = scene.add.layer().setName('FG_LAYER').setDepth(100);
-    if (!scene.foreLayer) scene.foreLayer = scene.add.layer().setName('FORE_LAYER').setDepth(200);
+    if (!scene.backgroundLayer) scene.backgroundLayer = scene.add.layer().setName('BACKGROUND_LAYER').setDepth(50);
+    if (!scene.playLayer) scene.playLayer = scene.add.layer().setName('PLAY_LAYER').setDepth(100);
+    if (!scene.foregroundLayer) scene.foregroundLayer = scene.add.layer().setName('FOREGROUND_LAYER').setDepth(200);
+    if (!scene.uiLayer) scene.uiLayer = scene.add.layer().setName('UI_LAYER').setDepth(2000);
 
     entities.forEach(entity => {
         const { Position: pos, Rotation: rot, Renderable: renderable, ZLayer: zlayer } = entity.components;
@@ -29,7 +30,7 @@ export const RenderSystem = (entities, scene, alpha = 1.0) => {
                 const gfx = activeGraphics[layerKey];
 
                 // Determine which Phaser Layer to use
-                let targetLayer = scene.fgLayer;
+                let targetLayer = scene.playLayer;
                 
                 // 1. Check for explicit auxiliary layer override
                 if (zlayer && zlayer.layerName && scene.auxLayers && scene.auxLayers[zlayer.layerName]) {
@@ -37,9 +38,18 @@ export const RenderSystem = (entities, scene, alpha = 1.0) => {
                 } 
                 // 2. Fallback to standard ZType logic
                 else {
-                    const zType = zlayer ? zlayer.type : (entity.components.BackgroundTag ? 'BACK' : 'PLAY');
-                    if (zType === 'BACK') targetLayer = scene.bgLayer;
-                    if (zType === 'FORE') targetLayer = scene.foreLayer;
+                    const zType = zlayer ? zlayer.type : (entity.components.BackgroundTag ? 'BACKGROUND' : 'PLAY');
+                    
+                    // Attempt to find a default auxiliary layer of that type
+                    const defaultAux = scene.cameraConfigs ? scene.cameraConfigs.find(cfg => cfg.type === zType) : null;
+                    
+                    if (defaultAux && scene.auxLayers && scene.auxLayers[defaultAux.layer]) {
+                        targetLayer = scene.auxLayers[defaultAux.layer];
+                    } else {
+                        // Legacy fallback
+                        if (zType === 'BACKGROUND') targetLayer = scene.backgroundLayer;
+                        else targetLayer = scene.playLayer;
+                    }
                 }
                 
                 // Add to the appropriate Phaser Layer

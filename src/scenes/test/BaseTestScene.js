@@ -60,9 +60,14 @@ export class BaseTestScene extends Phaser.Scene {
         this.inputManager = new InputManager(this);
 
         // Create isolated layers for post-processing
-        this.bgLayer = this.add.layer().setName('BG_LAYER').setDepth(50);
-        this.fgLayer = this.add.layer().setName('FG_LAYER').setDepth(100);
-        this.foreLayer = this.add.layer().setName('FORE_LAYER').setDepth(200);
+        this.backgroundLayer = this.add.layer().setName('BACKGROUND_LAYER').setDepth(50);
+        this.playLayer = this.add.layer().setName('PLAY_LAYER').setDepth(100);
+        this.webLayer = this.add.layer().setName('WEB_LAYER').setDepth(1100);
+
+        // Dedicated Camera for Web Layer
+        this.webCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height).setName('WEB_CAMERA');
+        this.webCamera.ignore([this.backgroundLayer, this.playLayer]);
+        this.cameras.main.ignore([this.webLayer]);
 
         UI.showTitle(this.testTitle, this.testSubtitle);
 
@@ -98,6 +103,26 @@ export class BaseTestScene extends Phaser.Scene {
 
         // --- FIRST FRAME INITIALIZATION ---
         if (!this.initialized) {
+            const cam = this.cameras.main;
+            
+            // Use camera bounds if available, otherwise fallback to a large default
+            const worldBounds = cam.useBounds ? cam._bounds : { x: -5000, y: -10000, width: 10000, height: 10000 };
+            const minX = worldBounds.x;
+            const maxX = worldBounds.x + worldBounds.width;
+            const minY = worldBounds.y;
+            const maxY = worldBounds.y + worldBounds.height;
+
+            const grid = this.add.tileSprite(
+                minX + worldBounds.width / 2, 
+                minY + worldBounds.height / 2, 
+                worldBounds.width, 
+                worldBounds.height, 
+                'bg_grid'
+            ).setDepth(0);
+
+            if (this.backgroundLayer) this.backgroundLayer.add(grid);
+            if (this.webCamera) this.webCamera.ignore(grid);
+
             const spawnPoint = this.entities.find(e => e.components.SpawnTag);
             const player = this.entities.find(e => e.components.PlayerTag);
 
@@ -118,16 +143,8 @@ export class BaseTestScene extends Phaser.Scene {
 
             // --- GLOW EFFECTS (Floor & Walls) ---
             const glowGfx = this.add.graphics();
-            if (this.fgLayer) this.fgLayer.add(glowGfx);
-            const cam = this.cameras.main;
+            if (this.playLayer) this.playLayer.add(glowGfx);
             
-            // Use camera bounds if available, otherwise fallback to a large default
-            const worldBounds = cam.useBounds ? cam._bounds : { x: -5000, y: -10000, width: 10000, height: 10000 };
-            const minX = worldBounds.x;
-            const maxX = worldBounds.x + worldBounds.width;
-            const minY = worldBounds.y;
-            const maxY = worldBounds.y + worldBounds.height;
-
             for (let i = 1; i <= 8; i++) {
                 glowGfx.lineStyle(i * 8, 0x0088ff, 0.4 / i);
                 glowGfx.lineBetween(minX, maxY, maxX, maxY); // Floor
@@ -135,6 +152,7 @@ export class BaseTestScene extends Phaser.Scene {
                 glowGfx.lineBetween(maxX, minY, maxX, maxY); // Right Wall
             }
             glowGfx.setDepth(1000); // High depth within the layer
+            if (this.webCamera) this.webCamera.ignore(glowGfx);
 
             this.initialized = true;
         }
@@ -174,6 +192,15 @@ export class BaseTestScene extends Phaser.Scene {
         const alpha = this.accumulator / PHYSICS.STEP;
 
         CameraSystem(this.entities, this, this.inputManager, alpha);
+        
+        // Sync Web Camera to Main Camera
+        if (this.webCamera) {
+            this.webCamera.scrollX = this.cameras.main.scrollX;
+            this.webCamera.scrollY = this.cameras.main.scrollY;
+            this.webCamera.zoom = this.cameras.main.zoom;
+            this.webCamera.rotation = this.cameras.main.rotation;
+        }
+
         ZLayerSystem(this.entities);
 
         RenderSystem(this.entities, this, alpha);

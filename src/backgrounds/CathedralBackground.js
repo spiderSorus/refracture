@@ -34,7 +34,7 @@ export const CathedralBackground = (scene, config = {}) => {
                 color: color,
                 alpha: l.alpha,
                 parallax: l.parallax,
-                zType: 'BACK',
+                zType: 'BACKGROUND',
                 zIndex: l.zIndex,
                 layerName: config.layerName
             }));

@@ -10,7 +10,7 @@ import {
 export const createCathedralColumn = (x, y, config = {}) => {
     const layer = 'BASE';
     const parallaxFactor = config.parallax ?? 1.0;
-    const zLayerType = config.zType || 'BACK'; // 'PLAY' or 'BACK'
+    const zLayerType = config.zType || 'BACKGROUND'; // 'PLAY' or 'BACKGROUND'
     const zLayerIndex = config.zIndex ?? 0;
     const layerName = config.layerName || null;
 

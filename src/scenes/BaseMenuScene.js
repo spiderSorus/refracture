@@ -28,9 +28,8 @@ export class BaseMenuScene extends Phaser.Scene {
         this.auxLayers = {};
 
         // Initialize base layers for RenderSystem
-        this.bgLayer = this.add.layer().setName('BG_LAYER').setDepth(50);
-        this.fgLayer = this.add.layer().setName('FG_LAYER').setDepth(100);
-        this.foreLayer = this.add.layer().setName('FORE_LAYER').setDepth(200);
+        this.backgroundLayer = this.add.layer().setName('BACKGROUND_LAYER').setDepth(50);
+        this.playLayer = this.add.layer().setName('PLAY_LAYER').setDepth(100);
 
         // Match visual style of gameplay scenes
         this.cameras.main.setZoom(0.8);
@@ -39,9 +38,9 @@ export class BaseMenuScene extends Phaser.Scene {
 
         // Define dynamic camera configuration
         this.cameraConfigs = [
-            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACK' },
-            { name: 'BackgroundOldGlass', layer: 'bg_glass', effect: 'old_glass', type: 'BACK' },
-            { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'FORE' }
+            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND' },
+            { name: 'BackgroundOldGlass', layer: 'bg_glass', effect: 'old_glass', type: 'BACKGROUND' },
+            { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'PLAY' }
         ];
 
         // --- RANDOM BACKGROUND ---
@@ -78,14 +77,14 @@ export class BaseMenuScene extends Phaser.Scene {
         const overlay = this.add.rectangle(0, 0, overlayWidth, overlayHeight, 0x000000, 0.85)
             .setOrigin(0, 0)
             .setScrollFactor(0);
-        this.foreLayer.add(overlay);
+        this.playLayer.add(overlay);
 
         const titleText = this.add.text(50, 50, this.title, {
             fontSize: '64px',
             fill: '#fff',
             fontFamily: 'monospace'
         }).setScrollFactor(0);
-        this.foreLayer.add(titleText);
+        this.playLayer.add(titleText);
 
         if (this.subtitle) {
             const sub = this.add.text(55, 130, this.subtitle, {
@@ -93,7 +92,7 @@ export class BaseMenuScene extends Phaser.Scene {
                 fill: '#0ff',
                 fontFamily: 'monospace'
             }).setScrollFactor(0);
-            this.foreLayer.add(sub);
+            this.playLayer.add(sub);
         }
     }
 
@@ -108,7 +107,7 @@ export class BaseMenuScene extends Phaser.Scene {
                 fill: '#fff',
                 fontFamily: 'monospace'
             }).setScrollFactor(0);
-            this.foreLayer.add(text);
+            this.playLayer.add(text);
             this.textObjects.push(text);
         });
     }

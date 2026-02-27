@@ -15,7 +15,7 @@ export const createBackgroundShape = (x, y, shapeType, config = {}) => {
     return [
         Position(x, y),
         Rotation(config.rotation || 0),
-        ZLayer('BACK', config.zIndex || 0),
+        ZLayer('BACKGROUND', config.zIndex || 0),
         BackgroundTag(),
         PlatformTag(), // Added for rendering system consistency
         EntityType('BACKGROUND_SHAPE'),

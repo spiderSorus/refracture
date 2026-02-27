@@ -20,7 +20,7 @@ export const ComplexityBackground = (scene, config = {}) => {
             color: 0x442266, // Deep Purple
             alpha: 0.2,
             parallax: 0.2,
-            zType: 'BACK',
+            zType: 'BACKGROUND',
             zIndex: 30,
             layerName: 'bg_watercolor'
         }));
@@ -37,7 +37,7 @@ export const ComplexityBackground = (scene, config = {}) => {
             color: 0x2288aa, // Teal
             alpha: 0.4,
             parallax: 0.5,
-            zType: 'BACK',
+            zType: 'BACKGROUND',
             zIndex: 10,
             layerName: 'bg_glass'
         }));

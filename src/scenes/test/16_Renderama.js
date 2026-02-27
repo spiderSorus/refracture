@@ -27,11 +27,11 @@ export class Renderama extends BaseTestScene {
         
         // Define dynamic camera configuration
         this.cameraConfigs = [
-            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACK' },
-            { name: 'BackgroundOldGlass', layer: 'bg_glass', effect: 'old_glass', type: 'BACK' },
-            { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'FORE' },
-            { name: 'WebRainbow', layer: 'web_rainbow', effect: 'rainbow', type: 'FORE' },
-            { name: 'PlayerCamera', layer: 'player_layer', type: 'TOP' } // Renders on top
+            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND' },
+            { name: 'BackgroundOldGlass', layer: 'bg_glass', effect: 'old_glass', type: 'BACKGROUND' },
+            { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'PLAY' },
+            { name: 'WebRainbow', layer: 'web_rainbow', effect: 'rainbow', type: 'PLAY' },
+            { name: 'PlayerCamera', layer: 'player_layer', type: 'PLAY' } // Renders on top
         ];
         
         // --- LOAD BACKGROUND ---
@@ -46,7 +46,7 @@ export class Renderama extends BaseTestScene {
             height: 100, 
             color: 0x444444 
         }));
-        spawnPlat.components.ZLayer = ZLayer('FORE', 5, 'fg_grayscale');
+        spawnPlat.components.ZLayer = ZLayer('PLAY', 5, 'fg_grayscale');
 
         // 1. GENERATE CLIMBING PLATFORMS (from VerticalSlice)
         let lastPos = { x: spawnX, y: spawnY };
@@ -74,7 +74,7 @@ export class Renderama extends BaseTestScene {
                 GravityExempt(),
                 PlatformTag(), 
                 EntityType('PLATFORM'),
-                ZLayer('FORE', 10, 'fg_grayscale'),
+                ZLayer('PLAY', 10, 'fg_grayscale'),
                 Renderable({ 'BASE': { type: 'amorphous_blob', radius: size, color: color } }),
                 Collider('circle', size * 0.6) // Collider is smaller than the visual blob
             ];

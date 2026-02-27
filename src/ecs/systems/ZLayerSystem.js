@@ -9,8 +9,12 @@ export const ZLayerSystem = (entities) => {
             if (zlayer) {
                 if (zlayer.type === 'PLAY') {
                     depth = 120 - zlayer.index;
-                } else if (zlayer.type === 'BACK') {
+                } else if (zlayer.type === 'BACKGROUND') {
                     depth = 90 - zlayer.index;
+                } else if (zlayer.type === 'FOREGROUND') {
+                    depth = 150 - zlayer.index;
+                } else if (zlayer.type === 'UI') {
+                    depth = 300 - zlayer.index;
                 }
             }
 

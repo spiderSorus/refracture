@@ -46,7 +46,7 @@ export const RainbowCathedral = (scene, config = {}) => {
                 color: baseColor,
                 alpha: l.alpha,
                 parallax: l.parallax,
-                zType: 'BACK',
+                zType: 'BACKGROUND',
                 zIndex: l.zIndex,
                 layerName: config.layerName
             }));

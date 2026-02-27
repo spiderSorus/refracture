@@ -28,8 +28,8 @@ export class RainbowCathedralScene extends BaseTestScene {
         
         // Define dynamic camera configuration
         this.cameraConfigs = [
-            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACK' },
-            { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'FORE' }
+            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND' },
+            { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'PLAY' }
         ];
         
         // --- LOAD BACKGROUND ---
@@ -45,7 +45,7 @@ export class RainbowCathedralScene extends BaseTestScene {
             height: 100, 
             color: 0x444444 
         }));
-        spawnPlat.components.ZLayer = ZLayer('FORE', 5, 'fg_grayscale');
+        spawnPlat.components.ZLayer = ZLayer('PLAY', 5, 'fg_grayscale');
 
         // 1. GENERATE CLIMBING PLATFORMS
         let currentY = spawnY - 600;
@@ -69,7 +69,7 @@ export class RainbowCathedralScene extends BaseTestScene {
 
             // Sync ZLayer for these platforms
             const lastEnt = this.entities[this.entities.length - 1];
-            lastEnt.components.ZLayer = ZLayer('FORE', 10, 'fg_grayscale');
+            lastEnt.components.ZLayer = ZLayer('PLAY', 10, 'fg_grayscale');
 
             currentY -= Phaser.Math.Between(350, 600); // Tighter gaps for easier climbing
         }

@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 /**
  * CameraSystem
  * Manages the main camera and multiple auxiliary cameras for background/foreground effects.
- * Reads from scene.cameraConfigs: Array<{ name, layer, effect, type: 'BACK'|'FORE' }>
+ * Reads from scene.cameraConfigs: Array<{ name, layer, effect, type: 'BACKGROUND'|'PLAY' }>
  */
 export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
     const mainCam = scene.cameras.main;
@@ -15,11 +15,11 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
 
     // Default configuration if none provided
     const configs = scene.cameraConfigs || [
-        { name: 'BackgroundCamera', layer: 'bgLayer', type: 'BACK' }
+        { name: 'BackgroundCamera', layer: 'backgroundLayer', type: 'BACKGROUND' }
     ];
 
-    // Determine if we have any BACK cameras that would be obscured by mainCam background
-    const hasBackCameras = configs.some(cfg => cfg.type === 'BACK');
+    // Determine if we have any BACKGROUND cameras that would be obscured by mainCam background
+    const hasBackCameras = configs.some(cfg => cfg.type === 'BACKGROUND');
     if (hasBackCameras) {
         mainCam.setBackgroundColor('rgba(0,0,0,0)');
     } else if (scene.backgroundColor !== undefined) {
@@ -36,7 +36,7 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
             scene.auxCameras[cfg.name] = newCam;
 
             // Sort depth
-            if (cfg.type === 'BACK') {
+            if (cfg.type === 'BACKGROUND') {
                 // Move to bottom of render stack
                 const cams = scene.cameras.cameras;
                 const idx = cams.indexOf(newCam);
@@ -79,12 +79,19 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
         const designatedLayer = scene.auxLayers[cfg.layer];
         const otherLayers = allAuxLayers.filter(l => l !== designatedLayer);
         
-        cam.ignore([scene.bgLayer, scene.fgLayer, scene.foreLayer, ...otherLayers]);
+        // Ensure auxiliary cameras ignore all legacy layers and web layers unless they are the designated one
+        const ignoreList = [
+            scene.backgroundLayer, 
+            scene.playLayer, 
+            scene.webLayer
+        ].filter(l => l && l !== designatedLayer);
+        
+        cam.ignore([...ignoreList, ...otherLayers]);
     });
 
-    // Special case for backward compatibility or default bgLayer
-    if (scene.bgLayer && !allAuxLayers.includes(scene.bgLayer)) {
-        mainCam.ignore(scene.bgLayer);
+    // Special case for backward compatibility or default backgroundLayer
+    if (scene.backgroundLayer && !allAuxLayers.includes(scene.backgroundLayer)) {
+        mainCam.ignore(scene.backgroundLayer);
     }
 
     const player = entities.find(e => e.components.PlayerTag && e.components.Position);

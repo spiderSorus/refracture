@@ -25,7 +25,7 @@ export const Complexity2Background = (scene, config = {}) => {
             BackgroundTag(),
             EntityType('HARD_SHAPE_BG'),
             Parallax(parallax),
-            ZLayer('BACK', Phaser.Math.Between(0, 50), layerName),
+            ZLayer('BACKGROUND', Phaser.Math.Between(0, 50), layerName),
             Renderable({
                 'BASE': {
                     type: 'hard_shape',
