@@ -62,12 +62,14 @@ export class BaseTestScene extends Phaser.Scene {
         // Create isolated layers for post-processing
         this.backgroundLayer = this.add.layer().setName('BACKGROUND_LAYER').setDepth(50);
         this.playLayer = this.add.layer().setName('PLAY_LAYER').setDepth(100);
+        this.foregroundLayer = this.add.layer().setName('FOREGROUND_LAYER').setDepth(200);
+        this.uiLayer = this.add.layer().setName('UI_LAYER').setDepth(2000);
         this.webLayer = this.add.layer().setName('WEB_LAYER').setDepth(1100);
 
         // Dedicated Camera for Web Layer
         this.webCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height).setName('WEB_CAMERA');
-        this.webCamera.ignore([this.backgroundLayer, this.playLayer]);
-        this.cameras.main.ignore([this.webLayer]);
+        this.webCamera.ignore([this.backgroundLayer, this.playLayer, this.foregroundLayer, this.uiLayer]);
+        this.cameras.main.ignore([this.webLayer, this.uiLayer]);
 
         UI.showTitle(this.testTitle, this.testSubtitle);
 

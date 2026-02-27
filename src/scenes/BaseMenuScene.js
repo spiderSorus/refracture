@@ -30,6 +30,8 @@ export class BaseMenuScene extends Phaser.Scene {
         // Initialize base layers for RenderSystem
         this.backgroundLayer = this.add.layer().setName('BACKGROUND_LAYER').setDepth(50);
         this.playLayer = this.add.layer().setName('PLAY_LAYER').setDepth(100);
+        this.foregroundLayer = this.add.layer().setName('FOREGROUND_LAYER').setDepth(200);
+        this.uiLayer = this.add.layer().setName('UI_LAYER').setDepth(2000);
 
         // Match visual style of gameplay scenes
         this.cameras.main.setZoom(0.8);

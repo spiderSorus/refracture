@@ -48,6 +48,8 @@ export const RenderSystem = (entities, scene, alpha = 1.0) => {
                     } else {
                         // Legacy fallback
                         if (zType === 'BACKGROUND') targetLayer = scene.backgroundLayer;
+                        else if (zType === 'FOREGROUND') targetLayer = scene.foregroundLayer;
+                        else if (zType === 'UI') targetLayer = scene.uiLayer;
                         else targetLayer = scene.playLayer;
                     }
                 }

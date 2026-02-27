@@ -83,6 +83,8 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
         const ignoreList = [
             scene.backgroundLayer, 
             scene.playLayer, 
+            scene.foregroundLayer,
+            scene.uiLayer,
             scene.webLayer
         ].filter(l => l && l !== designatedLayer);
         
