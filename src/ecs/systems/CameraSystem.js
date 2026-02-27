@@ -48,26 +48,30 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
 
     // --- CAMERA SORTING ---
     // Render Order (Bottom to Top): BACKGROUND -> PLAY (main) -> FOREGROUND -> UI
-    if (needsSort) {
-        const TYPE_ORDER = { 'BACKGROUND': 0, 'PLAY': 1, 'FOREGROUND': 2, 'UI': 3 };
-        
-        scene.cameras.cameras.sort((a, b) => {
-            if (a === mainCam) return TYPE_ORDER['PLAY'] - (TYPE_ORDER[b.auxType] ?? 1.5);
-            if (b === mainCam) return (TYPE_ORDER[a.auxType] ?? 1.5) - TYPE_ORDER['PLAY'];
-            
-            const orderA = TYPE_ORDER[a.auxType] ?? 1;
-            const orderB = TYPE_ORDER[b.auxType] ?? 1;
-            
-            if (orderA !== orderB) return orderA - orderB;
-            
-            // Within BACKGROUND, sort by parallax (furthest first)
-            if (orderA === 0) {
-                return (a.parallaxFactor ?? 0) - (b.parallaxFactor ?? 0);
-            }
-            
-            return 0;
-        });
+    // Run this every frame to ensure order is maintained
+    const TYPE_ORDER = { 'BACKGROUND': 0, 'PLAY': 1, 'FOREGROUND': 2, 'UI': 3 };
+    
+    // Tag the web camera if it hasn't been tagged yet
+    if (scene.webCamera && !scene.webCamera.auxType) {
+        scene.webCamera.auxType = 'FOREGROUND'; 
     }
+
+    scene.cameras.cameras.sort((a, b) => {
+        if (a === mainCam) return TYPE_ORDER['PLAY'] - (TYPE_ORDER[b.auxType] ?? 1.5);
+        if (b === mainCam) return (TYPE_ORDER[a.auxType] ?? 1.5) - TYPE_ORDER['PLAY'];
+        
+        const orderA = TYPE_ORDER[a.auxType] ?? 1;
+        const orderB = TYPE_ORDER[b.auxType] ?? 1;
+        
+        if (orderA !== orderB) return orderA - orderB;
+        
+        // Within BACKGROUND, sort by parallax (furthest first)
+        if (orderA === 0) {
+            return (a.parallaxFactor ?? 0) - (b.parallaxFactor ?? 0);
+        }
+        
+        return 0;
+    });
 
     // --- COLOR & LAYER MANAGEMENT ---
     // Determine if we have any BACKGROUND cameras that would be obscured by mainCam background
@@ -101,7 +105,12 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
 
     // Isolate camera rendering
     const allAuxLayers = Object.values(scene.auxLayers);
-    mainCam.ignore(allAuxLayers);
+    mainCam.ignore([...allAuxLayers, scene.webLayer].filter(l => l));
+    
+    // Ensure the dedicated webCamera ignores all auxiliary layers
+    if (scene.webCamera) {
+        scene.webCamera.ignore(allAuxLayers);
+    }
     
     configs.forEach(cfg => {
         const cam = scene.auxCameras[cfg.name];
