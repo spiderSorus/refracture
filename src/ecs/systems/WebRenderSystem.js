@@ -73,12 +73,12 @@ export const WebRenderSystem = (entities, scene, delta, interpAlpha = 1.0) => {
         const { scale = 1.0, isActive = false, isPullable = false, isCuttable = false } = properties;
 
         // Priority Color selection:
-        // 1. Yellow if within cutting range
+        // 1. Blue if within cutting range
         // 2. Red if pullable/active
         // 3. White (default)
         let color = 0xffffff;
         if (isCuttable) {
-            color = 0xffff00; // Yellow
+            color = 0x0088ff; // Bright Blue
         } else if (isPullable) {
             color = isActive ? 0xff0000 : 0x880000;
         }

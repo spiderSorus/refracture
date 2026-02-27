@@ -44,7 +44,6 @@ export const WebSystem = (entities, inputManager, scene) => {
 
                 const distToWeb = pointToSegmentDist(pPos.x, pPos.y, x1, y1, x2, y2);
                 
-                // --- CONTINUOUS CHECK FOR RENDERER ---
                 conn.isCuttable = distToWeb < 30;
 
                 if (xJustPressed && conn.isCuttable) {
@@ -56,8 +55,6 @@ export const WebSystem = (entities, inputManager, scene) => {
         }
     });
 
-    // Release player tether only if we DIDN'T just cut a different connection
-    // This allows cutting webs you are touching without losing your own anchor
     if (xJustPressed && tether && !cutSomething) {
         delete player.components.WebTether;
         delete player.components.Parent;
@@ -81,40 +78,46 @@ export const WebSystem = (entities, inputManager, scene) => {
             tether.isActive = false; 
             tether.isPullable = !!platform.components.SeesawTag;
 
-            // --- JUMP RECOVERY ---
-            if (!currentParent && tether._hadParent) {
-                tether.maxLength = tether.originalMaxLength || PHYSICS.WEB_INITIAL_LENGTH;
-            }
-            tether._hadParent = !!currentParent;
-
             if (lb) {
                 tether.isActive = true;
-                tether._wasLbDown = true;
 
-                if (tether.maxLength > dist + 5) {
-                    tether.maxLength = Math.max(MIN_SPOOL_LENGTH, tether.maxLength - winchSpeed);
-                } else {
-                    tether.maxLength = dist; 
-                    
-                    const isStandingOnTarget = currentParent && currentParent.id === tether.platformId;
-                    if (tether.isPullable && !isStandingOnTarget && platform.components.SeesawTag && platform.components.AngularVelocity) {
-                        const angVel = platform.components.AngularVelocity;
-                        const tiltForce = 0.5; 
-                        const direction = tether.anchorOffset.x > 0 ? 1 : -1;
-                        angVel.rate += direction * tiltForce * (scene.game.loop.delta / 1000);
+                if (tether.isPullable) {
+                    // --- TUG SEQUENCE ---
+                    if (tether.maxLength > dist + 5) {
+                        // 1. Winch in the slack until taut
+                        tether.maxLength = Math.max(dist, tether.maxLength - winchSpeed);
+                    } else {
+                        // 2. Taut - lock visual length to distance and apply force
+                        tether.maxLength = dist;
+                        
+                        const isStandingOnTarget = currentParent && currentParent.id === tether.platformId;
+                        if (!isStandingOnTarget && platform.components.SeesawTag && platform.components.AngularVelocity) {
+                            const angVel = platform.components.AngularVelocity;
+                            const tiltForce = 0.5; 
+                            const direction = tether.anchorOffset.x > 0 ? 1 : -1;
+                            angVel.rate += direction * tiltForce * (scene.game.loop.delta / 1000);
+                        }
                     }
+                } else {
+                    // --- NORMAL WINCH ---
+                    tether.maxLength = Math.max(MIN_SPOOL_LENGTH, tether.maxLength - winchSpeed);
+                    // Update the "resting" length for Seesaw fallback
+                    tether.originalMaxLength = tether.maxLength;
                 }
             } else {
-                if (tether._wasLbDown) {
-                    tether.maxLength = dist;
-                    tether._wasLbDown = false;
+                // --- RELEASE BEHAVIOR ---
+                if (tether.isPullable) {
+                    // Restore the loose length so it can go slack
+                    tether.maxLength = tether.originalMaxLength || PHYSICS.WEB_INITIAL_LENGTH;
                 }
             }
 
             if (rb) {
                 tether.maxLength = Math.min(MAX_SPOOL_LENGTH, tether.maxLength + winchSpeed);
+                tether.originalMaxLength = tether.maxLength;
             }
 
+            // Rope Constraint
             if (!currentParent && pVel && dist > tether.maxLength) {
                 const nx = (pPos.x - anchorX) / dist;
                 const ny = (pPos.y - anchorY) / dist;
@@ -127,6 +130,7 @@ export const WebSystem = (entities, inputManager, scene) => {
                 }
             }
 
+            // Snap parent offset if winching while attached
             if (currentParent && currentParent.id === tether.platformId) {
                 const dx = currentParent.offset.x - tether.anchorOffset.x;
                 const dy = currentParent.offset.y - tether.anchorOffset.y;
@@ -152,6 +156,7 @@ export const WebSystem = (entities, inputManager, scene) => {
         
         if (plat && plat.components.Position && !isBackground) {
             const snappedOffset = snapOffsetInside(currentParent.offset, plat.components.Collider, 10);
+            
             const newTether = WebTether(currentParent.id, snappedOffset);
             newTether.maxForce *= strengthMult;
             newTether.isPullable = !!plat.components.SeesawTag;
