@@ -26,15 +26,8 @@ export class Gameplay extends BaseTestScene {
         this.cameras.main.setBounds(0, -WORLD_HEIGHT, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setZoom(0.6);
 
-        // Define explicit background cameras for the GreyBox layers
-        this.cameraConfigs = [
-            { name: 'BG_Far', layer: 'bg_far', type: 'BACKGROUND' },
-            { name: 'BG_Mid', layer: 'bg_mid', type: 'BACKGROUND' },
-            { name: 'BG_Near', layer: 'bg_near', type: 'BACKGROUND' }
-        ];
-
         // --- LOAD BACKGROUND ---
-        loadBackground('greybox', this, { 
+        loadBackground('watercolor', this, { 
             worldWidth: WORLD_WIDTH, 
             worldHeight: WORLD_HEIGHT 
         });

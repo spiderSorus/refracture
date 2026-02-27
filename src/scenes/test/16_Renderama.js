@@ -33,7 +33,7 @@ export class Renderama extends BaseTestScene {
         ];
         
         // --- LOAD BACKGROUND ---
-        loadBackground('complexity2', this, { 
+        loadBackground('watercolor', this, { 
             worldWidth: WORLD_WIDTH, 
             worldHeight: WORLD_HEIGHT
         });

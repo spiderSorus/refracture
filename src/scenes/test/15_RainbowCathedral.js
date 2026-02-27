@@ -26,17 +26,15 @@ export class RainbowCathedralScene extends BaseTestScene {
         this.cameras.main.setZoom(0.8);
         this.cameras.main.setBackgroundColor(0x000000); // Black background for rainbow contrast
         
-        // Define dynamic camera configuration
+        // Define dynamic camera configuration for PLAY layers
         this.cameraConfigs = [
-            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND' },
             { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'PLAY' }
         ];
         
         // --- LOAD BACKGROUND ---
-        loadBackground('rainbow_cathedral', this, { 
+        loadBackground('watercolor', this, { 
             worldWidth: WORLD_WIDTH, 
-            worldHeight: WORLD_HEIGHT,
-            layerName: 'bg_watercolor'
+            worldHeight: WORLD_HEIGHT
         });
 
         // 0. SPAWN PLATFORM

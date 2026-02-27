@@ -22,15 +22,9 @@ export class WatercolorScene extends BaseTestScene {
         this.cameras.main.setZoom(0.8);
         this.cameras.main.setBackgroundColor(0xffffff); // White background
         
-        // Define dynamic camera configuration
-        this.cameraConfigs = [
-            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND' }
-        ];
-        
         // --- LOAD BACKGROUND ---
-        loadBackground('cathedral_pink_blue', this, { 
-            worldSize: WORLD_SIZE, 
-            layerName: 'bg_watercolor' 
+        loadBackground('watercolor', this, { 
+            worldSize: WORLD_SIZE
         });
 
         const spawnX = 0;

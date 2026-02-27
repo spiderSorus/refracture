@@ -40,16 +40,10 @@ export class BaseMenuScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor(0x000000);
         this.cameras.main.centerOn(0, 0);
 
-        // --- RANDOM BACKGROUND ---
-        const backgrounds = ['cathedral', 'cathedral_pink_blue', 'rainbow_cathedral', 'stained_rainbow', 'complexity', 'complexity2'];
-        const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
+        // --- WATERCOLOR BACKGROUND ---
+        const randomBg = 'watercolor';
         
-        // Pass the custom layer name to the background loader if it supports it
-        const layerName = randomBg === 'stained_rainbow' ? 'bg_glass' : 'bg_watercolor';
-        
-        loadBackground(randomBg, this, { 
-            layerName: layerName 
-        });
+        loadBackground(randomBg, this);
 
         this.setupHeader();
         this.setupMenu();

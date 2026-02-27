@@ -25,16 +25,10 @@ export class RedCathedralScene extends BaseTestScene {
         this.cameras.main.setZoom(0.8);
         this.cameras.main.setBackgroundColor(0x080000); // Very dark red/black
         
-        // Define dynamic camera configuration
-        this.cameraConfigs = [
-            { name: 'BackgroundWC', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND' }
-        ];
-        
         // --- LOAD BACKGROUND ---
-        loadBackground('cathedral', this, { 
+        loadBackground('watercolor', this, { 
             worldWidth: WORLD_WIDTH, 
-            worldHeight: WORLD_HEIGHT,
-            layerName: 'bg_watercolor'
+            worldHeight: WORLD_HEIGHT
         });
 
         // 0. SPAWN PLATFORM
