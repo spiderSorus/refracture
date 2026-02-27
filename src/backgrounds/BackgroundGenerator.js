@@ -32,7 +32,7 @@ export const generateBackgroundRectangles = (scene, config, layerConfig) => {
         layerName = null,
         widthRange = [50, 150],
         heightRange = [1000, 3000],
-        color = 0x442266,
+        color = 0xffffff,
         alpha = 0.2,
         renderType = 'watercolor', // 'watercolor', 'rect', 'hard_shape'
         hasPhysics = false,
@@ -123,4 +123,22 @@ export const generateBackgroundRectangles = (scene, config, layerConfig) => {
             createEntity(x, y, w, h, finalColor);
         }
     }
+};
+
+/**
+ * Cathedral Column Spawner
+ * Specialized for creating dense fields of vertical columns with height relative to world.
+ */
+export const generateCathedralColumns = (scene, config, layerConfig) => {
+    const worldH = config.worldHeight || 8000;
+    
+    // Scale column height to approx 20% of scene height as requested
+    const targetHeight = worldH * 0.2;
+    
+    generateBackgroundRectangles(scene, config, {
+        ...layerConfig,
+        widthRange: [40, 100],
+        heightRange: [targetHeight * 0.8, targetHeight * 1.2],
+        renderType: 'watercolor'
+    });
 };

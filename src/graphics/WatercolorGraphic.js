@@ -6,7 +6,7 @@ export class WatercolorGraphic extends BaseGraphic {
         const radius = config.radius || 32;
         const width = config.width || radius * 2;
         const height = config.height || radius * 2;
-        const color = config.color || 0x3399ff;
+        const color = config.color !== undefined ? config.color : 0xffffff;
         const layers = config.layers || 5;
         const shape = config.shape || 'circle';
         
@@ -77,6 +77,22 @@ export class WatercolorGraphic extends BaseGraphic {
 
             blob.obj.x = blob.offsetX + Math.cos(time * 0.5 + blob.seed) * 3;
             blob.obj.y = blob.offsetY + Math.sin(time * 0.5 + blob.seed) * 3;
+        });
+    }
+
+    setAtmosphere(color, intensity) {
+        if (!this.blobs) return;
+        this.blobs.forEach(blob => {
+            if (blob.obj && blob.obj.setTint) {
+                if (color === null || intensity <= 0) {
+                    blob.obj.clearTint();
+                } else {
+                    // Use a simple tint multiplication for watercolor layers
+                    // Note: setTintFill might be too harsh for watercolor, setTint is softer
+                    blob.obj.setTint(color);
+                    // We can also adjust alpha based on intensity if we want them to "fade out"
+                }
+            }
         });
     }
 }

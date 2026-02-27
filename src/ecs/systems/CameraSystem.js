@@ -49,7 +49,7 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
 
             // Apply Effect
             if (cfg.effect) {
-                applyCameraEffect(cfg.effect, newCam, scene);
+                applyCameraEffect(cfg.effect, newCam, scene, cfg.effectConfig || {});
             }
         }
     });

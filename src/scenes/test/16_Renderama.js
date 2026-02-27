@@ -2,6 +2,7 @@ import { createPlayer, spawnPlayer } from '../../ecs/entities/player';
 import { createSpawnPlatform, createPlatform } from '../../ecs/entities/platforms';
 import { loadBackground } from '../../backgrounds/index';
 import { BaseTestScene } from './BaseTestScene';
+import { resolveCameras } from '../../camera_effects/CameraRegistry';
 import { PHYSICS } from '../../core/Constants';
 import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
@@ -25,12 +26,8 @@ export class Renderama extends BaseTestScene {
         this.cameras.main.setBounds(-WORLD_WIDTH / 2, -WORLD_HEIGHT / 2, WORLD_WIDTH, WORLD_HEIGHT);
         this.cameras.main.setZoom(0.8);
         
-        // Define dynamic camera configuration for PLAY layers
-        this.cameraConfigs = [
-            { name: 'ForegroundBW', layer: 'fg_grayscale', effect: 'grayscale', type: 'PLAY' },
-            { name: 'WebRainbow', layer: 'web_rainbow', effect: 'rainbow', type: 'PLAY' },
-            { name: 'PlayerCamera', layer: 'player_layer', type: 'PLAY' } // Renders on top
-        ];
+        // Use registry to resolve cameras
+        this.cameraConfigs = resolveCameras(['grayscale', 'rainbow_web', 'player']);
         
         // --- LOAD BACKGROUND ---
         loadBackground('watercolor', this, { 

@@ -9,6 +9,7 @@ uniform float uScrollX;
 uniform float uScrollY;
 uniform float uAmplitude;
 uniform float uFrequency;
+uniform float uScale;
 
 // Simplex 2D noise
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -51,11 +52,11 @@ void main() {
     
     // Displacement based on noise tied to WORLD UV
     float n = snoise(worldUV * uFrequency) * 3.14159;
-    vec2 offset = vec2(cos(n), sin(n)) * uAmplitude;
+    vec2 offset = vec2(cos(n), sin(n)) * uAmplitude * uScale;
     
     // Multiple octaves of noise for the "bleed" edge
     float n2 = snoise(worldUV * 20.0);
-    vec2 bleed = vec2(cos(n2), sin(n2)) * 0.02;
+    vec2 bleed = vec2(cos(n2), sin(n2)) * 0.02 * uScale;
     
     vec4 distortedColor = texture2D(uMainSampler, uv + offset + bleed);
     
@@ -74,11 +75,13 @@ export class AquarellePipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPip
                 'uScrollX',
                 'uScrollY',
                 'uAmplitude',
-                'uFrequency'
+                'uFrequency',
+                'uScale'
             ]
         });
         this.amplitude = 0.015;
         this.frequency = 8.0;
+        this.scale = 1.0;
     }
 
     onPreRender() {
@@ -90,5 +93,6 @@ export class AquarellePipeline extends Phaser.Renderer.WebGL.Pipelines.PostFXPip
         }
         this.set1f('uAmplitude', this.amplitude);
         this.set1f('uFrequency', this.frequency);
+        this.set1f('uScale', this.scale);
     }
 }

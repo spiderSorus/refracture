@@ -26,7 +26,7 @@ export class RedCathedralScene extends BaseTestScene {
         this.cameras.main.setBackgroundColor(0x080000); // Very dark red/black
         
         // --- LOAD BACKGROUND ---
-        loadBackground('watercolor', this, { 
+        loadBackground('red_cathedral', this, { 
             worldWidth: WORLD_WIDTH, 
             worldHeight: WORLD_HEIGHT
         });

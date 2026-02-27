@@ -1,7 +1,10 @@
 import { WatercolorBackground } from './WatercolorBackground';
+import { RedCathedralBackground } from './RedCathedralBackground';
+import { resolveCameras } from '../camera_effects/CameraRegistry';
 
 const REGISTRY = {
     'watercolor': WatercolorBackground,
+    'red_cathedral': RedCathedralBackground,
     'default': WatercolorBackground
 };
 
@@ -42,13 +45,16 @@ export const loadBackground = (name, scene, args = {}) => {
         scene.bgDimensions = { w: mergedArgs.worldSize, h: mergedArgs.worldSize };
     }
 
+    // Resolve camera configurations from either 'cameraConfigs' (full objects) or 'cameras' (registry names)
+    const backgroundCameras = config.cameraConfigs || resolveCameras(config.cameras || []);
+
     // If the background script specifies camera configurations, merge them
-    if (config.cameraConfigs) {
+    if (backgroundCameras && backgroundCameras.length > 0) {
         if (!scene.cameraConfigs) {
-            scene.cameraConfigs = config.cameraConfigs;
+            scene.cameraConfigs = backgroundCameras;
         } else {
             const existing = scene.cameraConfigs || [];
-            const newConfigs = config.cameraConfigs;
+            const newConfigs = backgroundCameras;
             
             const filteredExisting = existing.filter(e => 
                 !newConfigs.some(n => n.name === e.name || n.layer === e.layer)

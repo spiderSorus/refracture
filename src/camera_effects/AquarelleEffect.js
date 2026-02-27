@@ -7,6 +7,8 @@ export const AquarelleEffect = (camera, scene, config = {}) => {
     // We just need to add it to the camera
     camera.setPostPipeline('AquarellePipeline');
     
-    // Optional: Pass uniforms if the pipeline supports per-instance data
-    // (AquarellePipeline currently reads from its own state, but we could extend it)
+    const pipeline = camera.getPostPipeline('AquarellePipeline');
+    if (pipeline && config.scale !== undefined) {
+        pipeline.scale = config.scale;
+    }
 };

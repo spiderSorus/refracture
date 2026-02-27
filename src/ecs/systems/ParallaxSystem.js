@@ -9,7 +9,7 @@ export const ParallaxSystem = (entities, scene, alpha = 1.0) => {
 
     // Atmospheric Depth settings
     const enableAtmosphere = scene.enableAtmosphere ?? false;
-    const atmosphereColor = scene.cameras.main.backgroundColor.color;
+    const atmosphereColor = scene.backgroundColor ?? scene.cameras.main.backgroundColor.color;
     const atmosphereIntensity = scene.atmosphereIntensity ?? 0.8;
 
     entities.forEach(entity => {

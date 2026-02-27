@@ -13,6 +13,7 @@ const REGISTRY = {
     'grayscale': GrayscaleEffect,
     'old_glass': OldGlassEffect,
     'rainbow': RainbowEffect,
+    'stainedGlass': AquarelleEffect,
 };
 
 export const applyCameraEffect = (name, camera, scene, config = {}) => {

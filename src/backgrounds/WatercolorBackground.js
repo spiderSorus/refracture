@@ -73,8 +73,6 @@ export const WatercolorBackground = (scene, config = {}) => {
         backgroundColor: 0x000000,
         enableAtmosphere: true,
         atmosphereIntensity: 0.7,
-        cameraConfigs: [
-            { name: 'Watercolor Camera', layer: 'bg_watercolor', effect: 'watercolor', type: 'BACKGROUND', includeUI: true }
-        ]
+        cameras: ['watercolor']
     };
 };
