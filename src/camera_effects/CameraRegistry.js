@@ -15,7 +15,6 @@ export const CAMERA_TEMPLATES = {
         name: 'Stained Glass Camera', 
         layer: 'bg_watercolor', 
         effect: 'stainedGlass', 
-        effectConfig: { scale: 0.5 }, 
         type: 'BACKGROUND', 
         includeUI: true 
     },

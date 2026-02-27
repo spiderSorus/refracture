@@ -7,13 +7,14 @@ import { AquarelleEffect } from './AquarelleEffect';
 import { GrayscaleEffect } from './GrayscaleEffect';
 import { OldGlassEffect } from './OldGlassEffect';
 import { RainbowEffect } from './RainbowEffect';
+import { StainedGlassEffect } from './StainedGlassEffect';
 
 const REGISTRY = {
     'watercolor': AquarelleEffect,
     'grayscale': GrayscaleEffect,
     'old_glass': OldGlassEffect,
     'rainbow': RainbowEffect,
-    'stainedGlass': AquarelleEffect,
+    'stainedGlass': StainedGlassEffect,
 };
 
 export const applyCameraEffect = (name, camera, scene, config = {}) => {
