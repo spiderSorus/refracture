@@ -1,12 +1,14 @@
 import { WatercolorBackground } from './WatercolorBackground';
 import { RedCathedralBackground } from './RedCathedralBackground';
 import { RainbowCathedralBackground } from './RainbowCathedralBackground';
+import { ComplexityBackground } from './ComplexityBackground';
 import { resolveCameras } from '../camera_effects/CameraRegistry';
 
 const REGISTRY = {
     'watercolor': WatercolorBackground,
     'red_cathedral': RedCathedralBackground,
     'rainbow_cathedral': RainbowCathedralBackground,
+    'complexity': ComplexityBackground,
     'default': WatercolorBackground
 };
 

@@ -3,28 +3,37 @@
  * Effects are functions that take a camera and a scene, and apply configuration.
  */
 
-import { AquarelleEffect } from './AquarelleEffect';
-import { GrayscaleEffect } from './GrayscaleEffect';
-import { OldGlassEffect } from './OldGlassEffect';
-import { RainbowEffect } from './RainbowEffect';
-import { StainedGlassEffect } from './StainedGlassEffect';
-
 const REGISTRY = {
-    'watercolor': AquarelleEffect,
-    'grayscale': GrayscaleEffect,
-    'old_glass': OldGlassEffect,
-    'rainbow': RainbowEffect,
-    'stainedGlass': StainedGlassEffect,
+    'watercolor': (camera, scene, config = {}) => {
+        camera.setPostPipeline('AquarellePipeline');
+        const pipeline = camera.getPostPipeline('AquarellePipeline');
+        if (pipeline && config.scale !== undefined) pipeline.scale = config.scale;
+    },
+    'stainedGlass': (camera, scene, config = {}) => {
+        camera.setPostPipeline('AquarellePipeline');
+        const pipeline = camera.getPostPipeline('AquarellePipeline');
+        pipeline.scale = config.scale ?? 0.5; // Default to 50%
+    },
+    'grayscale': (camera) => camera.setPostPipeline('GrayscalePipeline'),
+    'old_glass': (camera) => camera.setPostPipeline('OldGlassPipeline'),
+    'rainbow': (camera) => camera.setPostPipeline('RainbowPipeline'),
 };
 
+/**
+ * Applies a registered effect to a Phaser camera.
+ * @param {string} name - Effect key in REGISTRY
+ * @param {Phaser.Cameras.Scene2D.Camera} camera 
+ * @param {Phaser.Scene} scene 
+ * @param {Object} config - Optional parameters for the effect
+ */
 export const applyCameraEffect = (name, camera, scene, config = {}) => {
-    const effectScript = REGISTRY[name];
-    if (!effectScript) {
+    const effectFn = REGISTRY[name];
+    if (!effectFn) {
         console.warn(`[CAMERA] No effect found named: ${name}`);
         return;
     }
 
-    effectScript(camera, scene, config);
+    effectFn(camera, scene, config);
 };
 
 export const getEffectList = () => Object.keys(REGISTRY);

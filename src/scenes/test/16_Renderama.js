@@ -30,7 +30,7 @@ export class Renderama extends BaseTestScene {
         this.cameraConfigs = resolveCameras(['grayscale', 'rainbow_web', 'player']);
         
         // --- LOAD BACKGROUND ---
-        loadBackground('watercolor', this, { 
+        loadBackground('complexity', this, { 
             worldWidth: WORLD_WIDTH, 
             worldHeight: WORLD_HEIGHT
         });

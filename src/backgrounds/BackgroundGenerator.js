@@ -35,6 +35,7 @@ export const generateBackgroundRectangles = (scene, config, layerConfig) => {
         color = 0xffffff,
         alpha = 0.2,
         renderType = 'watercolor', // 'watercolor', 'rect', 'hard_shape'
+        shape = 'rect',
         hasPhysics = false,
         isGrid = false,
         cols = 10,
@@ -75,18 +76,16 @@ export const generateBackgroundRectangles = (scene, config, layerConfig) => {
                 width: w,
                 height: h,
                 color: entityColor,
-                alpha: alpha
+                alpha: alpha,
+                shape: shape
             }
         };
 
         if (renderType === 'watercolor') {
-            renderConfig.BASE.shape = 'rect';
             renderConfig.BASE.layers = 6;
         } else if (renderType === 'rect') {
             renderConfig.BASE.strokeColor = 0x888888;
             renderConfig.BASE.strokeWidth = 1;
-        } else if (renderType === 'hard_shape') {
-            renderConfig.BASE.shape = 'rect';
         }
 
         components.push(Renderable(renderConfig));
