@@ -1,50 +1,35 @@
-import { createCathedralColumn } from '../ecs/entities/cathedral';
-import Phaser from 'phaser';
+import { generateBackgroundRectangles } from './BackgroundGenerator';
 
 /**
  * Complexity Background
  * Combines two layers of cathedral columns with different camera effects.
  */
 export const ComplexityBackground = (scene, config = {}) => {
-    const worldW = config.worldWidth || config.worldSize || 8000;
-    const worldH = config.worldHeight || config.worldSize || 8000;
-    
-    const minX = config.minX ?? 0;
-    const minY = config.minY ?? -worldH;
-    
     // 1. WATERCOLOR LAYER (Aura/Background)
-    for (let i = 0; i < 150; i++) {
-        const x = Phaser.Math.Between(minX, minX + worldW);
-        const y = Phaser.Math.Between(minY, minY + worldH);
-        
-        scene.addEntity(createCathedralColumn(x, y, {
-            width: Phaser.Math.Between(50, 150),
-            height: Phaser.Math.Between(1000, 3000),
-            color: 0x442266, // Deep Purple
-            alpha: 0.2,
-            parallax: 0.2,
-            zType: 'BACKGROUND',
-            zIndex: 30,
-            layerName: 'bg_watercolor'
-        }));
-    }
+    generateBackgroundRectangles(scene, config, {
+        count: 150,
+        parallax: 0.2,
+        zIndex: 30,
+        layerName: 'bg_watercolor',
+        widthRange: [50, 150],
+        heightRange: [1000, 3000],
+        color: 0x442266, // Deep Purple
+        alpha: 0.2,
+        renderType: 'watercolor'
+    });
 
     // 2. OLD GLASS LAYER (Crisp/Foreground of the background)
-    for (let i = 0; i < 100; i++) {
-        const x = Phaser.Math.Between(minX, minX + worldW);
-        const y = Phaser.Math.Between(minY, minY + worldH);
-        
-        scene.addEntity(createCathedralColumn(x, y, {
-            width: Phaser.Math.Between(30, 80),
-            height: Phaser.Math.Between(500, 1500),
-            color: 0x2288aa, // Teal
-            alpha: 0.4,
-            parallax: 0.5,
-            zType: 'BACKGROUND',
-            zIndex: 10,
-            layerName: 'bg_glass'
-        }));
-    }
+    generateBackgroundRectangles(scene, config, {
+        count: 100,
+        parallax: 0.5,
+        zIndex: 10,
+        layerName: 'bg_glass',
+        widthRange: [30, 80],
+        heightRange: [500, 1500],
+        color: 0x2288aa, // Teal
+        alpha: 0.4,
+        renderType: 'watercolor' // Complexity used createCathedralColumn which is watercolor
+    });
 
     console.log(`[BACKGROUND] Complexity Loaded.`);
 

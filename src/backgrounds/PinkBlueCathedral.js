@@ -1,4 +1,4 @@
-import { createCathedralColumn } from '../ecs/entities/cathedral';
+import { generateBackgroundRectangles } from './BackgroundGenerator';
 import Phaser from 'phaser';
 
 /**
@@ -6,12 +6,6 @@ import Phaser from 'phaser';
  * Uses powder blue and pink watercolor pillars.
  */
 export const PinkBlueCathedral = (scene, config = {}) => {
-    const worldW = config.worldWidth || config.worldSize || 8000;
-    const worldH = config.worldHeight || config.worldSize || 8000;
-    
-    const minX = config.minX ?? 0;
-    const minY = config.minY ?? -worldH;
-    
     const layers = [
         { parallax: 0.1, zIndex: 40, count: 800,  w: [20, 50], h: [400, 1000], alpha: 0.1 }, 
         { parallax: 0.3, zIndex: 30, count: 1000, w: [30, 60], h: [300, 800],  alpha: 0.2 }, 
@@ -28,23 +22,17 @@ export const PinkBlueCathedral = (scene, config = {}) => {
     ];
 
     layers.forEach(l => {
-        for (let i = 0; i < l.count; i++) {
-            const x = Phaser.Math.Between(minX, minX + worldW);
-            const y = Phaser.Math.Between(minY, minY + worldH);
-            
-            const color = Phaser.Utils.Array.GetRandom(colors);
-
-            scene.addEntity(createCathedralColumn(x, y, {
-                width: Phaser.Math.Between(l.w[0], l.w[1]),
-                height: Phaser.Math.Between(l.h[0], l.h[1]),
-                color: color,
-                alpha: l.alpha,
-                parallax: l.parallax,
-                zType: 'BACKGROUND',
-                zIndex: l.zIndex,
-                layerName: config.layerName
-            }));
-        }
+        generateBackgroundRectangles(scene, config, {
+            count: l.count,
+            parallax: l.parallax,
+            zIndex: l.zIndex,
+            layerName: config.layerName,
+            widthRange: l.w,
+            heightRange: l.h,
+            alpha: l.alpha,
+            color: () => Phaser.Utils.Array.GetRandom(colors),
+            renderType: 'watercolor'
+        });
     });
 
     console.log(`[BACKGROUND] Loaded Pink & Blue Cathedral.`);

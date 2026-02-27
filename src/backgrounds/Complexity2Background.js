@@ -1,48 +1,41 @@
-import { Position, Renderable, Rotation, EntityType, ZLayer, Parallax, BackgroundTag } from '../ecs/components/index';
-import Phaser from 'phaser';
+import { generateBackgroundRectangles } from './BackgroundGenerator';
 
 export const Complexity2Background = (scene, config = {}) => {
-    const worldW = config.worldWidth || config.worldSize || 8000;
-    const worldH = config.worldHeight || config.worldSize || 8000;
-    
-    const minX = config.minX ?? 0;
-    const minY = config.minY ?? -worldH;
-
     const count = config.count || 1000;
 
-    for (let i = 0; i < count; i++) {
-        const x = Phaser.Math.Between(minX, minX + worldW);
-        const y = Phaser.Math.Between(minY, minY + worldH);
+    // Split count between watercolor and glass
+    const watercolorCount = Math.floor(count / 2);
+    const glassCount = count - watercolorCount;
 
-        const width = Phaser.Math.Between(1, 50);
-        const height = Phaser.Math.Between(500, 3000);
-        const color = Math.random() > 0.5 ? 0x000000 : 0xffffff;
+    // Watercolor Layer
+    generateBackgroundRectangles(scene, config, {
+        count: watercolorCount,
+        parallax: 0.2 + Math.random() * 0.3, // Approximation of original per-entity random
+        zIndex: 25,
+        layerName: 'bg_watercolor',
+        widthRange: [1, 50],
+        heightRange: [500, 3000],
+        color: () => Math.random() > 0.5 ? 0x000000 : 0xffffff,
+        alpha: 1.0,
+        renderType: 'hard_shape',
+        entityType: 'HARD_SHAPE_BG'
+    });
 
-        // Randomly choose between watercolor and glass layers
-        const layerName = Math.random() > 0.5 ? 'bg_watercolor' : 'bg_glass';
-        const parallax = layerName === 'bg_watercolor' ? 0.2 + Math.random() * 0.3 : 0.5 + Math.random() * 0.4;
+    // Glass Layer
+    generateBackgroundRectangles(scene, config, {
+        count: glassCount,
+        parallax: 0.5 + Math.random() * 0.4,
+        zIndex: 25,
+        layerName: 'bg_glass',
+        widthRange: [1, 50],
+        heightRange: [500, 3000],
+        color: () => Math.random() > 0.5 ? 0x000000 : 0xffffff,
+        alpha: 1.0,
+        renderType: 'hard_shape',
+        entityType: 'HARD_SHAPE_BG'
+    });
 
-        scene.addEntity([
-            Position(x, y),
-            Rotation(0),
-            BackgroundTag(),
-            EntityType('HARD_SHAPE_BG'),
-            Parallax(parallax),
-            ZLayer('BACKGROUND', Phaser.Math.Between(0, 50), layerName),
-            Renderable({
-                'BASE': {
-                    type: 'hard_shape',
-                    shape: 'rect',
-                    width: width,
-                    height: height,
-                    color: color,
-                    alpha: 1.0
-                }
-            })
-        ]);
-    }
-
-    console.log(`[BACKGROUND] Complexity 2 Loaded with ${count} hard shapes.`);
+    console.log(`[BACKGROUND] Complexity 2 Loaded.`);
 
     return {
         backgroundColor: 0x000000,

@@ -1,4 +1,4 @@
-import { createCathedralColumn } from '../ecs/entities/cathedral';
+import { generateBackgroundRectangles } from './BackgroundGenerator';
 import Phaser from 'phaser';
 
 /**
@@ -6,12 +6,8 @@ import Phaser from 'phaser';
  * Generates a dense field of watercolor pillars with parallax.
  */
 export const CathedralBackground = (scene, config = {}) => {
-    const worldW = config.worldWidth || config.worldSize || 8000;
     const worldH = config.worldHeight || config.worldSize || 8000;
     
-    const minX = config.minX ?? 0;
-    const minY = config.minY ?? -worldH;
-
     // Scale count based on height (baseline 8000), capped at 10x for performance
     const hScale = Math.min(10, worldH / 8000);
 
@@ -24,27 +20,23 @@ export const CathedralBackground = (scene, config = {}) => {
     ];
 
     layers.forEach(l => {
-        for (let i = 0; i < l.count; i++) {
-            const x = Phaser.Math.Between(minX, minX + worldW);
-            const y = Phaser.Math.Between(minY, minY + worldH);
-            
-            const r = Phaser.Math.Between(l.color[0], l.color[1]);
-            const color = Phaser.Display.Color.GetColor(r, 5, 5);
-
-            scene.addEntity(createCathedralColumn(x, y, {
-                width: Phaser.Math.Between(l.w[0], l.w[1]),
-                height: Phaser.Math.Between(l.h[0], l.h[1]),
-                color: color,
-                alpha: l.alpha,
-                parallax: l.parallax,
-                zType: 'BACKGROUND',
-                zIndex: l.zIndex,
-                layerName: config.layerName
-            }));
-        }
+        generateBackgroundRectangles(scene, config, {
+            count: l.count,
+            parallax: l.parallax,
+            zIndex: l.zIndex,
+            layerName: config.layerName,
+            widthRange: l.w,
+            heightRange: l.h,
+            alpha: l.alpha,
+            color: () => {
+                const r = Phaser.Math.Between(l.color[0], l.color[1]);
+                return Phaser.Display.Color.GetColor(r, 5, 5);
+            },
+            renderType: 'watercolor'
+        });
     });
 
-    console.log(`[BACKGROUND] Loaded Cathedral with ${layers.reduce((acc, l) => acc + l.count, 0)} columns.`);
+    console.log(`[BACKGROUND] Loaded Cathedral.`);
 
     return {
         backgroundColor: 0x000000,
