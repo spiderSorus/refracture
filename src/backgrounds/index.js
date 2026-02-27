@@ -28,17 +28,28 @@ export const loadBackground = (name, scene, args = {}) => {
         return;
     }
 
-    const config = backgroundScript(scene, args) || {};
+    const cam = scene.cameras.main;
+    const bounds = cam.useBounds ? cam._bounds : { x: 0, y: -8000, width: 8000, height: 8000 };
+
+    const mergedArgs = {
+        minX: bounds.x,
+        minY: bounds.y,
+        worldWidth: bounds.width,
+        worldHeight: bounds.height,
+        ...args
+    };
+
+    const config = backgroundScript(scene, mergedArgs) || {};
     scene.currentBackground = name;
     
     // Store dimensions for debug UI
-    if (args.worldWidth || args.worldHeight) {
+    if (mergedArgs.worldWidth || mergedArgs.worldHeight) {
         scene.bgDimensions = {
-            w: args.worldWidth || '?',
-            h: args.worldHeight || '?'
+            w: mergedArgs.worldWidth || '?',
+            h: mergedArgs.worldHeight || '?'
         };
-    } else if (args.worldSize) {
-        scene.bgDimensions = { w: args.worldSize, h: args.worldSize };
+    } else if (mergedArgs.worldSize) {
+        scene.bgDimensions = { w: mergedArgs.worldSize, h: mergedArgs.worldSize };
     }
 
     // If the background script specifies a color, set it on the scene for CameraSystem to use

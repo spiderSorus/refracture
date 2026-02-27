@@ -9,6 +9,9 @@ export const RainbowCathedral = (scene, config = {}) => {
     const worldW = config.worldWidth || config.worldSize || 8000;
     const worldH = config.worldHeight || config.worldSize || 8000;
     
+    const minX = config.minX ?? 0;
+    const minY = config.minY ?? -worldH;
+
     // Scale count based on height
     const hScale = Math.min(10, worldH / 8000);
 
@@ -31,11 +34,11 @@ export const RainbowCathedral = (scene, config = {}) => {
 
     layers.forEach(l => {
         for (let i = 0; i < l.count; i++) {
-            const x = Phaser.Math.Between(-worldW / 2, worldW / 2);
-            const y = Phaser.Math.Between(-worldH / 2, worldH / 2);
+            const x = Phaser.Math.Between(minX, minX + worldW);
+            const y = Phaser.Math.Between(minY, minY + worldH);
             
             // Normalize x to 0-1 range based on worldW
-            const t = (x + worldW / 2) / worldW;
+            const t = (x - minX) / worldW;
             // Map t to rainbow colors
             const colorIndex = Math.min(rainbowColors.length - 1, Math.floor(t * rainbowColors.length));
             const baseColor = rainbowColors[colorIndex];

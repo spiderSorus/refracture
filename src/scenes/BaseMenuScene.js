@@ -173,6 +173,7 @@ export class BaseMenuScene extends Phaser.Scene {
             background: this.currentBackground || 'Default',
             worldDims: `${Math.round(worldBounds.width)}x${Math.round(worldBounds.height)}`,
             bgDims: this.bgDimensions ? `${this.bgDimensions.w}x${this.bgDimensions.h}` : 'Auto',
+            entityCount: this.entities.length,
             cameras: cameraInfo
         });
     }

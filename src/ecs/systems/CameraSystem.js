@@ -74,7 +74,7 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
     const hasBackCameras = configs.some(cfg => cfg.type === 'BACKGROUND');
     if (hasBackCameras) {
         mainCam.setBackgroundColor('rgba(0,0,0,0)');
-    } else if (scene.backgroundColor !== undefined) {
+    } else if (scene.backgroundColor != null) {
         mainCam.setBackgroundColor(scene.backgroundColor);
     }
 
@@ -83,7 +83,7 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
     
     // Set the lowest camera's background color
     const lowestCam = scene.cameras.cameras[0];
-    if (lowestCam && lowestCam !== mainCam && scene.backgroundColor !== undefined) {
+    if (lowestCam && lowestCam !== mainCam && scene.backgroundColor != null) {
         lowestCam.setBackgroundColor(scene.backgroundColor);
     }
 

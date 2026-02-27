@@ -9,10 +9,13 @@ export const ComplexityBackground = (scene, config = {}) => {
     const worldW = config.worldWidth || config.worldSize || 8000;
     const worldH = config.worldHeight || config.worldSize || 8000;
     
+    const minX = config.minX ?? 0;
+    const minY = config.minY ?? -worldH;
+    
     // 1. WATERCOLOR LAYER (Aura/Background)
     for (let i = 0; i < 150; i++) {
-        const x = Phaser.Math.Between(-worldW / 2, worldW / 2);
-        const y = Phaser.Math.Between(-worldH / 2, worldH / 2);
+        const x = Phaser.Math.Between(minX, minX + worldW);
+        const y = Phaser.Math.Between(minY, minY + worldH);
         
         scene.addEntity(createCathedralColumn(x, y, {
             width: Phaser.Math.Between(50, 150),
@@ -28,8 +31,8 @@ export const ComplexityBackground = (scene, config = {}) => {
 
     // 2. OLD GLASS LAYER (Crisp/Foreground of the background)
     for (let i = 0; i < 100; i++) {
-        const x = Phaser.Math.Between(-worldW / 2, worldW / 2);
-        const y = Phaser.Math.Between(-worldH / 2, worldH / 2);
+        const x = Phaser.Math.Between(minX, minX + worldW);
+        const y = Phaser.Math.Between(minY, minY + worldH);
         
         scene.addEntity(createCathedralColumn(x, y, {
             width: Phaser.Math.Between(30, 80),

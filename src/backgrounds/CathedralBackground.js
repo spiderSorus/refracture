@@ -9,6 +9,9 @@ export const CathedralBackground = (scene, config = {}) => {
     const worldW = config.worldWidth || config.worldSize || 8000;
     const worldH = config.worldHeight || config.worldSize || 8000;
     
+    const minX = config.minX ?? 0;
+    const minY = config.minY ?? -worldH;
+
     // Scale count based on height (baseline 8000), capped at 10x for performance
     const hScale = Math.min(10, worldH / 8000);
 
@@ -22,8 +25,8 @@ export const CathedralBackground = (scene, config = {}) => {
 
     layers.forEach(l => {
         for (let i = 0; i < l.count; i++) {
-            const x = Phaser.Math.Between(-worldW / 2, worldW / 2);
-            const y = Phaser.Math.Between(-worldH / 2, worldH / 2);
+            const x = Phaser.Math.Between(minX, minX + worldW);
+            const y = Phaser.Math.Between(minY, minY + worldH);
             
             const r = Phaser.Math.Between(l.color[0], l.color[1]);
             const color = Phaser.Display.Color.GetColor(r, 5, 5);

@@ -184,7 +184,14 @@ export const PhysicsSystem = (entities, delta, scene) => {
     // 3. RESOLVE COLLISIONS
     const platformsForCollision = entities.filter(e => {
         const isPlatform = e.components.PlatformTag && e.components.Collider && e.components.Position;
-        return isPlatform;
+        if (!isPlatform) return false;
+
+        // Optimization: Background objects only collide if they have Velocity (like GreyBox)
+        // This excludes hundreds of static decorative pillars from the loop.
+        const isBackground = e.components.BackgroundTag || e.components.ZLayer?.type === 'BACKGROUND';
+        if (isBackground && !e.components.Velocity) return false;
+
+        return true;
     });
 
     for (let i = 0; i < platformsForCollision.length; i++) {

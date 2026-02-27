@@ -17,7 +17,6 @@ export const createBackgroundShape = (x, y, shapeType, config = {}) => {
         Rotation(config.rotation || 0),
         ZLayer('BACKGROUND', config.zIndex || 0),
         BackgroundTag(),
-        PlatformTag(), // Added for rendering system consistency
         EntityType('BACKGROUND_SHAPE'),
         Parallax(config.parallax || 1.0),
         Renderable({
@@ -31,7 +30,6 @@ export const createBackgroundShape = (x, y, shapeType, config = {}) => {
                 layers: 6,
                 depth: depth
             }
-        }),
-        Collider(shapeType === 'oval' ? 'circle' : 'rect', 1, 1, 1)
+        })
     ];
 };

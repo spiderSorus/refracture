@@ -17,7 +17,6 @@ export const createCathedralColumn = (x, y, config = {}) => {
     return [
         Position(x, y),
         Rotation(config.rotation || 0),
-        PlatformTag(), // For system consistency
         BackgroundTag(),
         EntityType('CATHEDRAL_COLUMN'),
         Parallax(parallaxFactor),
@@ -32,7 +31,6 @@ export const createCathedralColumn = (x, y, config = {}) => {
                 alpha: config.alpha ?? 1.0,
                 layers: 6
             }
-        }),
-        Collider('rect', 1, 1, 1)
+        })
     ];
 };

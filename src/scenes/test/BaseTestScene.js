@@ -94,8 +94,8 @@ export class BaseTestScene extends Phaser.Scene {
         this.auxCameras = {};
         this.auxLayers = {};
         this.currentBackground = null;
-        this.backgroundColor = null;
-        this.atmosphereColor = null;
+        this.backgroundColor = undefined;
+        this.atmosphereColor = undefined;
 
         this._camInitialized = false;
     }
@@ -243,6 +243,7 @@ export class BaseTestScene extends Phaser.Scene {
                 background: this.currentBackground || 'Default',
                 worldDims: `${Math.round(worldBounds.width)}x${Math.round(worldBounds.height)}`,
                 bgDims: this.bgDimensions ? `${this.bgDimensions.w}x${this.bgDimensions.h}` : 'Auto',
+                entityCount: this.entities.length,
                 cameras: cameraInfo,
                 energyRules: activeRules,
                 sling: {

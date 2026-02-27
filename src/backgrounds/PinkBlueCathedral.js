@@ -6,7 +6,11 @@ import Phaser from 'phaser';
  * Uses powder blue and pink watercolor pillars.
  */
 export const PinkBlueCathedral = (scene, config = {}) => {
-    const worldSize = config.worldSize || 8000;
+    const worldW = config.worldWidth || config.worldSize || 8000;
+    const worldH = config.worldHeight || config.worldSize || 8000;
+    
+    const minX = config.minX ?? 0;
+    const minY = config.minY ?? -worldH;
     
     const layers = [
         { parallax: 0.1, zIndex: 40, count: 800,  w: [20, 50], h: [400, 1000], alpha: 0.1 }, 
@@ -25,8 +29,8 @@ export const PinkBlueCathedral = (scene, config = {}) => {
 
     layers.forEach(l => {
         for (let i = 0; i < l.count; i++) {
-            const x = Phaser.Math.Between(-worldSize / 2, worldSize / 2);
-            const y = Phaser.Math.Between(-worldSize / 2, worldSize / 2);
+            const x = Phaser.Math.Between(minX, minX + worldW);
+            const y = Phaser.Math.Between(minY, minY + worldH);
             
             const color = Phaser.Utils.Array.GetRandom(colors);
 

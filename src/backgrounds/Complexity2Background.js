@@ -4,12 +4,15 @@ import Phaser from 'phaser';
 export const Complexity2Background = (scene, config = {}) => {
     const worldW = config.worldWidth || config.worldSize || 8000;
     const worldH = config.worldHeight || config.worldSize || 8000;
+    
+    const minX = config.minX ?? 0;
+    const minY = config.minY ?? -worldH;
 
     const count = config.count || 1000;
 
     for (let i = 0; i < count; i++) {
-        const x = Phaser.Math.Between(-worldW / 2, worldW / 2);
-        const y = Phaser.Math.Between(-worldH / 2, worldH / 2);
+        const x = Phaser.Math.Between(minX, minX + worldW);
+        const y = Phaser.Math.Between(minY, minY + worldH);
 
         const width = Phaser.Math.Between(1, 50);
         const height = Phaser.Math.Between(500, 3000);

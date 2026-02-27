@@ -76,6 +76,7 @@ export class UIManager {
                 FPS: ${stateData.fps || 0}<br>
                 POS: ${playerData.x}, ${playerData.y}<br>
                 WORLD: <span style="color: #fff;">${stateData.worldDims || '0x0'}</span><br>
+                ENTITIES: <span style="color: #fff;">${stateData.entityCount || 0}</span><br>
                 BG: <span style="color: #fff;">${stateData.background || 'None'}</span> (${stateData.bgDims || 'Auto'})<br>
                 STATUS: ${stateData.status}
             </div>
