@@ -41,7 +41,7 @@ export class BaseMenuScene extends Phaser.Scene {
         this.cameras.main.centerOn(0, 0);
 
         // --- BACKGROUND ---
-        const backgrounds = ['watercolor', 'red_cathedral'];
+        const backgrounds = ['watercolor', 'red_cathedral', 'rainbow_cathedral'];
         const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
         
         loadBackground(randomBg, this);

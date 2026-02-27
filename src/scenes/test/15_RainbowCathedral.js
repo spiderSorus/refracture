@@ -32,7 +32,7 @@ export class RainbowCathedralScene extends BaseTestScene {
         ];
         
         // --- LOAD BACKGROUND ---
-        loadBackground('watercolor', this, { 
+        loadBackground('rainbow_cathedral', this, { 
             worldWidth: WORLD_WIDTH, 
             worldHeight: WORLD_HEIGHT
         });

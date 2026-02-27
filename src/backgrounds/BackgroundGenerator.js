@@ -39,6 +39,7 @@ export const generateBackgroundRectangles = (scene, config, layerConfig) => {
         isGrid = false,
         cols = 10,
         rows = 10,
+        forceSquare = false,
         entityType = 'BACKGROUND_RECT',
         velocityRange = [-40, 40]
     } = layerConfig;
@@ -103,7 +104,7 @@ export const generateBackgroundRectangles = (scene, config, layerConfig) => {
                 
                 // For grid, widthRange/heightRange are multipliers of cell size (0-1)
                 const wMult = widthRange[0] + Math.random() * (widthRange[1] - widthRange[0]);
-                const hMult = heightRange[0] + Math.random() * (heightRange[1] - heightRange[0]);
+                const hMult = forceSquare ? wMult : (heightRange[0] + Math.random() * (heightRange[1] - heightRange[0]));
                 
                 const w = cellW * wMult;
                 const h = cellH * hMult;
@@ -117,7 +118,7 @@ export const generateBackgroundRectangles = (scene, config, layerConfig) => {
             const x = Phaser.Math.Between(drawMinX, drawMinX + drawWidth);
             const y = Phaser.Math.Between(drawMinY, drawMinY + drawHeight);
             const w = Phaser.Math.Between(widthRange[0], widthRange[1]);
-            const h = Phaser.Math.Between(heightRange[0], heightRange[1]);
+            const h = forceSquare ? w : Phaser.Math.Between(heightRange[0], heightRange[1]);
             
             const finalColor = typeof color === 'function' ? color(x, y, drawMinX, drawWidth) : color;
             createEntity(x, y, w, h, finalColor);
@@ -139,6 +140,33 @@ export const generateCathedralColumns = (scene, config, layerConfig) => {
         ...layerConfig,
         widthRange: [40, 100],
         heightRange: [targetHeight * 0.8, targetHeight * 1.2],
+        renderType: 'watercolor'
+    });
+};
+
+/**
+ * Rainbow Cathedral Column Spawner
+ * Maps columns to a rainbow spectrum based on their horizontal position.
+ */
+export const generateRainbowCathedralColumns = (scene, config, layerConfig) => {
+    const rainbowColors = [
+        0xff0000, // Red
+        0xffa500, // Orange
+        0xffff00, // Yellow
+        0x008000, // Green
+        0x0000ff, // Blue
+        0x800080  // Purple
+    ];
+
+    generateBackgroundRectangles(scene, config, {
+        ...layerConfig,
+        widthRange: [200, 500],
+        forceSquare: true,
+        color: (x, y, minX, width) => {
+            const t = Phaser.Math.Clamp((x - minX) / width, 0, 0.999);
+            const index = Math.floor(t * rainbowColors.length);
+            return rainbowColors[index];
+        },
         renderType: 'watercolor'
     });
 };
