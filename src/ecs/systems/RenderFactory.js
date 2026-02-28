@@ -13,6 +13,9 @@ import { EllipseGraphic } from '../../graphics/EllipseGraphic';
 import { HardShapeGraphic } from '../../graphics/HardShapeGraphic';
 import { AmorphousBlobGraphic } from '../../graphics/AmorphousBlobGraphic';
 import { LsdGraphic } from '../../graphics/LsdGraphic';
+import { StemGraphic } from '../../graphics/StemGraphic';
+import { DebugStemGraphic } from '../../graphics/DebugStemGraphic';
+import { DebugPlayerGraphic } from '../../graphics/DebugPlayerGraphic';
 
 const REGISTRY = {
     'sprite': SpriteGraphic,
@@ -29,7 +32,10 @@ const REGISTRY = {
     'ellipse': EllipseGraphic,
     'hard_shape': HardShapeGraphic,
     'amorphous_blob': AmorphousBlobGraphic,
-    'lsd': LsdGraphic
+    'lsd': LsdGraphic,
+    'stem': StemGraphic,
+    'debug_stem': DebugStemGraphic,
+    'debug_player': DebugPlayerGraphic
 };
 
 export const RenderFactory = {

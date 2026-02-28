@@ -1,5 +1,6 @@
 import { spawnPlayer } from '../../ecs/entities/player';
 import { createSpawnPlatform } from '../../ecs/entities/platforms';
+import { createStem } from '../../ecs/entities/stem';
 import { loadBackground } from '../../backgrounds/index';
 import { BaseTestScene } from './BaseTestScene';
 import { ZLayer } from '../../ecs/components/index';
@@ -30,6 +31,39 @@ export class PlantsScene extends BaseTestScene {
             color: 0x224422 // Dark green for plants theme
         }));
         spawnPlat.components.ZLayer = ZLayer('PLAY', 5);
+
+        // Four stems with different stiffness levels
+        // 25% stiffness
+        this.addEntity(createStem(spawnX - 600, spawnY - 100, {
+            length: 500,
+            thickness: 30,
+            stiffness: 0.25,
+            color: 0x228B22
+        }));
+
+        // 33% stiffness
+        this.addEntity(createStem(spawnX - 200, spawnY - 100, {
+            length: 500,
+            thickness: 30,
+            stiffness: 0.33,
+            color: 0x32CD32
+        }));
+
+        // 50% stiffness
+        this.addEntity(createStem(spawnX + 200, spawnY - 100, {
+            length: 500,
+            thickness: 30,
+            stiffness: 0.50,
+            color: 0x228B22
+        }));
+
+        // 75% stiffness
+        this.addEntity(createStem(spawnX + 600, spawnY - 100, {
+            length: 500,
+            thickness: 30,
+            stiffness: 0.75,
+            color: 0x006400
+        }));
 
         spawnPlayer(this, spawnPlat);
         
