@@ -42,6 +42,12 @@ export const CAMERA_TEMPLATES = {
         effect: 'rainbow', 
         type: 'PLAY'
     },
+    'lsd': {
+        name: 'LsdCamera',
+        layer: 'platform_layer',
+        effect: 'lsd',
+        type: 'PLAY'
+    },
     'player': {
         name: 'PlayerCamera', 
         layer: 'player_layer', 

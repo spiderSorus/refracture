@@ -17,6 +17,11 @@ const REGISTRY = {
     'grayscale': (camera) => camera.setPostPipeline('GrayscalePipeline'),
     'old_glass': (camera) => camera.setPostPipeline('OldGlassPipeline'),
     'rainbow': (camera) => camera.setPostPipeline('RainbowPipeline'),
+    'lsd': (camera) => {
+        if (camera.preFX) {
+            camera.preFX.addColorMatrix().lsd(0.01);
+        }
+    }
 };
 
 /**
