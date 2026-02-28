@@ -19,6 +19,10 @@ export class BaseGraphic {
         if (config.alpha !== undefined && this.gameObject.setAlpha) {
             this.gameObject.setAlpha(config.alpha);
         }
+
+        if (config.pipeline && this.gameObject.setPipeline) {
+            this.gameObject.setPipeline(config.pipeline);
+        }
     }
 
     /**

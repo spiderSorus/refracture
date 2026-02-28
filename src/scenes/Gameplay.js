@@ -36,7 +36,13 @@ export class Gameplay extends BaseTestScene {
         const spawnY = -100; // 100 over the floor (maxY is 0)
 
         // 0. SPAWN PLATFORM
-        this.addEntity(createSpawnPlatform(spawnX, spawnY, { width: 400, height: 100 }));
+        const spawnPlatComps = createSpawnPlatform(spawnX, spawnY, { width: 400, height: 100 });
+        const spawnRend = spawnPlatComps.find(c => c._type === 'Renderable');
+        if (spawnRend && spawnRend.definitions['BASE']) {
+            spawnRend.definitions['BASE'].type = 'lsd';
+            spawnRend.definitions['BASE'].lsdSpeed = 0.02;
+        }
+        this.addEntity(spawnPlatComps);
 
         // 1. GRID OF PLATFORMS
         const gridCols = 5;
@@ -62,6 +68,13 @@ export class Gameplay extends BaseTestScene {
                     isStatic: true,
                     color: colorVal 
                 });
+
+                // Apply LSD Effect to all platforms
+                const rend = platformComponents.find(c => c._type === 'Renderable');
+                if (rend && rend.definitions['BASE']) {
+                    rend.definitions['BASE'].type = 'lsd';
+                    rend.definitions['BASE'].lsdSpeed = 0.02; 
+                }
 
                 const platform = this.addEntity([
                     ...platformComponents,

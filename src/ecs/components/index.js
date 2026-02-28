@@ -119,13 +119,8 @@ export const BugAI = () => ({
 export const SlingshotJump = (maxForce = PHYSICS.SLINGSHOT_FORCE) => ({
     _type: 'SlingshotJump',
     isCharging: false,
-    isAnimating: false,
-    jumpProgress: 0,
-    jumpDuration: 0,
-    jumpStart: { x: 0, y: 0 },
-    jumpTarget: { x: 0, y: 0 },
-    jumpPeak: 0,
-    jumpType: 'MISS', // 'LAND' or 'MISS'
+    isJumping: false,
+    lastPlatformId: null,
     vector: { x: 0, y: 0 },
     lockedAim: null,      // Normalized direction of the pull
     peakMagnitude: 0,     // Highest magnitude reached during this charge
@@ -133,8 +128,7 @@ export const SlingshotJump = (maxForce = PHYSICS.SLINGSHOT_FORCE) => ({
     maxForce,
     canJump: false,       // Tracks if we are touching a surface
     dwellFrames: 0,       // Frame counter for attachment logic
-    potentialPlatformId: null,
-    lastPlatformId: null
+    potentialPlatformId: null
 });
 
 // --- LIFECYCLE COMPONENTS ---

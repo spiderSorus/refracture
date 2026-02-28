@@ -22,21 +22,28 @@ export const AttachmentSystem = (entities) => {
     });
     const catchBuffer = 15;
 
-    if (sling && sling.lastPlatformId) {
-        const lastPlat = entities.find(e => e.id === sling.lastPlatformId);
-        if (lastPlat && lastPlat.components.Position) {
-            const rot = lastPlat.components.Rotation?.angle || 0;
-            const isStillInside = isPointInside(pPos, lastPlat.components.Position, lastPlat.components.Collider, catchBuffer + 10, rot);
-            if (!isStillInside) {
+    if (sling && (sling.lastPlatformId || sling.isJumping)) {
+        const lastId = sling.lastPlatformId;
+        if (lastId) {
+            const lastPlat = entities.find(e => e.id === lastId);
+            if (lastPlat && lastPlat.components.Position) {
+                const rot = lastPlat.components.Rotation?.angle || 0;
+                // Larger buffer to ensure they've really left before we clear the jump state/ID
+                const isStillInside = isPointInside(pPos, lastPlat.components.Position, lastPlat.components.Collider, catchBuffer + 10, rot);
+                if (!isStillInside) {
+                    sling.lastPlatformId = null;
+                    sling.isJumping = false; // They've left the starting platform
+                }
+            } else {
                 sling.lastPlatformId = null;
+                sling.isJumping = false;
             }
-        } else {
-            sling.lastPlatformId = null;
         }
     }
 
     for (const plat of platforms) {
-        if (sling && sling.lastPlatformId === plat.id) continue;
+        // Cannot re-attach to the one we just jumped from until we clear it
+        if (sling && (sling.lastPlatformId === plat.id || (sling.isJumping && sling.lastPlatformId === plat.id))) continue;
 
         const platRot = plat.components.Rotation?.angle || 0;
         if (isPointInside(pPos, plat.components.Position, plat.components.Collider, catchBuffer, platRot)) {

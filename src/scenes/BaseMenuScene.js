@@ -24,6 +24,8 @@ export class BaseMenuScene extends Phaser.Scene {
         this.entities = [];
         this.menuCamX = 0;
         this.menuCamY = 0;
+        this.scrollOffsetTargetY = 0;
+        this.scrollOffsetCurrentY = 0;
         this.auxCameras = {};
         this.auxLayers = {};
 
@@ -44,6 +46,10 @@ export class BaseMenuScene extends Phaser.Scene {
         const backgrounds = ['watercolor', 'red_cathedral', 'rainbow_cathedral', 'complexity'];
         const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
         
+        this.cameraConfigs = [
+            { name: 'UICamera', layer: 'uiLayer', type: 'UI' }
+        ];
+
         loadBackground(randomBg, this);
 
         this.setupHeader();
@@ -118,16 +124,18 @@ export class BaseMenuScene extends Phaser.Scene {
             this.handleBack();
         }
 
-        // --- MENU CAMERA (Stick Controlled) ---
+        // --- MENU CAMERA (Stick + Scroll Controlled) ---
         const stick = this.inputManager.getRightStick();
         const maxOffset = 150;
+        
         const targetX = stick.x * maxOffset;
-        const targetY = stick.y * maxOffset;
+        const targetY = (stick.y * maxOffset) + this.scrollOffsetTargetY;
         
         // Lerp camera center towards target for smoothness
         const lerp = 0.05;
         this.menuCamX += (targetX - this.menuCamX) * lerp;
         this.menuCamY += (targetY - this.menuCamY) * lerp;
+        
         this.cameras.main.centerOn(this.menuCamX, this.menuCamY);
 
         // --- BACKGROUND RENDERING ---
@@ -182,6 +190,11 @@ export class BaseMenuScene extends Phaser.Scene {
         }
 
         this.selected = nextIndex;
+        
+        // Background Camera Movement: Shift target Y based on selection
+        // We'll move the camera about 100 units per item index
+        this.scrollOffsetTargetY = (this.selected - (count / 2)) * 100;
+
         this.updateSelection();
     }
 

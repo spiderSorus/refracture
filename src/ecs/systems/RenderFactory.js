@@ -12,6 +12,7 @@ import { WatercolorGraphic } from '../../graphics/WatercolorGraphic';
 import { EllipseGraphic } from '../../graphics/EllipseGraphic';
 import { HardShapeGraphic } from '../../graphics/HardShapeGraphic';
 import { AmorphousBlobGraphic } from '../../graphics/AmorphousBlobGraphic';
+import { LsdGraphic } from '../../graphics/LsdGraphic';
 
 const REGISTRY = {
     'sprite': SpriteGraphic,
@@ -27,7 +28,8 @@ const REGISTRY = {
     'watercolor': WatercolorGraphic,
     'ellipse': EllipseGraphic,
     'hard_shape': HardShapeGraphic,
-    'amorphous_blob': AmorphousBlobGraphic
+    'amorphous_blob': AmorphousBlobGraphic,
+    'lsd': LsdGraphic
 };
 
 export const RenderFactory = {

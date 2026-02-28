@@ -66,6 +66,10 @@ export class BaseTestScene extends Phaser.Scene {
         this.uiLayer = this.add.layer().setName('UI_LAYER').setDepth(2000);
         this.webLayer = this.add.layer().setName('WEB_LAYER').setDepth(1100);
 
+        this.cameraConfigs = [
+            { name: 'UICamera', layer: 'uiLayer', type: 'UI' }
+        ];
+
         // Dedicated Camera for Web Layer
         this.webCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height).setName('WEB_CAMERA');
         

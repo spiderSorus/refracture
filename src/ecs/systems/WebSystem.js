@@ -247,12 +247,31 @@ export const WebSystem = (entities, inputManager, scene) => {
         
         if (platA && platB && platA.components.Position && platB.components.Position && !isBackA && !isBackB && isAnchorA && isAnchorB) {
             const snappedOffsetB = snapOffsetInside(currentParent.offset, platB.components.Collider, 10);
+            
             const conn = WebConnection(
                 tether.platformId, { ...tether.anchorOffset }, 
                 currentParent.id, snappedOffsetB
             );
             conn.maxForce *= strengthMult;
-            conn.fixedLength = tether.maxLength; 
+
+            // Calculate actual distance for fixedLength
+            const rotA = platA.components.Rotation?.angle || 0;
+            const rotB = platB.components.Rotation?.angle || 0;
+            const ax = tether.anchorOffset.x * Math.cos(rotA) - tether.anchorOffset.y * Math.sin(rotA);
+            const ay = tether.anchorOffset.x * Math.sin(rotA) + tether.anchorOffset.y * Math.cos(rotA);
+            const bx = snappedOffsetB.x * Math.cos(rotB) - snappedOffsetB.y * Math.sin(rotB);
+            const by = snappedOffsetB.x * Math.sin(rotB) + snappedOffsetB.y * Math.cos(rotB);
+            
+            const worldAX = platA.components.Position.x + ax;
+            const worldAY = platA.components.Position.y + ay;
+            const worldBX = platB.components.Position.x + bx;
+            const worldBY = platB.components.Position.y + by;
+            
+            const curDist = Phaser.Math.Distance.Between(worldAX, worldAY, worldBX, worldBY);
+
+            // Add slack (10%) if neither is a seesaw
+            const hasSeesaw = platA.components.SeesawTag || platB.components.SeesawTag;
+            conn.fixedLength = hasSeesaw ? curDist : curDist * 1.1; 
             
             entities.push({
                 id: crypto.randomUUID(),

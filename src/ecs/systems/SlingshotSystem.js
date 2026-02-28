@@ -21,11 +21,6 @@ export const SlingshotSystem = (entities, inputManager) => {
     const LOCK_THRESHOLD = 0.7;
     const RELEASE_THRESHOLD = 0.15;
 
-    // --- 0. ANIMATION OVERRIDE ---
-    if (sling.isAnimating) {
-        return;
-    }
-
     // --- 1. CHARGING STATE ---
     if (mag >= ARM_THRESHOLD) {
         if (!sling.isCharging && parent) {
@@ -44,7 +39,7 @@ export const SlingshotSystem = (entities, inputManager) => {
             }
         }
     }
-    // --- 2. RELEASE STATE (Kinematic Trajectory Calculation) ---
+    // --- 2. RELEASE STATE (Physics Impulse) ---
     else if (sling.isCharging && mag < RELEASE_THRESHOLD) {
         const MIN_CHARGE = 0.3;
         
@@ -55,36 +50,6 @@ export const SlingshotSystem = (entities, inputManager) => {
             const normalizedCharge = Math.min(1.0, (sling.peakMagnitude - MIN_CHARGE) / chargeRange);
             const forceMult = Math.pow(normalizedCharge, 2);
 
-            // Calculate Max Possible Distance with noise
-            const noise = 1.0 + (Math.random() * 0.2 - 0.1); // +/- 10%
-            const maxDist = PHYSICS.JUMP_MAX_DISTANCE * forceMult * noise;
-
-            // PREDICT TARGET (Ignore current platform)
-            const rayOrigin = { x: pos.x + launchDir.x * 20, y: pos.y + launchDir.y * 20 };
-            const hit = RaycastPlatformSystem.findTarget(entities, rayOrigin, launchDir, maxDist);
-            
-            sling.isAnimating = true;
-            sling.jumpProgress = 0;
-            sling.jumpStart = { x: pos.x, y: pos.y };
-            
-            if (hit && hit.entity.id !== sling.lastPlatformId && hit.entity.components.AnchorTag) {
-                // Land on Anchor
-                sling.jumpTarget = { x: hit.point.x, y: hit.point.y };
-                sling.jumpType = 'LAND';
-                sling.jumpDuration = PHYSICS.JUMP_BASE_DURATION * (hit.distance / PHYSICS.JUMP_MAX_DISTANCE);
-            } else {
-                // Miss or hit non-anchor (we treat as miss for now)
-                sling.jumpTarget = { 
-                    x: pos.x + launchDir.x * maxDist, 
-                    y: pos.y + launchDir.y * maxDist 
-                };
-                sling.jumpType = 'MISS';
-                sling.jumpDuration = PHYSICS.JUMP_BASE_DURATION * forceMult;
-            }
-
-            // Peak height of parabola (perpendicular offset)
-            sling.jumpPeak = (Phaser.Math.Distance.BetweenPoints(sling.jumpStart, sling.jumpTarget) * 0.25);
-
             if (parent) {
                 sling.lastPlatformId = parent.id;
                 sling.canJump = false;
@@ -92,7 +57,10 @@ export const SlingshotSystem = (entities, inputManager) => {
             }
 
             if (vel) {
-                vel.x = 0; vel.y = 0;
+                const speed = sling.maxForce * forceMult;
+                vel.x = launchDir.x * speed;
+                vel.y = launchDir.y * speed;
+                sling.isJumping = true; // Activate Jump Drag State
             }
         }
 
