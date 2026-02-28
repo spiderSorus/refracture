@@ -6,7 +6,7 @@ import { findPlayer } from '../entities/player';
  * AttachmentSystem
  * Handles immediate snapping of the player to platforms upon overlap.
  */
-export const AttachmentSystem = (entities) => {
+export const AttachmentSystem = (entities, scene) => {
     const player = findPlayer(entities);
     if (!player || player.components.Parent) return;
 
@@ -25,7 +25,7 @@ export const AttachmentSystem = (entities) => {
     if (sling && (sling.lastPlatformId || sling.isJumping)) {
         const lastId = sling.lastPlatformId;
         if (lastId) {
-            const lastPlat = entities.find(e => e.id === lastId);
+            const lastPlat = scene?.getEntityById(lastId);
             if (lastPlat && lastPlat.components.Position) {
                 const rot = lastPlat.components.Rotation?.angle || 0;
                 // Larger buffer to ensure they've really left before we clear the jump state/ID

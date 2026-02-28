@@ -30,6 +30,8 @@ export class BaseTestScene extends Phaser.Scene {
         this.accumulator = 0;
         this.initialized = false;
         this.energyRules = this.energyRules || [];
+        this.entities = [];
+        this.entitiesMap = new Map();
     }
 
     addEnergyRule(rule) {
@@ -57,6 +59,7 @@ export class BaseTestScene extends Phaser.Scene {
 
     create() {
         this.entities = [];
+        this.entitiesMap.clear();
         this.inputManager = new InputManager(this);
 
         // Create isolated layers for post-processing
@@ -173,7 +176,7 @@ export class BaseTestScene extends Phaser.Scene {
             WebSystem(this.entities, this.inputManager, this);
             EnergySystem(this.entities, dtSeconds, this);
             BugAISystem(this.entities, dtSeconds);
-            AttachmentSystem(this.entities);
+            AttachmentSystem(this.entities, this);
             LifecycleSystem(this.entities, dtSeconds, this);
             MovementSystem(this.entities, this.inputManager, dtSeconds);
             PhysicsSystem(this.entities, PHYSICS.STEP, this);
@@ -188,6 +191,7 @@ export class BaseTestScene extends Phaser.Scene {
                 if (renderable && renderable.activeVisuals) {
                     Object.values(renderable.activeVisuals).forEach(v => v.destroy());
                 }
+                this.entitiesMap.delete(e.id);
                 return false;
             }
             return true;
@@ -286,6 +290,11 @@ export class BaseTestScene extends Phaser.Scene {
         });
 
         this.entities.push(entity);
+        this.entitiesMap.set(entity.id, entity);
         return entity;
+    }
+
+    getEntityById(id) {
+        return this.entitiesMap.get(id);
     }
 }

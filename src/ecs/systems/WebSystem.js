@@ -26,8 +26,8 @@ export const WebSystem = (entities, inputManager, scene) => {
     entities.forEach(e => {
         const conn = e.components.WebConnection;
         if (conn) {
-            const entA = entities.find(ent => ent.id === conn.fromId);
-            const entB = entities.find(ent => ent.id === conn.toId);
+            const entA = scene?.getEntityById(conn.fromId);
+            const entB = scene?.getEntityById(conn.toId);
 
             if (entA && entB && entA.components.Position && entB.components.Position) {
                 const rotA = entA.components.Rotation?.angle || 0;
@@ -64,7 +64,7 @@ export const WebSystem = (entities, inputManager, scene) => {
 
     // --- 1. WINCH & DANGLE PHYSICS ---
     if (tether) {
-        const platform = entities.find(e => e.id === tether.platformId);
+        const platform = scene?.getEntityById(tether.platformId);
         if (platform && platform.components.Position) {
             const platRot = platform.components.Rotation?.angle || 0;
             const ax = tether.anchorOffset.x * Math.cos(platRot) - tether.anchorOffset.y * Math.sin(platRot);
@@ -125,7 +125,7 @@ export const WebSystem = (entities, inputManager, scene) => {
                             const conn = e.components.WebConnection;
                             if (conn && (conn.fromId === platform.id || conn.toId === platform.id)) {
                                 const otherId = conn.fromId === platform.id ? conn.toId : conn.fromId;
-                                const otherPlat = entities.find(ent => ent.id === otherId);
+                                const otherPlat = scene?.getEntityById(otherId);
                                 if (otherPlat && otherPlat.components.Position) {
                                     const localOff = conn.fromId === platform.id ? conn.fromOffset : conn.toOffset;
                                     const otherOff = conn.fromId === platform.id ? conn.toOffset : conn.fromOffset;
@@ -212,7 +212,7 @@ export const WebSystem = (entities, inputManager, scene) => {
     if (yJustPressed && !tether) {
         // ONLY drop web if currently attached to an Anchor-tagged platform
         if (currentParent) {
-            const plat = entities.find(e => e.id === currentParent.id);
+            const plat = scene?.getEntityById(currentParent.id);
             const isBackground = (plat?.components.ZLayer?.type === 'BACKGROUND') || plat?.components.BackgroundTag;
             const isAnchor = !!plat?.components.AnchorTag;
             
@@ -238,8 +238,8 @@ export const WebSystem = (entities, inputManager, scene) => {
     }
 
     if (yJustPressed && tether && currentParent && tether.platformId !== currentParent.id) {
-        const platA = entities.find(e => e.id === tether.platformId);
-        const platB = entities.find(e => e.id === currentParent.id);
+        const platA = scene?.getEntityById(tether.platformId);
+        const platB = scene?.getEntityById(currentParent.id);
         const isBackA = (platA?.components.ZLayer?.type === 'BACKGROUND') || platA?.components.BackgroundTag;
         const isBackB = (platB?.components.ZLayer?.type === 'BACKGROUND') || platB?.components.BackgroundTag;
         const isAnchorA = !!platA?.components.AnchorTag;

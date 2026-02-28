@@ -1,6 +1,9 @@
 // src/ecs/systems/PhysicsSystem.js
 import { PHYSICS } from '../../core/Constants';
 import Phaser from 'phaser';
+import { SpatialHash } from '../../utils/SpatialHash';
+
+const spatialHash = new SpatialHash(500);
 
 export const PhysicsSystem = (entities, delta, scene) => {
     const dt = delta / 1000;
@@ -13,7 +16,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
     entities.forEach(e => {
         const tether = e.components.WebTether;
         if (tether) {
-            const targetPlat = entities.find(plat => plat.id === tether.platformId);
+            const targetPlat = scene?.getEntityById(tether.platformId);
             const isTestBall = targetPlat?.components.EntityType?.value === 'TEST_BALL';
             if (!isTestBall) webbedPlatformIds.add(tether.platformId);
             if (tether.isActive) activelyTuggedIds.add(tether.platformId);
@@ -93,8 +96,8 @@ export const PhysicsSystem = (entities, delta, scene) => {
     entities.forEach(entity => {
         const conn = entity.components.WebConnection;
         if (conn) {
-            const entA = entities.find(e => e.id === conn.fromId);
-            const entB = entities.find(e => e.id === conn.toId);
+            const entA = scene?.getEntityById(conn.fromId);
+            const entB = scene?.getEntityById(conn.toId);
             if (entA && entB && entA.components.Position && entB.components.Position) {
                 for (let i = 0; i < 2; i++) {
                     const rotA = entA.components.Rotation?.angle || 0;
@@ -150,7 +153,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
         if (!pos) return;
 
         if (parent) {
-            const platform = entities.find(e => e.id === parent.id);
+            const platform = scene?.getEntityById(parent.id);
             if (platform && platform.components.Position) {
                 const pRot = platform.components.Rotation?.angle || 0;
                 const ox = parent.offset.x;
@@ -211,10 +214,20 @@ export const PhysicsSystem = (entities, delta, scene) => {
     // --- 4. COLLISION RESOLUTION ---
     const collidables = entities.filter(e => e.components.PlatformTag && e.components.Collider && e.components.Position);
     
-    for (let i = 0; i < collidables.length; i++) {
-        for (let j = i + 1; j < collidables.length; j++) {
-            const A = collidables[i];
-            const B = collidables[j];
+    spatialHash.clear();
+    collidables.forEach(e => spatialHash.insert(e));
+
+    const processedPairs = new Set();
+
+    for (const A of collidables) {
+        const nearby = spatialHash.getNearby(A);
+        
+        for (const B of nearby) {
+            // Ensure each pair is only checked once
+            const pairId = A.id < B.id ? `${A.id}:${B.id}` : `${B.id}:${A.id}`;
+            if (processedPairs.has(pairId)) continue;
+            processedPairs.add(pairId);
+
             if (((A.components.ZLayer?.type === 'BACKGROUND') || A.components.BackgroundTag) !== ((B.components.ZLayer?.type === 'BACKGROUND') || B.components.BackgroundTag)) continue;
             
             const posA = A.components.Position; const posB = B.components.Position;
