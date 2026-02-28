@@ -16,6 +16,7 @@ import { LsdGraphic } from '../../graphics/LsdGraphic';
 import { StemGraphic } from '../../graphics/StemGraphic';
 import { DebugStemGraphic } from '../../graphics/DebugStemGraphic';
 import { DebugPlayerGraphic } from '../../graphics/DebugPlayerGraphic';
+import { WatercolorTextGraphic } from '../../graphics/WatercolorTextGraphic';
 
 const REGISTRY = {
     'sprite': SpriteGraphic,
@@ -35,7 +36,8 @@ const REGISTRY = {
     'lsd': LsdGraphic,
     'stem': StemGraphic,
     'debug_stem': DebugStemGraphic,
-    'debug_player': DebugPlayerGraphic
+    'debug_player': DebugPlayerGraphic,
+    'watercolor_text': WatercolorTextGraphic
 };
 
 export const RenderFactory = {

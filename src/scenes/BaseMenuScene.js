@@ -5,6 +5,7 @@ import { RenderSystem, ParallaxSystem, CameraSystem, ZLayerSystem } from '../ecs
 import { RecordingSystem } from '../ecs/systems/RecordingSystem';
 import { PHYSICS } from '../core/Constants';
 import { UI } from '../core/UIManager';
+import { Position, Renderable, ZLayer, Rotation, Parallax } from '../ecs/components/index';
 
 export class BaseMenuScene extends Phaser.Scene {
     constructor(key, title = 'MENU', subtitle = '') {
@@ -14,12 +15,14 @@ export class BaseMenuScene extends Phaser.Scene {
         this.options = [];
         this.selected = 0;
         this.textObjects = [];
+        this.menuEntities = [];
         this.entities = [];
     }
 
     create() {
         this.inputManager = new InputManager(this);
         this.textObjects = [];
+        this.menuEntities = [];
         this.selected = 0;
         this.entities = [];
         this.menuCamX = 0;
@@ -31,6 +34,7 @@ export class BaseMenuScene extends Phaser.Scene {
 
         // Initialize base layers for RenderSystem
         this.backgroundLayer = this.add.layer().setName('BACKGROUND_LAYER').setDepth(50);
+        this.uibgLayer = this.add.layer().setName('UIBG_LAYER').setDepth(1500);
         this.playground = this.add.layer().setName('PLAYGROUND').setDepth(100);
         this.foregroundLayer = this.add.layer().setName('FOREGROUND_LAYER').setDepth(200);
         this.uiLayer = this.add.layer().setName('UI_LAYER').setDepth(2000);
@@ -47,7 +51,8 @@ export class BaseMenuScene extends Phaser.Scene {
         const randomBg = backgrounds[Math.floor(Math.random() * backgrounds.length)];
         
         this.cameraConfigs = [
-            { name: 'UICamera', layer: 'uiLayer', type: 'UI' }
+            { name: 'UICamera', layer: 'uiLayer', type: 'UI' },
+            { name: 'UIBGCamera', layer: 'uibgLayer', type: 'UIBG' }
         ];
 
         loadBackground(randomBg, this);
@@ -82,6 +87,23 @@ export class BaseMenuScene extends Phaser.Scene {
         }).setScrollFactor(0);
         this.uiLayer.add(titleText);
 
+        // Background watercolor title
+        this.addEntity([
+            Position(50, 50),
+            Rotation(0),
+            ZLayer('UIBG', 10),
+            Parallax(0),
+            Renderable({
+                'BG': {
+                    type: 'watercolor_text',
+                    text: this.title,
+                    style: { fontSize: '64px', fontFamily: 'monospace' },
+                    color: 0x4488ff,
+                    layers: 6
+                }
+            })
+        ]);
+
         if (this.subtitle) {
             const sub = this.add.text(55, 130, this.subtitle, {
                 fontSize: '24px',
@@ -102,6 +124,24 @@ export class BaseMenuScene extends Phaser.Scene {
             }).setScrollFactor(0);
             this.uiLayer.add(text);
             this.textObjects.push(text);
+
+            // Create background entity for this menu item
+            const bgEntity = this.addEntity([
+                Position(60, 0),
+                Rotation(0),
+                ZLayer('UIBG', 10),
+                Parallax(0),
+                Renderable({
+                    'BG': {
+                        type: 'watercolor_text',
+                        text: `  ${label}`,
+                        style: { fontSize: '24px', fontFamily: 'monospace' },
+                        color: 0xffffff,
+                        layers: 4
+                    }
+                })
+            ]);
+            this.menuEntities.push(bgEntity);
         });
     }
 
@@ -207,6 +247,8 @@ export class BaseMenuScene extends Phaser.Scene {
         const visibleRange = 5; // How many items above and below to show
 
         this.textObjects.forEach((text, index) => {
+            const bgEntity = this.menuEntities[index];
+            
             // Calculate distance from selection in a circular way
             let diff = index - this.selected;
             
@@ -216,10 +258,13 @@ export class BaseMenuScene extends Phaser.Scene {
 
             if (Math.abs(diff) > visibleRange) {
                 text.setVisible(false);
+                if (bgEntity) bgEntity.components.Renderable.definitions.BG.visible = false;
                 return;
             }
 
             text.setVisible(true);
+            if (bgEntity) bgEntity.components.Renderable.definitions.BG.visible = true;
+            
             const targetY = centerY + (diff * spacing);
             
             // Simple lerp-like positioning or immediate for now
@@ -238,19 +283,39 @@ export class BaseMenuScene extends Phaser.Scene {
             text.setScale(Math.max(0.5, scale));
 
             const isSeparator = this.options[index]?.isSeparator;
+            let currentLabel = `  ${label}`;
+            let fontSize = '24px';
+            let color = 0xffffff;
 
             if (index === this.selected) {
                 if (isSeparator) {
                     text.setColor('#888').setText(`  ${label}`);
+                    color = 0x888888;
                 } else {
                     text.setColor('#ff69b4').setText(`> ${label}`); // Hot Pink
+                    currentLabel = `> ${label}`;
+                    color = 0xff69b4;
                 }
                 text.setFontSize('32px');
+                fontSize = '32px';
                 text.setX(80);
             } else {
                 text.setColor('#fff').setText(`  ${label}`);
                 text.setFontSize('24px');
                 text.setX(60);
+            }
+
+            // Update background entity position and style
+            if (bgEntity) {
+                // Use screen coordinates directly since UIBG layer is screen-aligned
+                bgEntity.components.Position.x = text.x;
+                bgEntity.components.Position.y = text.y;
+                
+                const bgDef = bgEntity.components.Renderable.definitions.BG;
+                bgDef.text = currentLabel;
+                bgDef.style.fontSize = fontSize;
+                bgDef.color = color;
+                bgDef.alpha = alpha * 0.5; // Slightly fainter for background
             }
         });
     }
