@@ -38,7 +38,7 @@ export class WallsTest extends BaseTestScene {
         this.addEntity(createWall(centerX - areaWidth/2, centerY, wallThickness, areaHeight, 0));
         // Right wall
         this.addEntity(createWall(centerX + areaWidth/2, centerY, wallThickness, areaHeight, 0));
-    ...
+
         // Angled wall inside for fun
         this.addEntity(createWall(centerX + 200, centerY - 100, 200, 30, Math.PI / 4));
 
