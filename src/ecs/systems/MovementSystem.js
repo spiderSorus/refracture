@@ -43,6 +43,27 @@ export const MovementSystem = (entities, inputManager, dt) => {
             let nextOffsetX = parent.offset.x + (localMoveX * walkSpeed * dt);
             let nextOffsetY = parent.offset.y + (localMoveY * walkSpeed * dt);
 
+            // --- 2a. WALL COLLISION CHECK (WHILE PARENTED) ---
+            if (isPlayer) {
+                const worldX = plat.components.Position.x + (nextOffsetX * Math.cos(pRot) - nextOffsetY * Math.sin(pRot));
+                const worldY = plat.components.Position.y + (nextOffsetX * Math.sin(pRot) + nextOffsetY * Math.cos(pRot));
+                const pRadius = entity.components.Collider?.radius || 10;
+
+                const walls = entities.filter(e => e.components.WallTag && e.components.Collider && e.components.Position);
+                for (const wall of walls) {
+                    const wPos = wall.components.Position;
+                    const wCol = wall.components.Collider;
+                    const wRot = wall.components.Rotation?.angle || 0;
+
+                    if (isPointInside({ x: worldX, y: worldY }, wPos, wCol, pRadius, wRot)) {
+                        // Collision with wall! Revert movement.
+                        nextOffsetX = parent.offset.x;
+                        nextOffsetY = parent.offset.y;
+                        break;
+                    }
+                }
+            }
+
             // CLAMP TO BOUNDARY instead of just stopping
             const col = plat.components.Collider;
             const pRadius = entity.components.Collider?.radius || 0;
