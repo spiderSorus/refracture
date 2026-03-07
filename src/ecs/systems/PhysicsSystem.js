@@ -228,6 +228,21 @@ export const PhysicsSystem = (entities, delta, scene) => {
             if (processedPairs.has(pairId)) continue;
             processedPairs.add(pairId);
 
+            // SPECIAL CASE: Player does NOT collide with Platforms (they are walking areas)
+            // But Player DOES collide with Walls.
+            const isAPlayer = !!A.components.PlayerTag;
+            const isBPlayer = !!B.components.PlayerTag;
+            const isAPlat = !!A.components.PlatformTag;
+            const isBPlat = !!B.components.PlatformTag;
+            const isAWall = !!A.components.WallTag;
+            const isBWall = !!B.components.WallTag;
+
+            if ((isAPlayer && isBPlat) || (isBPlayer && isAPlat)) {
+                // However, we might still want to catch them if we're not using AttachmentSystem here
+                // For now, skip to allow AttachmentSystem to handle "landing"
+                continue;
+            }
+
             // Skip if they're on different layers (Background vs Foreground)
             const isABg = (A.components.ZLayer?.type === 'BACKGROUND') || A.components.BackgroundTag;
             const isBBg = (B.components.ZLayer?.type === 'BACKGROUND') || B.components.BackgroundTag;

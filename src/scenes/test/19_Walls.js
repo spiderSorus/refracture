@@ -14,11 +14,11 @@ export class WallsTest extends BaseTestScene {
         super.create();
 
         const spawnX = 400;
-        const spawnY = 300;
+        const spawnY = 400;
 
         // Spawn platform
         this.addEntity([
-            ...createSpawnPlatform(spawnX, spawnY + 100, { width: 200, height: 40 }),
+            ...createSpawnPlatform(spawnX, spawnY, { width: 200, height: 40 }),
             ZLayer('PLAY', 5)
         ]);
 
