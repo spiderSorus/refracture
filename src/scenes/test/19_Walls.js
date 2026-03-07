@@ -14,21 +14,21 @@ export class WallsTest extends BaseTestScene {
         super.create();
 
         const spawnX = 400;
-        const spawnY = -2000;
+        const spawnY = -400;
 
-        // The "Table" - Large Spawn Platform
+        // Reset Spawn Platform Size
         const areaWidth = 800;
         const areaHeight = 600;
 
         this.addEntity([
-            ...createSpawnPlatform(spawnX, spawnY, { width: areaWidth, height: areaHeight }),
+            ...createSpawnPlatform(spawnX, spawnY, { width: 200, height: 40 }),
             ZLayer('PLAY', 5)
         ]);
 
-        // Define an area with four walls at the edges of the table
+        // Define an area with four walls centered around the spawn point
         const wallThickness = 40;
         const centerX = 400;
-        const centerY = -2000;
+        const centerY = -400;
 
         // Top wall
         this.addEntity(createWall(centerX, centerY - areaHeight/2, areaWidth, wallThickness, 0));
@@ -38,7 +38,7 @@ export class WallsTest extends BaseTestScene {
         this.addEntity(createWall(centerX - areaWidth/2, centerY, wallThickness, areaHeight, 0));
         // Right wall
         this.addEntity(createWall(centerX + areaWidth/2, centerY, wallThickness, areaHeight, 0));
-
+    ...
         // Angled wall inside for fun
         this.addEntity(createWall(centerX + 200, centerY - 100, 200, 30, Math.PI / 4));
 
