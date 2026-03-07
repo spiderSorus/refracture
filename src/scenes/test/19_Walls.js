@@ -14,7 +14,7 @@ export class WallsTest extends BaseTestScene {
         super.create();
 
         const spawnX = 400;
-        const spawnY = 400;
+        const spawnY = -500;
 
         // Spawn platform
         this.addEntity([
@@ -27,7 +27,7 @@ export class WallsTest extends BaseTestScene {
         const areaHeight = 600;
         const wallThickness = 40;
         const centerX = 400;
-        const centerY = 300;
+        const centerY = -500;
 
         // Top wall
         this.addEntity(createWall(centerX, centerY - areaHeight/2, areaWidth, wallThickness, 0));
