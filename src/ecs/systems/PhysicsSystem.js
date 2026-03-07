@@ -197,6 +197,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
                 if (pos.x - pRadius < minX) { pos.x = minX + pRadius; vel.x = 0; }
                 else if (pos.x + pRadius > maxX) { pos.x = maxX - pRadius; vel.x = 0; }
                 if (pos.y - pRadius < minY) { pos.y = minY + pRadius; vel.y = 0; }
+                else if (pos.y + pRadius > maxY) { pos.y = maxY - pRadius; vel.y = 0; }
             }
 
             if (entity.components.PlatformTag && entity.components.Collider) {
