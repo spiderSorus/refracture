@@ -29,6 +29,7 @@ export const createPlayer = (x, y) => [
         */
     }),
     PlayerTag(),
+    Collider('circle', 10),
     Mass(1.5),
     InputControlled(),
     CameraTarget(),

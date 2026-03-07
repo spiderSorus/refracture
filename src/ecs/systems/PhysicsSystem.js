@@ -212,7 +212,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
     });
 
     // --- 4. COLLISION RESOLUTION ---
-    const collidables = entities.filter(e => e.components.PlatformTag && e.components.Collider && e.components.Position);
+    const collidables = entities.filter(e => (e.components.PlatformTag || e.components.PlayerTag || e.components.WallTag) && e.components.Collider && e.components.Position);
     
     spatialHash.clear();
     collidables.forEach(e => spatialHash.insert(e));
@@ -228,14 +228,16 @@ export const PhysicsSystem = (entities, delta, scene) => {
             if (processedPairs.has(pairId)) continue;
             processedPairs.add(pairId);
 
-            if (((A.components.ZLayer?.type === 'BACKGROUND') || A.components.BackgroundTag) !== ((B.components.ZLayer?.type === 'BACKGROUND') || B.components.BackgroundTag)) continue;
+            // Skip if they're on different layers (Background vs Foreground)
+            const isABg = (A.components.ZLayer?.type === 'BACKGROUND') || A.components.BackgroundTag;
+            const isBBg = (B.components.ZLayer?.type === 'BACKGROUND') || B.components.BackgroundTag;
+            if (isABg !== isBBg) continue;
             
             const posA = A.components.Position; const posB = B.components.Position;
             const colA = A.components.Collider; const colB = B.components.Collider;
             
             let nx = 0, ny = 0, overlap = 0;
             let collided = false;
-            let localCollisionInfo = null;
 
             // Case 1: Circle vs Circle
             if (colA.type === 'circle' && colB.type === 'circle') {
@@ -300,9 +302,6 @@ export const PhysicsSystem = (entities, delta, scene) => {
                         else { lnx = 0; lny = 1; }
                     }
 
-                    // Store info for torque
-                    localCollisionInfo = { rect, closestX, closestY, lnx, lny };
-
                     // Rotate local normal back to world space
                     const cosW = Math.cos(rRot);
                     const sinW = Math.sin(rRot);
@@ -319,8 +318,8 @@ export const PhysicsSystem = (entities, delta, scene) => {
             }
 
             if (collided) {
-                const canA = !(A.components.SpawnTag || A.components.StaticTag || A.components.SeesawTag || webbedPlatformIds.has(A.id));
-                const canB = !(B.components.SpawnTag || B.components.StaticTag || B.components.SeesawTag || webbedPlatformIds.has(B.id));
+                const canA = !(A.components.SpawnTag || A.components.StaticTag || A.components.SeesawTag || webbedPlatformIds.has(A.id) || A.components.WallTag);
+                const canB = !(B.components.SpawnTag || B.components.StaticTag || B.components.SeesawTag || webbedPlatformIds.has(B.id) || B.components.WallTag);
 
                 if (canA && canB) {
                     posA.x -= nx * overlap * 0.5; posA.y -= ny * overlap * 0.5;
@@ -329,15 +328,29 @@ export const PhysicsSystem = (entities, delta, scene) => {
                 else if (canB) { posB.x += nx * overlap; posB.y += ny * overlap; }
 
                 const velA = A.components.Velocity; const velB = B.components.Velocity;
-                if (velA && velB) {
-                    const relVelX = velB.x - velA.x; const relVelY = velB.y - velA.y;
+                if (velA || velB) {
+                    const vxA = velA ? velA.x : 0;
+                    const vyA = velA ? velA.y : 0;
+                    const vxB = velB ? velB.x : 0;
+                    const vyB = velB ? velB.y : 0;
+
+                    const relVelX = vxB - vxA; 
+                    const relVelY = vyB - vyA;
                     const velAlongNormal = relVelX * nx + relVelY * ny;
+
                     if (velAlongNormal < 0) {
                         const rest = 0.8;
-                        const massA = A.components.Mass?.value || 10; const massB = B.components.Mass?.value || 10;
-                        let j = -(1 + rest) * velAlongNormal; j /= 1 / massA + 1 / massB;
-                        if (canA) { velA.x -= 1 / massA * j * nx; velA.y -= 1 / massA * j * ny; }
-                        if (canB) { velB.x += 1 / massB * j * nx; velB.y += 1 / massB * j * ny; }
+                        const massA = A.components.Mass?.value || 10; 
+                        const massB = B.components.Mass?.value || 10;
+                        
+                        const invMassA = canA ? (1 / massA) : 0;
+                        const invMassB = canB ? (1 / massB) : 0;
+                        
+                        let j = -(1 + rest) * velAlongNormal; 
+                        j /= (invMassA + invMassB);
+
+                        if (canA && velA) { velA.x -= invMassA * j * nx; velA.y -= invMassA * j * ny; }
+                        if (canB && velB) { velB.x += invMassB * j * nx; velB.y += invMassB * j * ny; }
                     }
                 }
             }

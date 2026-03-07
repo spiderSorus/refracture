@@ -106,6 +106,7 @@ export const EnergySource = (strength = 100, type = 'EMIT') => ({
 });
 
 export const BugTag = () => ({ _type: 'BugTag' });
+export const WallTag = () => ({ _type: 'WallTag' });
 export const GravityExempt = () => ({ _type: 'GravityExempt' });
 
 export const BugAI = () => ({
