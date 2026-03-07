@@ -45,15 +45,18 @@ export const MovementSystem = (entities, inputManager, dt) => {
 
             // CLAMP TO BOUNDARY instead of just stopping
             const col = plat.components.Collider;
+            const pRadius = entity.components.Collider?.radius || 0;
+
             if (col.type === 'circle') {
                 const dist = Math.sqrt(nextOffsetX**2 + nextOffsetY**2);
-                if (dist > col.radius) {
-                    nextOffsetX = (nextOffsetX / dist) * col.radius;
-                    nextOffsetY = (nextOffsetY / dist) * col.radius;
+                const limit = Math.max(0, col.radius - pRadius);
+                if (dist > limit && dist > 0) {
+                    nextOffsetX = (nextOffsetX / dist) * limit;
+                    nextOffsetY = (nextOffsetY / dist) * limit;
                 }
             } else if (col.type === 'rect') {
-                const hw = col.width / 2;
-                const hh = col.height / 2;
+                const hw = Math.max(0, (col.width / 2) - pRadius);
+                const hh = Math.max(0, (col.height / 2) - pRadius);
                 nextOffsetX = Math.max(-hw, Math.min(hw, nextOffsetX));
                 nextOffsetY = Math.max(-hh, Math.min(hh, nextOffsetY));
             }

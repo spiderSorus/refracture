@@ -1,5 +1,5 @@
 // src/ecs/systems/AttachmentSystem.js
-import { isPointInside } from '../../utils/CollisionUtils';
+import { isPointInside, snapOffsetInside } from '../../utils/CollisionUtils';
 import { findPlayer } from '../entities/player';
 
 /**
@@ -59,13 +59,13 @@ export const AttachmentSystem = (entities, scene) => {
             const localX = dx * cos - dy * sin;
             const localY = dx * sin + dy * cos;
 
+            const pRadius = player.components.Collider?.radius || 0;
+            const snapped = snapOffsetInside({ x: localX, y: localY }, plat.components.Collider, pRadius);
+
             player.components.Parent = {
                 _type: 'Parent',
                 id: plat.id,
-                offset: {
-                    x: localX,
-                    y: localY
-                }
+                offset: snapped
             };
 
             if (player.components.Velocity) {
