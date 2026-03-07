@@ -16,15 +16,16 @@ export class WallsTest extends BaseTestScene {
         const spawnX = 400;
         const spawnY = -2000;
 
-        // Spawn platform
+        // The "Table" - Large Spawn Platform
+        const areaWidth = 800;
+        const areaHeight = 600;
+
         this.addEntity([
-            ...createSpawnPlatform(spawnX, spawnY, { width: 200, height: 40 }),
+            ...createSpawnPlatform(spawnX, spawnY, { width: areaWidth, height: areaHeight }),
             ZLayer('PLAY', 5)
         ]);
 
-        // Define an area with four walls
-        const areaWidth = 800;
-        const areaHeight = 600;
+        // Define an area with four walls at the edges of the table
         const wallThickness = 40;
         const centerX = 400;
         const centerY = -2000;
