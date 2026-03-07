@@ -32,7 +32,7 @@ export class WallsTest extends BaseTestScene {
         ]);
 
         // Define an area with four walls centered around the spawn point
-        const wallThickness = 40;
+        const wallThickness = 100;
         const centerX = spawnX;
         const centerY = -500;
 
