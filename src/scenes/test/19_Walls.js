@@ -22,8 +22,8 @@ export class WallsTest extends BaseTestScene {
         const spawnY = -500;
 
         // Reset Spawn Platform Size
-        const areaWidth = 800;
-        const areaHeight = 600;
+        const areaWidth = 1000;
+        const areaHeight = 800;
 
         // 0. SPAWN PLATFORM
         this.addEntity([
@@ -31,8 +31,8 @@ export class WallsTest extends BaseTestScene {
             ZLayer('PLAY', 5)
         ]);
 
-        // Define an area with four walls centered around the spawn point
-        const wallThickness = 100;
+        // Define an area with four thick walls
+        const wallThickness = 200;
         const centerX = spawnX;
         const centerY = -500;
 
@@ -44,9 +44,6 @@ export class WallsTest extends BaseTestScene {
         this.addEntity(createWall(centerX - areaWidth/2, centerY, wallThickness, areaHeight, 0));
         // Right wall
         this.addEntity(createWall(centerX + areaWidth/2, centerY, wallThickness, areaHeight, 0));
-
-        // Angled wall inside for fun
-        this.addEntity(createWall(centerX + 200, centerY - 100, 200, 30, Math.PI / 4));
 
         // Player (needed for BaseTestScene to perform re-attachment)
         this.addEntity([
