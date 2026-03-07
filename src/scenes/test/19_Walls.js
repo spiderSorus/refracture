@@ -14,10 +14,10 @@ export class WallsTest extends BaseTestScene {
         super.create();
 
         const spawnX = 400;
-        const spawnY = -400;
+        const spawnY = -700;
 
         // Reset Spawn Platform Size
-        const areaWidth = 800;
+        const areaWidth = 600;
         const areaHeight = 600;
 
         this.addEntity([
@@ -31,23 +31,16 @@ export class WallsTest extends BaseTestScene {
         const centerY = -400;
 
         // Top wall
-        this.addEntity(createWall(centerX, centerY - areaHeight/2, areaWidth, wallThickness, 0));
+        this.addEntity(createWall(centerX, centerY - areaHeight / 2, areaWidth, wallThickness, 0));
         // Bottom wall
-        this.addEntity(createWall(centerX, centerY + areaHeight/2, areaWidth, wallThickness, 0));
+        this.addEntity(createWall(centerX, centerY + areaHeight / 2, areaWidth, wallThickness, 0));
         // Left wall
-        this.addEntity(createWall(centerX - areaWidth/2, centerY, wallThickness, areaHeight, 0));
+        this.addEntity(createWall(centerX - areaWidth / 2, centerY, wallThickness, areaHeight, 0));
         // Right wall
-        this.addEntity(createWall(centerX + areaWidth/2, centerY, wallThickness, areaHeight, 0));
+        this.addEntity(createWall(centerX + areaWidth / 2, centerY, wallThickness, areaHeight, 0));
 
         // Angled wall inside for fun
         this.addEntity(createWall(centerX + 200, centerY - 100, 200, 30, Math.PI / 4));
-
-        // Player
-        this.addEntity([
-            ...createPlayer(spawnX, spawnY),
-            SlingshotJump(PHYSICS.SLINGSHOT_FORCE),
-            ZLayer('PLAY', 0)
-        ]);
 
         this.cameras.main.centerOn(centerX, centerY);
         this.cameras.main.setZoom(0.8);
