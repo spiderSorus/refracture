@@ -1,5 +1,5 @@
 import {
-    Position, Velocity, Rotation, Renderable,
+    Position, Velocity, Rotation, Renderable, Collider,
     PlayerTag, InputControlled, CameraTarget,
     Mass, Destructible, SlingshotJump, Parent, ZLayer
 } from '../components/index';
