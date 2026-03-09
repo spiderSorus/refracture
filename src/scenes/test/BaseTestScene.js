@@ -21,6 +21,8 @@ import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
 import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
 import { TargetSystem } from '../../ecs/systems/TargetSystem';
 import { EffectSystem } from '../../ecs/systems/EffectSystem';
+import { PathSystem } from '../../ecs/systems/PathSystem';
+import { DriftSystem } from '../../ecs/systems/DriftSystem';
 import { RecordingSystem } from '../../ecs/systems/RecordingSystem'; 
 import { EnergyRules } from '../../ecs/systems/energy_logic/Rules';
 
@@ -34,6 +36,7 @@ export class BaseTestScene extends Phaser.Scene {
         this.energyRules = this.energyRules || [];
         this.entities = [];
         this.entitiesMap = new Map();
+        this.hasBoundaries = true; // Default to true
     }
 
     addEnergyRule(rule) {
@@ -121,16 +124,18 @@ export class BaseTestScene extends Phaser.Scene {
             const minY = worldBounds.y;
             const maxY = worldBounds.y + worldBounds.height;
 
-            const grid = this.add.tileSprite(
-                minX + worldBounds.width / 2, 
-                minY + worldBounds.height / 2, 
-                worldBounds.width, 
-                worldBounds.height, 
-                'bg_grid'
-            ).setDepth(0);
+            if (this.hasBoundaries) {
+                const grid = this.add.tileSprite(
+                    minX + worldBounds.width / 2, 
+                    minY + worldBounds.height / 2, 
+                    worldBounds.width, 
+                    worldBounds.height, 
+                    'bg_grid'
+                ).setDepth(0);
 
-            if (this.backgroundLayer) this.backgroundLayer.add(grid);
-            if (this.webCamera) this.webCamera.ignore(grid);
+                if (this.backgroundLayer) this.backgroundLayer.add(grid);
+                if (this.webCamera) this.webCamera.ignore(grid);
+            }
 
             const spawnPoint = this.entities.find(e => e.components.SpawnTag);
             const player = this.entities.find(e => e.components.PlayerTag);
@@ -151,17 +156,19 @@ export class BaseTestScene extends Phaser.Scene {
             }
 
             // --- GLOW EFFECTS (Floor & Walls) ---
-            const glowGfx = this.add.graphics();
-            if (this.playground) this.playground.add(glowGfx);
-            
-            for (let i = 1; i <= 8; i++) {
-                glowGfx.lineStyle(i * 8, 0x0088ff, 0.4 / i);
-                glowGfx.lineBetween(minX, maxY, maxX, maxY); // Floor
-                glowGfx.lineBetween(minX, minY, minX, maxY); // Left Wall
-                glowGfx.lineBetween(maxX, minY, maxX, maxY); // Right Wall
+            if (this.hasBoundaries) {
+                const glowGfx = this.add.graphics();
+                if (this.playground) this.playground.add(glowGfx);
+                
+                for (let i = 1; i <= 8; i++) {
+                    glowGfx.lineStyle(i * 8, 0x0088ff, 0.4 / i);
+                    glowGfx.lineBetween(minX, maxY, maxX, maxY); // Floor
+                    glowGfx.lineBetween(minX, minY, minX, maxY); // Left Wall
+                    glowGfx.lineBetween(maxX, minY, maxX, maxY); // Right Wall
+                }
+                glowGfx.setDepth(1000); // High depth within the layer
+                if (this.webCamera) this.webCamera.ignore(glowGfx);
             }
-            glowGfx.setDepth(1000); // High depth within the layer
-            if (this.webCamera) this.webCamera.ignore(glowGfx);
 
             this.initialized = true;
         }
@@ -181,6 +188,8 @@ export class BaseTestScene extends Phaser.Scene {
             AttachmentSystem(this.entities, this);
             TargetSystem(this.entities, this);
             EffectSystem(this.entities, dtSeconds);
+            PathSystem(this.entities, dtSeconds, this);
+            DriftSystem(this.entities, dtSeconds, this);
             MovementSystem(this.entities, this.inputManager, dtSeconds);
             PhysicsSystem(this.entities, PHYSICS.STEP, this);
             LifecycleSystem(this.entities, dtSeconds, this);
@@ -260,6 +269,7 @@ export class BaseTestScene extends Phaser.Scene {
             }, {
                 fps: Math.round(this.game.loop.actualFps),
                 status: player.components.Parent ? "ATTACHED" : "FREE",
+                memory: player.components.PlayerMemory?.entities.length || 0,
                 background: this.currentBackground || 'Default',
                 worldDims: `${Math.round(worldBounds.width)}x${Math.round(worldBounds.height)}`,
                 bgDims: this.bgDimensions ? `${this.bgDimensions.w}x${this.bgDimensions.h}` : 'Auto',

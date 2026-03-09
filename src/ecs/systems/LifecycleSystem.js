@@ -16,7 +16,7 @@ export const LifecycleSystem = (entities, dt, scene) => {
         const { Position: pos, PlayerTag: isPlayer, Destructible: destructible } = entity.components;
 
         // 1. Check for destruction (Floor hit)
-        if (isPlayer && pos && destructible && !entity.toDestroy) {
+        if (isPlayer && pos && destructible && !entity.toDestroy && scene.hasBoundaries !== false) {
             if (pos.y >= maxY - 20) { // Buffer from floor
                 console.log(`[LIFECYCLE] Player hit floor at ${pos.y} (maxY: ${maxY}). Destroying...`);
                 entity.toDestroy = true;

@@ -192,7 +192,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
             }
 
             // World Boundaries
-            if (isPlayer) {
+            if (isPlayer && (scene && scene.hasBoundaries !== false)) {
                 const pRadius = 15;
                 if (pos.x - pRadius < minX) { pos.x = minX + pRadius; vel.x = 0; }
                 else if (pos.x + pRadius > maxX) { pos.x = maxX - pRadius; vel.x = 0; }
@@ -201,7 +201,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
                 // else if (pos.y + pRadius > maxY) { pos.y = maxY - pRadius; vel.y = 0; }
             }
 
-            if (entity.components.PlatformTag && entity.components.Collider) {
+            if (entity.components.PlatformTag && entity.components.Collider && (scene && scene.hasBoundaries !== false)) {
                 const col = entity.components.Collider;
                 const halfW = col.type === 'circle' ? col.radius : (col.width / 2);
                 const halfH = col.type === 'circle' ? col.radius : (col.height / 2);

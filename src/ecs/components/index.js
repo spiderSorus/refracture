@@ -148,17 +148,43 @@ export const Respawn = (delay = 1000) => ({
 export const TargetTag = (isTriggered = false) => ({
     _type: 'TargetTag',
     isTriggered,
-    needsUpdate: false
+    needsUpdate: false,
+    lastEmitTime: 0,
+    emitCount: 0
 });
 
 export const FollowPlayer = (speed = 100, minDistance = 5) => ({
     _type: 'FollowPlayer',
     speed,
-    minDistance
+    minDistance,
+    reachedPlayer: false
 });
 
 export const Lifespan = (duration = 2000) => ({
     _type: 'Lifespan',
     duration,
     remaining: duration
+});
+
+export const PathTracker = () => ({
+    _type: 'PathTracker',
+    current: [],
+    history: [], // Array of previous paths
+    lastCaptureTime: 0
+});
+
+export const PathFollower = (pathIndex = -1, progress = 0) => ({
+    _type: 'PathFollower',
+    pathIndex,   // -1 for current, 0...N for history
+    progress     // 0.0 to 1.0 along the path
+});
+
+export const PlayerMemory = () => ({
+    _type: 'PlayerMemory',
+    entities: [] // Array of interacted entity IDs
+});
+
+export const Drift = (vx = 0, vy = 0, vrot = 0) => ({
+    _type: 'Drift',
+    vx, vy, vrot
 });

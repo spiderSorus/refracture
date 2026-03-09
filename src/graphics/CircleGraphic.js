@@ -11,7 +11,7 @@ export class CircleGraphic extends BaseGraphic {
         const container = this.scene.add.container(0, 0);
         
         // 1. Base Circle
-        this.circle = this.scene.add.circle(0, 0, radius, color);
+        this.circle = this.scene.add.circle(0, 0, radius, color, 1.0);
         container.add(this.circle);
 
         // 2. Spokes (Visual only, to show rotation)

@@ -1,7 +1,8 @@
 import {
     Position, Velocity, Rotation, Renderable, Collider,
     PlayerTag, InputControlled, CameraTarget,
-    Mass, Destructible, SlingshotJump, Parent, ZLayer
+    Mass, Destructible, SlingshotJump, Parent, ZLayer,
+    PlayerMemory
 } from '../components/index';
 import { PHYSICS } from '../../core/Constants';
 
@@ -14,7 +15,7 @@ export const createPlayer = (x, y) => [
         'BASE': {
             type: 'circle',
             radius: 10,
-            color: 0x000000,
+            color: 0xff0000,
             alpha: 1.0,
             depth: 0
         }
@@ -33,7 +34,8 @@ export const createPlayer = (x, y) => [
     Mass(1.5),
     InputControlled(),
     CameraTarget(),
-    Destructible()
+    Destructible(),
+    PlayerMemory()
 ];
 
 export const spawnPlayer = (scene, spawnPoint) => {

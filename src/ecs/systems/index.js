@@ -14,6 +14,8 @@ export * from './ParallaxSystem';
 export * from './ZLayerSystem';
 export * from './TargetSystem';
 export * from './EffectSystem';
+export * from './PathSystem';
+export * from './DriftSystem';
 
 // Explicitly export these to resolve the "Conflicting Star Exports" error
 export { SlingshotSystem } from './SlingshotSystem';

@@ -9,10 +9,10 @@ export const MovementSystem = (entities, inputManager, dt) => {
 
     entities.forEach(entity => {
         const { Position: pos, Velocity: vel, Parent: parent, Rotation: rot, SlingshotJump: sling, WebTether: tether, PlayerTag: isPlayer } = entity.components;
-        if (!pos || !rot) return;
+        if (!pos) return;
 
         // --- 1. ROTATION LOGIC (Player Only) ---
-        if (isPlayer) {
+        if (isPlayer && rot) {
             const offset = Math.PI / 2;
             if (sling && sling.isCharging && sling.lockedAim) {
                 rot.angle = Math.atan2(-sling.lockedAim.y, -sling.lockedAim.x) + offset;

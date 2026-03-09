@@ -8,10 +8,9 @@ export class RectGraphic extends BaseGraphic {
             0, 0,
             config.width || 32,
             config.height || 32,
-            config.color || 0xffffff
+            config.color || 0xffffff,
+            config.alpha ?? 1.0
         );
-
-        if (config.alpha !== undefined) this.rect.setAlpha(config.alpha);
         this.rect.isFilled = true;
 
         if (config.strokeColor !== undefined) {

@@ -1,7 +1,7 @@
 import { isPointInside } from '../../utils/CollisionUtils';
 import { 
     Position, Velocity, Renderable, ZLayer, 
-    FollowPlayer, Lifespan 
+    FollowPlayer, Lifespan, GravityExempt
 } from '../components/index';
 
 export const TargetSystem = (entities, scene) => {
@@ -23,6 +23,16 @@ export const TargetSystem = (entities, scene) => {
 
             if (isInside && !target.isTriggered) {
                 target.isTriggered = true;
+                
+                // Add to player memory
+                if (player.components.PlayerMemory) {
+                    const mem = player.components.PlayerMemory;
+                    if (!mem.entities.includes(entity.id)) {
+                        mem.entities.push(entity.id);
+                    }
+                }
+
+                console.log(`[TARGET] Triggered target at ${pos.x}, ${pos.y}`);
                 
                 if (renderable.definitions['OFF']) {
                     const offConfig = renderable.definitions['OFF'];
@@ -46,25 +56,28 @@ export const TargetSystem = (entities, scene) => {
 
                 colors.forEach((color, i) => {
                     const angle = (i / colors.length) * Math.PI * 2;
-                    const speed = 50 + Math.random() * 100;
+                    const speed = 100 + Math.random() * 150;
                     const vx = Math.cos(angle) * speed;
                     const vy = Math.sin(angle) * speed;
 
-                    scene.addEntity([
+                    const p = scene.addEntity([
                         Position(pos.x, pos.y),
                         Velocity(vx, vy),
+                        GravityExempt(),
                         ZLayer('PLAY', 50), // Above everything
                         Renderable({
                             'BASE': {
                                 type: 'glow',
                                 color: color,
-                                radius: 4,
-                                alpha: 0.8
+                                radius: 8, // Increased size
+                                alpha: 1.0, // Full alpha
+                                depth: 1000 // High depth
                             }
                         }),
-                        FollowPlayer(150 + Math.random() * 50),
-                        Lifespan(2000 + Math.random() * 1000)
+                        FollowPlayer(200 + Math.random() * 100),
+                        Lifespan(3000 + Math.random() * 1000)
                     ]);
+                    console.log(`[TARGET] Spawned particle ${i} color=${color.toString(16)} ID=${p.id}`);
                 });
             }
         }

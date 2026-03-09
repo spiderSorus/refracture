@@ -68,6 +68,14 @@ export const AttachmentSystem = (entities, scene) => {
                 offset: snapped
             };
 
+            // Add to player memory
+            if (player.components.PlayerMemory) {
+                const mem = player.components.PlayerMemory;
+                if (!mem.entities.includes(plat.id)) {
+                    mem.entities.push(plat.id);
+                }
+            }
+
             if (player.components.Velocity) {
                 player.components.Velocity.x = 0;
                 player.components.Velocity.y = 0;
