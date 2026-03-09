@@ -16,6 +16,7 @@ import { Renderama } from './16_Renderama';
 import { PullTest } from './17_PullTest';
 import { PlantsScene } from './18_Plants';
 import { WallsTest } from './19_Walls';
+import { TargetTest } from './20_TargetTest';
 import { Gameplay } from '../Gameplay';
 
 export const TestScenes = [
@@ -37,5 +38,6 @@ export const TestScenes = [
     Renderama,
     PullTest,
     PlantsScene,
-    WallsTest
+    WallsTest,
+    TargetTest
 ];

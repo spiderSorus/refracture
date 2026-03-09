@@ -19,6 +19,8 @@ import { ParallaxSystem } from '../../ecs/systems/ParallaxSystem';
 import { ZLayerSystem } from '../../ecs/systems/ZLayerSystem';
 import { SlingshotSystem } from '../../ecs/systems/SlingshotSystem';
 import { SlingshotRenderSystem } from '../../ecs/systems/SlingshotRenderSystem';
+import { TargetSystem } from '../../ecs/systems/TargetSystem';
+import { EffectSystem } from '../../ecs/systems/EffectSystem';
 import { RecordingSystem } from '../../ecs/systems/RecordingSystem'; 
 import { EnergyRules } from '../../ecs/systems/energy_logic/Rules';
 
@@ -177,9 +179,11 @@ export class BaseTestScene extends Phaser.Scene {
             EnergySystem(this.entities, dtSeconds, this);
             BugAISystem(this.entities, dtSeconds);
             AttachmentSystem(this.entities, this);
-            LifecycleSystem(this.entities, dtSeconds, this);
+            TargetSystem(this.entities, this);
+            EffectSystem(this.entities, dtSeconds);
             MovementSystem(this.entities, this.inputManager, dtSeconds);
             PhysicsSystem(this.entities, PHYSICS.STEP, this);
+            LifecycleSystem(this.entities, dtSeconds, this);
 
             this.fixedUpdate(time, PHYSICS.STEP);
             this.accumulator -= PHYSICS.STEP;

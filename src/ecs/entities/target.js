@@ -1,24 +1,20 @@
-import { Position, Renderable, Rotation, EntityType, ZLayer } from '../components/index';
+import { Position, Renderable, Rotation, EntityType, ZLayer, TargetTag, Collider } from '../components/index';
 
-export const createTarget = (x, y, type = 'A') => {
-    // Determine configuration based on type
-    const config = {
-        'A': { color: 0x0000ff, type: 'rect' },
-        'B': { color: 0x00ff00, type: 'rect' },
-        'C': { color: 0xffff00, type: 'circle' }
-    }[type] || { color: 0xffffff, type: 'rect' };
-
+export const createTarget = (x, y, width = 50, height = 50) => {
     return [
         Position(x, y),
         Rotation(0),
         ZLayer('PLAY', 0),
+        TargetTag(false),
+        Collider('rect', 0, width, height),
         Renderable({
-            'BASE': {
-                type: config.type,
-                color: config.color,
-                width: 12, height: 12, radius: 6 // Default sizes
+            'OFF': {
+                type: 'rect',
+                color: 0xff0000, // Red
+                width: width, height: height,
+                alpha: 0.5
             }
         }),
-        EntityType(type)
+        EntityType('TARGET')
     ];
 };

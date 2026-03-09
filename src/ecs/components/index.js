@@ -144,3 +144,21 @@ export const Respawn = (delay = 1000) => ({
     timer: 0,
     isPending: false
 });
+
+export const TargetTag = (isTriggered = false) => ({
+    _type: 'TargetTag',
+    isTriggered,
+    needsUpdate: false
+});
+
+export const FollowPlayer = (speed = 100, minDistance = 5) => ({
+    _type: 'FollowPlayer',
+    speed,
+    minDistance
+});
+
+export const Lifespan = (duration = 2000) => ({
+    _type: 'Lifespan',
+    duration,
+    remaining: duration
+});
