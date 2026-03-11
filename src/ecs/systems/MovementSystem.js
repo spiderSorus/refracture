@@ -68,18 +68,20 @@ export const MovementSystem = (entities, inputManager, dt) => {
             const col = plat.components.Collider;
             const pRadius = entity.components.Collider?.radius || 0;
 
-            if (col.type === 'circle') {
-                const dist = Math.sqrt(nextOffsetX**2 + nextOffsetY**2);
-                const limit = Math.max(0, col.radius - pRadius);
-                if (dist > limit && dist > 0) {
-                    nextOffsetX = (nextOffsetX / dist) * limit;
-                    nextOffsetY = (nextOffsetY / dist) * limit;
+            if (col) {
+                if (col.type === 'circle') {
+                    const dist = Math.sqrt(nextOffsetX**2 + nextOffsetY**2);
+                    const limit = Math.max(0, col.radius - pRadius);
+                    if (dist > limit && dist > 0) {
+                        nextOffsetX = (nextOffsetX / dist) * limit;
+                        nextOffsetY = (nextOffsetY / dist) * limit;
+                    }
+                } else if (col.type === 'rect') {
+                    const hw = Math.max(0, (col.width / 2) - pRadius);
+                    const hh = Math.max(0, (col.height / 2) - pRadius);
+                    nextOffsetX = Math.max(-hw, Math.min(hw, nextOffsetX));
+                    nextOffsetY = Math.max(-hh, Math.min(hh, nextOffsetY));
                 }
-            } else if (col.type === 'rect') {
-                const hw = Math.max(0, (col.width / 2) - pRadius);
-                const hh = Math.max(0, (col.height / 2) - pRadius);
-                nextOffsetX = Math.max(-hw, Math.min(hw, nextOffsetX));
-                nextOffsetY = Math.max(-hh, Math.min(hh, nextOffsetY));
             }
 
             parent.offset.x = nextOffsetX;

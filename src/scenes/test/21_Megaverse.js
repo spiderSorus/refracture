@@ -7,6 +7,7 @@ import {
     Position, Renderable, Collider, PlatformTag, EntityType, SlingshotJump,
     Mass, Velocity, ZLayer, Ego, SpawnTag
 } from '../../ecs/components/index';
+import { isOverlapping } from '../../utils/CollisionUtils';
 import Phaser from 'phaser';
 
 export class Megaverse extends BaseTestScene {
@@ -14,6 +15,7 @@ export class Megaverse extends BaseTestScene {
         super('Megaverse', 'Megaverse', 'A vast expanse of targets and platforms.');
         this.meditationEnabled = false;
         this.hasBoundaries = false; // INFINITE WORLD
+        this.hasCentralGravity = true; // Gravity pulls toward 0,0
     }
 
     create() {
@@ -39,16 +41,13 @@ export class Megaverse extends BaseTestScene {
         const spawnY = 0;
 
         // 3. SPAWN INFRASTRUCTURE (Circular)
-        this.addEntity(createPlatform(spawnX, spawnY, { 
-            width: 100, 
-            shape: 'circle', 
-            isStatic: true, 
-            color: 0x888888 
-        }));
-        
-        // Add a SpawnTag to one of the platforms so LifecycleSystem knows where to respawn
-        const spawnPoint = this.addEntity([
-            Position(spawnX, spawnY),
+        this.addEntity([
+            ...createPlatform(spawnX, spawnY, { 
+                width: 300, 
+                shape: 'circle', 
+                isStatic: true, 
+                color: 0x888888 
+            }),
             SpawnTag()
         ]);
         
@@ -61,6 +60,16 @@ export class Megaverse extends BaseTestScene {
         // 4. PERSISTENT STATE
         this.islandHistory = []; // Already spawned island locations
         this._spawnTimer = 0;
+
+        // 5. INITIAL NEARBY ISLANDS
+        for (let i = 0; i < 5; i++) {
+            const angle = (i / 5) * Math.PI * 2;
+            const distance = 800 + Math.random() * 400;
+            const ix = spawnX + Math.cos(angle) * distance;
+            const iy = spawnY + Math.sin(angle) * distance;
+            this.createIsland(ix, iy);
+            this.islandHistory.push({ x: ix, y: iy });
+        }
 
         this.cameras.main.centerOn(spawnX, spawnY);
     }
@@ -80,15 +89,15 @@ export class Megaverse extends BaseTestScene {
         if (player) {
             const pPos = player.components.Position;
             const cam = this.cameras.main;
-            const viewRadius = Math.max(cam.displayWidth, cam.displayHeight) * 1.5;
+            const viewRadius = Math.max(cam.displayWidth, cam.displayHeight) * 1.2;
 
             this._spawnTimer += delta;
-            if (this._spawnTimer >= 2000) {
+            if (this._spawnTimer >= 1500) {
                 this._spawnTimer = 0;
                 
                 // Attempt to spawn a new island at the edge of the view
                 const angle = Math.random() * Math.PI * 2;
-                const distance = viewRadius * 0.8;
+                const distance = viewRadius * 0.7;
                 const ix = pPos.x + Math.cos(angle) * distance;
                 const iy = pPos.y + Math.sin(angle) * distance;
 
@@ -131,23 +140,24 @@ export class Megaverse extends BaseTestScene {
     createIsland(x, y) {
         const platformCount = 3 + Math.floor(Math.random() * 5);
         for (let i = 0; i < platformCount; i++) {
-            const px = x + (Math.random() - 0.5) * 600;
-            const py = y + (Math.random() - 0.5) * 600;
-            
-            this.addEntity([
-                ...createPlatform(px, py, { 
-                    width: 100 + Math.random() * 200, 
-                    height: 40, 
-                    isStatic: true, 
-                    color: 0x333333 
-                }),
-                ZLayer('PLAY', 10),
-                Ego(Math.floor(Math.random() * 255))
-            ]);
+            const px = x + (Math.random() - 0.5) * 1000;
+            const py = y + (Math.random() - 0.5) * 1000;
+            const size = 300 + Math.random() * 300;
 
-            // Chance for a target near platform
-            if (Math.random() > 0.4) {
-                this.addEntity(createTarget(px, py - 150, 60, 60));
+            const newPos = { x: px, y: py };
+            const newCol = { type: 'circle', radius: size / 2 };
+
+            if (!isOverlapping(newPos, newCol, this.entities)) {
+                this.addEntity([
+                    ...createPlatform(px, py, { 
+                        width: size, 
+                        shape: 'circle',
+                        isStatic: true, 
+                        color: 0x333333 
+                    }),
+                    ZLayer('PLAY', 10),
+                    Ego(Math.floor(Math.random() * 255))
+                ]);
             }
         }
     }

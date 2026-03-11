@@ -173,10 +173,10 @@ export const PathTracker = () => ({
     lastCaptureTime: 0
 });
 
-export const PathFollower = (pathIndex = -1, progress = 0) => ({
+export const PathFollower = (pathIndex = -1, distanceTraveled = 0) => ({
     _type: 'PathFollower',
     pathIndex,   // -1 for current, 0...N for history
-    progress     // 0.0 to 1.0 along the path
+    distanceTraveled
 });
 
 export const PlayerMemory = () => ({

@@ -83,20 +83,14 @@ export const WebSystem = (entities, inputManager, scene) => {
             tether.isActive = false; 
             tether.isPullable = !!platform.components.SeesawTag;
 
-            if (!currentParent && tether._hadParent) {
-                tether.maxLength = tether.originalMaxLength || PHYSICS.WEB_INITIAL_LENGTH;
-            }
-            tether._hadParent = !!currentParent;
-
             if (lb) {
                 tether.isActive = true;
-                tether._wasLbDown = true;
 
-                if (tether.maxLength > dist + 5) {
-                    tether.maxLength = Math.max(dist, tether.maxLength - winchSpeed);
-                } else {
-                    tether.maxLength = dist;
-                    
+                // Directly decrease maxLength - decouple from current dist to prevent gravity from "pulling out" more line
+                tether.maxLength = Math.max(MIN_SPOOL_LENGTH, tether.maxLength - winchSpeed);
+                
+                // If the rope is taut (or we are trying to make it shorter than current dist), we can pull Seesaw platforms
+                if (tether.maxLength <= dist + 10) {
                     const isStandingOnTarget = currentParent && currentParent.id === tether.platformId;
                     if (tether.isPullable && !isStandingOnTarget && platform.components.SeesawTag && platform.components.AngularVelocity) {
                         const angVel = platform.components.AngularVelocity;
@@ -165,11 +159,6 @@ export const WebSystem = (entities, inputManager, scene) => {
                             tether.isActive = false; // Blocked - allow physics to freeze it
                         }
                     }
-                }
-            } else {
-                if (tether._wasLbDown) {
-                    tether.maxLength = dist;
-                    tether._wasLbDown = false;
                 }
             }
 

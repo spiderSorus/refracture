@@ -48,11 +48,11 @@ export class InputManager {
 
         if (action === 'SHORTEN') {
             if (this.keys.shorten.isDown) return true;
-            if (this.pad && (this.pad.L1 || this.pad.buttons[4].pressed)) return true;
+            if (this.pad && (this.pad.L1 || (this.pad.buttons[4] && this.pad.buttons[4].pressed))) return true;
         }
         if (action === 'LENGTHEN') {
             if (this.keys.lengthen.isDown) return true;
-            if (this.pad && (this.pad.R1 || this.pad.buttons[5].pressed)) return true;
+            if (this.pad && (this.pad.R1 || (this.pad.buttons[5] && this.pad.buttons[5].pressed))) return true;
         }
 
         // --- MEDITATION TRIGGERS ---
@@ -121,12 +121,12 @@ export class InputManager {
         else if (button === 'right') {
             isDown = this.pad.right || this.pad.buttons[15].pressed || this.pad.leftStick.x > stickThreshold;
         }
-        else if (button === 'A') isDown = this.pad.A || this.pad.buttons[0].pressed;
-        else if (button === 'B') isDown = this.pad.B || this.pad.buttons[1].pressed;
-        else if (button === 'X') isDown = this.pad.X || this.pad.buttons[2].pressed;
-        else if (button === 'Y') isDown = this.pad.Y || this.pad.buttons[3].pressed;
-        else if (button === 'L1') isDown = this.pad.L1 || this.pad.buttons[4].pressed;
-        else if (button === 'R1') isDown = this.pad.R1 || this.pad.buttons[5].pressed;
+        else if (button === 'A') isDown = this.pad.A || (this.pad.buttons[0] && this.pad.buttons[0].pressed);
+        else if (button === 'B') isDown = this.pad.B || (this.pad.buttons[1] && this.pad.buttons[1].pressed);
+        else if (button === 'X') isDown = this.pad.X || (this.pad.buttons[2] && this.pad.buttons[2].pressed);
+        else if (button === 'Y') isDown = this.pad.Y || (this.pad.buttons[3] && this.pad.buttons[3].pressed);
+        else if (button === 'L1') isDown = this.pad.L1 || (this.pad.buttons[4] && this.pad.buttons[4].pressed);
+        else if (button === 'R1') isDown = this.pad.R1 || (this.pad.buttons[5] && this.pad.buttons[5].pressed);
         else if (this.pad[button]) isDown = this.pad[button];
 
         const wasDown = this.prevPadState[button] || false;

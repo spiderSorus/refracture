@@ -1,6 +1,7 @@
 // src/ecs/systems/DriftSystem.js
 import { createPlatform } from '../entities/platforms';
 import { Drift, ZLayer, GravityExempt } from '../components/index';
+import { isOverlapping } from '../../utils/CollisionUtils';
 
 export const DriftSystem = (entities, dtSeconds, scene) => {
     const player = entities.find(e => e.components.PlayerTag && !e.toDestroy);
@@ -10,9 +11,13 @@ export const DriftSystem = (entities, dtSeconds, scene) => {
     if (!pPos) return;
 
     const cam = scene.cameras.main;
-    const viewW = cam.displayWidth || scene.scale.width;
-    const viewH = cam.displayHeight || scene.scale.height;
-    const spawnRange = Math.max(viewW, viewH); // ~2x view roughly if we use this as radius
+    // Use zoom to calculate world-space view size. 
+    // If minZoom exists, use that for the "max boundary".
+    const baseZoom = cam.minZoom || cam.zoom || 1.0;
+    const worldViewW = scene.scale.width / baseZoom;
+    const worldViewH = scene.scale.height / baseZoom;
+    
+    const spawnRange = Math.max(worldViewW, worldViewH); 
     const cleanupRange = spawnRange * 2.5;
 
     // 1. UPDATE EXISTING DRIFTERS
@@ -23,10 +28,7 @@ export const DriftSystem = (entities, dtSeconds, scene) => {
         const rot = entity.components.Rotation;
 
         if (drift && pos && vel) {
-            // Apply drift to velocity
-            vel.x = drift.vx;
-            vel.y = drift.vy;
-
+            // Only update rotation here - velocity is managed by physics/initial impulse
             if (rot) {
                 rot.angle += drift.vrot * dtSeconds;
             }
@@ -62,18 +64,29 @@ export const DriftSystem = (entities, dtSeconds, scene) => {
         const dvy = (Math.random() - 0.5) * 100;
         const dvrot = (Math.random() - 0.5) * 1;
 
-        const size = 60 + Math.random() * 140;
+        const size = 300 + Math.random() * 200;
         
-        scene.addEntity([
-            ...createPlatform(sx, sy, { 
-                width: size, 
-                height: size * 0.4, 
-                isStatic: false, // Must be dynamic to bounce
-                color: 0x555555 
-            }),
-            Drift(dvx, dvy, dvrot),
-            GravityExempt(),
-            ZLayer('PLAY', 5)
-        ]);
+        const newPos = { x: sx, y: sy };
+        const newCol = { type: 'circle', radius: size / 2 };
+
+        if (!isOverlapping(newPos, newCol, entities)) {
+            const platform = scene.addEntity([
+                ...createPlatform(sx, sy, { 
+                    width: size, 
+                    shape: 'circle', 
+                    isStatic: false, 
+                    color: 0x555555 
+                }),
+                Drift(dvx, dvy, dvrot),
+                GravityExempt(),
+                ZLayer('PLAY', 5)
+            ]);
+
+            // Set initial velocity
+            if (platform.components.Velocity) {
+                platform.components.Velocity.x = dvx;
+                platform.components.Velocity.y = dvy;
+            }
+        }
     }
 };

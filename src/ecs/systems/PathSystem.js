@@ -1,4 +1,5 @@
 import { Position, Renderable, ZLayer, PathFollower, GravityExempt } from '../components/index';
+import Phaser from 'phaser';
 
 export const PathSystem = (entities, dtSeconds, scene) => {
     // 1. Initialize persistent state on scene if missing
@@ -8,7 +9,9 @@ export const PathSystem = (entities, dtSeconds, scene) => {
             history: [],
             lastPlayerId: null,
             lastCaptureTime: 0,
-            lastParticleTime: 0
+            lastParticleTime: 0,
+            maxDist: 0,
+            maxDistPoint: { x: 0, y: 0 }
         };
     }
 
@@ -25,30 +28,39 @@ export const PathSystem = (entities, dtSeconds, scene) => {
     ];
 
     const getPathColor = (histIdx, totalHist) => {
-        // histIdx is 0 (oldest) to totalHist-1 (youngest)
-        // We want newest to be red, oldest to be purple
         const age = (totalHist - 1) - histIdx;
         return PATH_COLORS[Math.min(age, PATH_COLORS.length - 1)];
+    };
+
+    // Helper to calculate cumulative distance for a path
+    const computePathDistances = (path) => {
+        if (!path || path.length < 2) return [0];
+        const dists = [0];
+        let total = 0;
+        for (let i = 1; i < path.length; i++) {
+            total += Phaser.Math.Distance.Between(path[i-1].x, path[i-1].y, path[i].x, path[i].y);
+            dists.push(total);
+        }
+        return dists;
     };
 
     // 2. DETECT RESPAWN (Player ID Change)
     if (player) {
         if (tracker.lastPlayerId !== null && tracker.lastPlayerId !== player.id) {
-            // New player entity (Respawn happened)
             if (tracker.current.length > 0) {
-                tracker.history.push([...tracker.current]);
+                tracker.history.push({
+                    points: [...tracker.current],
+                    distances: computePathDistances(tracker.current)
+                });
                 tracker.current = [];
-                // Particles will find their new pathIndex in update loop
             }
 
-            // --- PRESERVE MEMORY ---
             if (tracker.lastMemory && player.components.PlayerMemory) {
-                console.log(`[PATH] Restoring player memory of ${tracker.lastMemory.entities.length} entities.`);
                 player.components.PlayerMemory.entities = [...tracker.lastMemory.entities];
             }
         }
         tracker.lastPlayerId = player.id;
-        tracker.lastMemory = player.components.PlayerMemory; // Keep track for next respawn
+        tracker.lastMemory = player.components.PlayerMemory;
 
         // 3. SAMPLE POSITION (Every 100ms)
         const pos = player.components.Position;
@@ -56,6 +68,12 @@ export const PathSystem = (entities, dtSeconds, scene) => {
         if (pos && (now - tracker.lastCaptureTime >= 100)) {
             tracker.current.push({ x: pos.x, y: pos.y });
             tracker.lastCaptureTime = now;
+
+            const distSq = pos.x * pos.x + pos.y * pos.y;
+            if (distSq > tracker.maxDist * tracker.maxDist) {
+                tracker.maxDist = Math.sqrt(distSq);
+                tracker.maxDistPoint = { x: pos.x, y: pos.y };
+            }
         }
 
         // 4. SPAWN PARTICLES (Every 500ms)
@@ -63,12 +81,12 @@ export const PathSystem = (entities, dtSeconds, scene) => {
             scene.addEntity([
                 Position(tracker.current[0]?.x || pos.x, tracker.current[0]?.y || pos.y),
                 GravityExempt(),
-                ZLayer('PLAY', -10), // Behind player
-                PathFollower(-1, 0), // -1 is current path
+                ZLayer('PLAY', -10),
+                PathFollower(-1, 0), // Start at 0 distance
                 Renderable({
                     'BASE': {
                         type: 'glow',
-                        color: 0xffffff, // Current path is white
+                        color: 0xffffff,
                         radius: 3,
                         alpha: 0.6
                     }
@@ -77,9 +95,11 @@ export const PathSystem = (entities, dtSeconds, scene) => {
             tracker.lastParticleTime = now;
         }
     } else if (tracker.lastPlayerId !== null) {
-        // Player just disappeared
         if (tracker.current.length > 0) {
-            tracker.history.push([...tracker.current]);
+            tracker.history.push({
+                points: [...tracker.current],
+                distances: computePathDistances(tracker.current)
+            });
             tracker.current = [];
         }
         tracker.lastPlayerId = null;
@@ -92,42 +112,59 @@ export const PathSystem = (entities, dtSeconds, scene) => {
         const renderable = entity.components.Renderable;
         if (!follower || !pos || !renderable) return;
 
-        // Determine target path
-        let path = null;
+        let pathPoints = null;
+        let pathDists = null;
         let color = 0xffffff;
 
         if (follower.pathIndex === -1) {
-            path = tracker.current;
-            color = 0xffffff;
-            
-            // If path was archived while this particle was current, move it to history
-            if (path.length === 0 && tracker.history.length > 0) {
+            // Current path: compute distances on the fly or keep simple
+            if (tracker.current.length === 0 && tracker.history.length > 0) {
                 follower.pathIndex = tracker.history.length - 1;
-                path = tracker.history[follower.pathIndex];
+                const hist = tracker.history[follower.pathIndex];
+                pathPoints = hist.points;
+                pathDists = hist.distances;
+            } else {
+                pathPoints = tracker.current;
+                pathDists = computePathDistances(pathPoints);
             }
         } else {
-            path = tracker.history[follower.pathIndex];
-            color = getPathColor(follower.pathIndex, tracker.history.length);
+            const hist = tracker.history[follower.pathIndex];
+            if (hist) {
+                pathPoints = hist.points;
+                pathDists = hist.distances;
+                color = getPathColor(follower.pathIndex, tracker.history.length);
+            }
         }
 
-        if (!path || path.length < 2) return;
+        if (!pathPoints || pathPoints.length < 2) return;
 
-        // Move along path
-        follower.progress += dtSeconds * 0.5; // Complete path in 2 seconds (adjustable)
-        if (follower.progress > 1.0) follower.progress = 0;
+        const totalDist = pathDists[pathDists.length - 1];
+        if (totalDist <= 0) return;
 
-        // Interpolate position
-        const floatIdx = follower.progress * (path.length - 1);
-        const idx = Math.floor(floatIdx);
-        const nextIdx = Math.min(idx + 1, path.length - 1);
-        const t = floatIdx - idx;
+        // Move along path at constant speed (e.g. 250 px/sec)
+        follower.distanceTraveled += dtSeconds * 250;
+        if (follower.distanceTraveled > totalDist) {
+            follower.distanceTraveled = 0;
+        }
 
-        const p1 = path[idx];
-        const p2 = path[nextIdx];
+        // Interpolate position based on distance
+        let idx = 0;
+        for (let i = 0; i < pathDists.length - 1; i++) {
+            if (follower.distanceTraveled >= pathDists[i] && follower.distanceTraveled <= pathDists[i+1]) {
+                idx = i;
+                break;
+            }
+        }
+
+        const d1 = pathDists[idx];
+        const d2 = pathDists[idx + 1];
+        const t = (follower.distanceTraveled - d1) / (d2 - d1);
+
+        const p1 = pathPoints[idx];
+        const p2 = pathPoints[idx + 1];
         pos.x = p1.x + (p2.x - p1.x) * t;
         pos.y = p1.y + (p2.y - p1.y) * t;
 
-        // Update color
         if (renderable.definitions['BASE']) {
             renderable.definitions['BASE'].color = color;
         }

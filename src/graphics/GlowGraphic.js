@@ -23,8 +23,8 @@ export class GlowGraphic extends BaseGraphic {
         if (!this.gameObject) return;
         
         // Pulse animation logic specific to this graphic type
-        const pulse = 1 + Math.sin(Date.now() / 200) * 0.2;
+        const pulse = 1 + Math.sin(Date.now() / 800) * 0.15; // Slower (was /200)
         this.glow.setScale(pulse);
-        this.core.setScale(0.8 + Math.sin(Date.now() / 150) * 0.1);
+        this.core.setScale(0.9 + Math.sin(Date.now() / 600) * 0.05); // Slower (was /150)
     }
 }

@@ -73,9 +73,11 @@ export class BaseTestScene extends Phaser.Scene {
         this.foregroundLayer = this.add.layer().setName('FOREGROUND_LAYER').setDepth(200);
         this.uiLayer = this.add.layer().setName('UI_LAYER').setDepth(2000);
         this.webLayer = this.add.layer().setName('WEB_LAYER').setDepth(1100);
+        this.debug_camera = this.add.layer().setName('DEBUG_CAMERA_LAYER').setDepth(5000);
 
         this.cameraConfigs = [
-            { name: 'UICamera', layer: 'uiLayer', type: 'UI' }
+            { name: 'UICamera', layer: 'uiLayer', type: 'UI' },
+            { name: 'DebugCamera', layer: 'debug_camera', type: 'FOREGROUND' }
         ];
 
         // Dedicated Camera for Web Layer
@@ -230,7 +232,35 @@ export class BaseTestScene extends Phaser.Scene {
         SlingshotRenderSystem(this.entities, this, alpha);
         WebRenderSystem(this.entities, this, delta, alpha);
 
+        this.renderDebugPath();
         this.updateDebugUI();
+    }
+
+    renderDebugPath() {
+        if (!this._pathTracker || !this.debug_camera) return;
+
+        if (!this._debugGfx) {
+            this._debugGfx = this.add.graphics();
+            this.debug_camera.add(this._debugGfx);
+        }
+
+        const gfx = this._debugGfx;
+        gfx.clear();
+
+        const { maxDist, maxDistPoint } = this._pathTracker;
+        if (maxDist <= 0) return;
+
+        // Draw Circle (Max Radius)
+        gfx.lineStyle(2, 0xffffff, 0.3);
+        gfx.strokeCircle(0, 0, maxDist);
+
+        // Draw Line to Furthest Point
+        gfx.lineStyle(2, 0xffffff, 0.5);
+        gfx.lineBetween(0, 0, maxDistPoint.x, maxDistPoint.y);
+        
+        // Mark the point
+        gfx.fillStyle(0xffffff, 0.8);
+        gfx.fillCircle(maxDistPoint.x, maxDistPoint.y, 10);
     }
 
     fixedUpdate(time, dt) { }

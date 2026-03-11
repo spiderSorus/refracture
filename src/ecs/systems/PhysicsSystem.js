@@ -175,10 +175,22 @@ export const PhysicsSystem = (entities, delta, scene) => {
 
             if (isStatic || isSeesaw || (isWebbed && !isTestBall)) {
                 vel.x = 0; vel.y = 0;
-            } else if (isPlayer || isTestBall) {
-                vel.y += GRAVITY * dt;
-            } else if (!entity.components.GravityExempt && !entity.components.PlatformTag) {
-                vel.y += GRAVITY * dt;
+            } else if (isPlayer || isTestBall || (!entity.components.GravityExempt && !entity.components.PlatformTag)) {
+                if (scene && scene.hasCentralGravity) {
+                    // Central Gravity toward (0,0)
+                    const dx = -pos.x;
+                    const dy = -pos.y;
+                    const distSq = dx * dx + dy * dy;
+                    if (distSq > 100) {
+                        const dist = Math.sqrt(distSq);
+                        const force = GRAVITY; // Keep magnitude same as standard gravity
+                        vel.x += (dx / dist) * force * dt;
+                        vel.y += (dy / dist) * force * dt;
+                    }
+                } else {
+                    // Standard Downward Gravity
+                    vel.y += GRAVITY * dt;
+                }
             }
 
             pos.x += vel.x * dt;
