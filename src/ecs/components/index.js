@@ -20,9 +20,9 @@ export const Parent = (entityId, offset = { x: 0, y: 0 }) => ({
     id: entityId,
     offset
 });
-export const Collider = (type = 'circle', radius = 50, width = 100, height = 100) => ({
+export const Collider = (type = 'circle', radius = 50, width = 100, height = 100, points = null) => ({
     _type: 'Collider',
-    type, radius, width, height
+    type, radius, width, height, points
 });
 export const PlatformTag = () => ({ _type: 'PlatformTag' });
 export const AnchorTag = () => ({ _type: 'AnchorTag' });
@@ -184,7 +184,32 @@ export const PlayerMemory = () => ({
     entities: [] // Array of interacted entity IDs
 });
 
-export const Drift = (vx = 0, vy = 0, vrot = 0) => ({
-    _type: 'Drift',
-    vx, vy, vrot
+export const Drift = (vx = 0, vy = 0, vrot = 0) => {
+    if (typeof vx === 'object' && vx !== null) {
+        return {
+            _type: 'Drift',
+            vx: vx.vx ?? vx.x ?? 0,
+            vy: vx.vy ?? vx.y ?? 0,
+            vrot: vx.vrot ?? vx.rot ?? 0
+        };
+    }
+    return {
+        _type: 'Drift',
+        vx, vy, vrot
+    };
+};
+
+/**
+ * Artist-friendly layer routing component.
+ * Assigns an entity to a named background effect layer (e.g. 'crystals', 'haze').
+ */
+export const EffectLayer = (layerName, zIndex = 0) => ZLayer('BACKGROUND', zIndex, layerName);
+
+export const CellMeta = (cellId, edges = [], areaInPlayerUnits = 0) => ({
+    _type: 'CellMeta',
+    cellId,
+    edges,
+    areaInPlayerUnits
 });
+
+

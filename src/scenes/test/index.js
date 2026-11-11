@@ -18,6 +18,8 @@ import { PlantsScene } from './18_Plants';
 import { WallsTest } from './19_Walls';
 import { TargetTest } from './20_TargetTest';
 import { Megaverse } from './21_Megaverse';
+import { ArtistLab } from './22_ArtistLab';
+import { RainbowArtistLab } from './23_RainbowArtistLab';
 import { Gameplay } from '../Gameplay';
 
 export const TestScenes = [
@@ -41,5 +43,7 @@ export const TestScenes = [
     PlantsScene,
     WallsTest,
     TargetTest,
-    Megaverse
+    Megaverse,
+    ArtistLab,
+    RainbowArtistLab
 ];

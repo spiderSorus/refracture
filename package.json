@@ -1,14 +1,18 @@
 {
-  "name": "refract",
+  "name": "refracture",
   "version": "1.0.0",
   "description": "Phaser + Electron Project",
   "main": "src/main.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "start": "electron ."
+    "dev": "REFRACTURE_RUNTIME=game vite",
+    "dev:game": "REFRACTURE_RUNTIME=game vite",
+    "dev:lab": "REFRACTURE_RUNTIME=lab vite",
+    "start": "REFRACTURE_RUNTIME=game electron .",
+    "start:game": "REFRACTURE_RUNTIME=game electron .",
+    "start:lab": "REFRACTURE_RUNTIME=lab electron .",
+    "build": "node scripts/build.cjs",
+    "preview": "vite preview"
   },
   "dependencies": {
     "phaser": "^3.80.1"

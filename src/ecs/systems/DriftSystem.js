@@ -20,34 +20,43 @@ export const DriftSystem = (entities, dtSeconds, scene) => {
     const spawnRange = Math.max(worldViewW, worldViewH); 
     const cleanupRange = spawnRange * 2.5;
 
-    // 1. UPDATE EXISTING DRIFTERS
+    // 1. UPDATE ALL DRIFTING ENTITIES
     entities.forEach(entity => {
         const drift = entity.components.Drift;
         const pos = entity.components.Position;
-        const vel = entity.components.Velocity;
         const rot = entity.components.Rotation;
 
-        if (drift && pos && vel) {
-            // Only update rotation here - velocity is managed by physics/initial impulse
-            if (rot) {
+        if (drift && pos) {
+            // Smoothly move position
+            pos.prevX = pos.x;
+            pos.prevY = pos.y;
+            pos.x += (drift.vx || 0) * dtSeconds;
+            pos.y += (drift.vy || 0) * dtSeconds;
+
+            // Smoothly update rotation if present
+            if (rot && drift.vrot) {
                 rot.angle += drift.vrot * dtSeconds;
             }
 
-            // Cleanup: Destroy if too far from player
-            const dx = pos.x - pPos.x;
-            const dy = pos.y - pPos.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist > cleanupRange) {
-                entity.toDestroy = true;
+            // Optional cleanup for transient drifting platforms
+            if (entity.components.DynamicDrifterTag && pPos) {
+                const dx = pos.x - pPos.x;
+                const dy = pos.y - pPos.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > cleanupRange) {
+                    entity.toDestroy = true;
+                }
             }
         }
     });
 
-    // 2. SPAWN NEW DRIFTERS
+    // 2. SPAWN DYNAMIC DRIFTING PLATFORMS (Only in scenes that opt in)
+    if (!scene.enableDriftingPlatforms) return;
+
     if (!scene._driftTimer) scene._driftTimer = 0;
     scene._driftTimer += dtSeconds * 1000;
 
-    const driftCount = entities.filter(e => e.components.Drift).length;
+    const driftCount = entities.filter(e => e.components.DynamicDrifterTag).length;
     const MAX_DRIFTERS = 30; // Slightly lower for performance
 
     if (scene._driftTimer >= 800 && driftCount < MAX_DRIFTERS) {

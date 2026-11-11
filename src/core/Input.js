@@ -24,20 +24,59 @@ export class InputManager {
         this.prevPadState = {};
 
         // Immediately check for already connected pads
-        if (this.scene.input.gamepad && this.scene.input.gamepad.total > 0) {
-            this.pad = this.scene.input.gamepad.getPad(0);
+        this.selectPad();
+        if (this.pad) {
             console.log(`[INPUT] Initialized with existing gamepad: ${this.pad.id}`);
         }
 
         this.scene.input.gamepad.on('connected', (pad) => {
-            console.log(`[INPUT] Gamepad connected: ${pad.id}`);
-            this.pad = pad;
+            console.log(`[INPUT] Gamepad connected: ${pad.id} (buttons: ${pad.buttons?.length || 0}, axes: ${pad.axes?.length || 0})`);
+            this.selectPad();
         });
     }
 
+    selectPad() {
+        if (!this.scene.input.gamepad) return;
+        const pads = this.scene.input.gamepad.getAll();
+        if (pads.length === 0) return;
+
+        // Prefer a gamepad that actually exposes buttons or axes (avoids macOS 0-button vendor HID interfaces)
+        const activePad = pads.find(p => p && p.connected && ((p.buttons && p.buttons.length > 0) || (p.axes && p.axes.length > 0)))
+            || pads.find(p => p && ((p.buttons && p.buttons.length > 0) || (p.axes && p.axes.length > 0)))
+            || pads[0];
+
+        if (activePad && this.pad !== activePad) {
+            this.pad = activePad;
+            this.seedPadState();
+        }
+    }
+
+    getRawPadButtonState(button) {
+        if (!this.pad) return false;
+        const stickThreshold = 0.5;
+        if (button === 'up') return !!(this.pad.up || this.pad.buttons[12]?.pressed || this.pad.leftStick.y < -stickThreshold);
+        if (button === 'down') return !!(this.pad.down || this.pad.buttons[13]?.pressed || this.pad.leftStick.y > stickThreshold);
+        if (button === 'left') return !!(this.pad.left || this.pad.buttons[14]?.pressed || this.pad.leftStick.x < -stickThreshold);
+        if (button === 'right') return !!(this.pad.right || this.pad.buttons[15]?.pressed || this.pad.leftStick.x > stickThreshold);
+        if (button === 'A') return !!(this.pad.A || this.pad.buttons[0]?.pressed);
+        if (button === 'B') return !!(this.pad.B || this.pad.buttons[1]?.pressed);
+        if (button === 'X') return !!(this.pad.X || this.pad.buttons[2]?.pressed);
+        if (button === 'Y') return !!(this.pad.Y || this.pad.buttons[3]?.pressed);
+        if (button === 'L1') return !!(this.pad.L1 || this.pad.buttons[4]?.pressed);
+        if (button === 'R1') return !!(this.pad.R1 || this.pad.buttons[5]?.pressed);
+        return !!this.pad[button];
+    }
+
+    seedPadState() {
+        const tracked = ['up', 'down', 'left', 'right', 'A', 'B', 'X', 'Y', 'L1', 'R1'];
+        for (const btn of tracked) {
+            this.prevPadState[btn] = this.getRawPadButtonState(btn);
+        }
+    }
+
     update() {
-        if (this.scene.input.gamepad.total > 0) {
-            this.pad = this.scene.input.gamepad.getPad(0);
+        if (this.scene.input.gamepad && this.scene.input.gamepad.total > 0) {
+            this.selectPad();
         }
     }
 
@@ -48,11 +87,11 @@ export class InputManager {
 
         if (action === 'SHORTEN') {
             if (this.keys.shorten.isDown) return true;
-            if (this.pad && (this.pad.L1 || (this.pad.buttons[4] && this.pad.buttons[4].pressed))) return true;
+            if (this.pad && (this.pad.L1 || this.pad.buttons[4]?.pressed)) return true;
         }
         if (action === 'LENGTHEN') {
             if (this.keys.lengthen.isDown) return true;
-            if (this.pad && (this.pad.R1 || (this.pad.buttons[5] && this.pad.buttons[5].pressed))) return true;
+            if (this.pad && (this.pad.R1 || this.pad.buttons[5]?.pressed)) return true;
         }
 
         // --- MEDITATION TRIGGERS ---
@@ -79,9 +118,9 @@ export class InputManager {
         }
 
         if (this.pad) {
-            if (action === 'X' && (this.pad.X || this.pad.buttons[2].pressed)) return true;
-            if (action === 'Y' && (this.pad.Y || this.pad.buttons[3].pressed)) return true;
-            if (action === 'B' && (this.pad.B || this.pad.buttons[1].pressed)) return true;
+            if (action === 'X' && (this.pad.X || this.pad.buttons[2]?.pressed)) return true;
+            if (action === 'Y' && (this.pad.Y || this.pad.buttons[3]?.pressed)) return true;
+            if (action === 'B' && (this.pad.B || this.pad.buttons[1]?.pressed)) return true;
         }
         return false;
     }
@@ -106,29 +145,7 @@ export class InputManager {
     isButtonPressed(button) {
         if (!this.pad) return false;
 
-        let isDown = false;
-        const stickThreshold = 0.5;
-
-        if (button === 'up') {
-            isDown = this.pad.up || this.pad.buttons[12].pressed || this.pad.leftStick.y < -stickThreshold;
-        }
-        else if (button === 'down') {
-            isDown = this.pad.down || this.pad.buttons[13].pressed || this.pad.leftStick.y > stickThreshold;
-        }
-        else if (button === 'left') {
-            isDown = this.pad.left || this.pad.buttons[14].pressed || this.pad.leftStick.x < -stickThreshold;
-        }
-        else if (button === 'right') {
-            isDown = this.pad.right || this.pad.buttons[15].pressed || this.pad.leftStick.x > stickThreshold;
-        }
-        else if (button === 'A') isDown = this.pad.A || (this.pad.buttons[0] && this.pad.buttons[0].pressed);
-        else if (button === 'B') isDown = this.pad.B || (this.pad.buttons[1] && this.pad.buttons[1].pressed);
-        else if (button === 'X') isDown = this.pad.X || (this.pad.buttons[2] && this.pad.buttons[2].pressed);
-        else if (button === 'Y') isDown = this.pad.Y || (this.pad.buttons[3] && this.pad.buttons[3].pressed);
-        else if (button === 'L1') isDown = this.pad.L1 || (this.pad.buttons[4] && this.pad.buttons[4].pressed);
-        else if (button === 'R1') isDown = this.pad.R1 || (this.pad.buttons[5] && this.pad.buttons[5].pressed);
-        else if (this.pad[button]) isDown = this.pad[button];
-
+        const isDown = this.getRawPadButtonState(button);
         const wasDown = this.prevPadState[button] || false;
         this.prevPadState[button] = isDown;
 

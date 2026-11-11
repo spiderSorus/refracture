@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Refracture Local Evaluation Server Launcher (./runserver)
+# Starts the Vite web server for Refracture (Game Runtime or Lab Suite).
+# Usage:
+#   ./runserver          -> Starts Game Runtime (default port 3000, or $PORT)
+#   ./runserver lab      -> Starts Lab / Sandbox Suite (default port 3001, or $PORT)
+#   ./runserver game     -> Starts Game Runtime (default port 3000, or $PORT)
+# ==============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}"
+
+if [ "${1:-}" = "lab" ] || [ "${1:-}" = "game" ]; then
+    export REFRACTURE_RUNTIME="$1"
+    shift
+fi
+
+export REFRACTURE_RUNTIME="${REFRACTURE_RUNTIME:-${REFRACT_RUNTIME:-game}}"
+DEFAULT_PORT="3000"
+if [ "${REFRACTURE_RUNTIME}" = "lab" ]; then
+    DEFAULT_PORT="3001"
+fi
+export REFRACTURE_PORT="${REFRACTURE_PORT:-${REFRACT_PORT:-${PORT:-${DEFAULT_PORT}}}}"
+HOST_ADDR="${HOST:-0.0.0.0}"
+
+if [ ! -x "${SCRIPT_DIR}/node_modules/.bin/vite" ]; then
+    echo "[runserver] Installing npm dependencies..."
+    npm install --no-audit --no-fund
+fi
+
+echo "==================================================================="
+echo "  Refracture Local Evaluation Server"
+echo "  Runtime:        ${REFRACTURE_RUNTIME} (use './runserver lab' for Lab Suite)"
+echo "  URL:            http://localhost:${REFRACTURE_PORT}"
+echo "==================================================================="
+
+exec "${SCRIPT_DIR}/node_modules/.bin/vite" --host "${HOST_ADDR}" --port "${REFRACTURE_PORT}" "$@"

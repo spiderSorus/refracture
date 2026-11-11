@@ -1,6 +1,6 @@
 // src/ecs/systems/MovementSystem.js
 import { GRID, PHYSICS, PLAYER } from '../../core/Constants';
-import { isPointInside } from '../../utils/CollisionUtils';
+import { isPointInside, snapOffsetInside } from '../../utils/CollisionUtils';
 
 export const MovementSystem = (entities, inputManager, dt) => {
     if (!inputManager) return;
@@ -81,6 +81,10 @@ export const MovementSystem = (entities, inputManager, dt) => {
                     const hh = Math.max(0, (col.height / 2) - pRadius);
                     nextOffsetX = Math.max(-hw, Math.min(hw, nextOffsetX));
                     nextOffsetY = Math.max(-hh, Math.min(hh, nextOffsetY));
+                } else if (col.type === 'polygon') {
+                    const snapped = snapOffsetInside({ x: nextOffsetX, y: nextOffsetY }, col, pRadius);
+                    nextOffsetX = snapped.x;
+                    nextOffsetY = snapped.y;
                 }
             }
 

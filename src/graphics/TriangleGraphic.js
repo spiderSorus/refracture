@@ -19,21 +19,32 @@ export class TriangleGraphic extends BaseGraphic {
         // 2. CONFIGURATION
         const cam = this.scene.cameras.main;
         // Stroke stays 2px thick regardless of zoom
-        const thickness = 2 / cam.zoom;
-        const colorVal = Phaser.Display.Color.HexStringToColor(config.color || '#ff8400').color;
+        const thickness = 2 / (cam.zoom || 1);
+        
+        let colorVal = 0xff8400;
+        if (typeof config.color === 'number') {
+            colorVal = config.color;
+        } else if (typeof config.color === 'string') {
+            colorVal = Phaser.Display.Color.HexStringToColor(config.color).color;
+        }
+
+        const alphaVal = config.alpha !== undefined ? config.alpha : 1.0;
         const intensity = config.intensity ?? 1.0;
 
         // 3. SIZE CALCULATION
-        // "10x10 World Units" means 10 * GRID.UNIT (10px) = 100px total span.
-        // To span 100px centered at 0, radius 's' must be 50.
-        // config.size of 5.0 * 10 = 50.
-        const unit = GRID.UNIT;
-        const s = (config.size || 1) * unit * intensity;
+        let s = 25;
+        if (config.radius !== undefined) {
+            s = config.radius;
+        } else if (config.size !== undefined) {
+            s = config.size > 20 ? config.size / 2 : config.size * GRID.UNIT * intensity;
+        } else if (config.width !== undefined) {
+            s = config.width / 2;
+        }
 
         // 4. DRAW
         // We draw relative to local (0,0), which BaseGraphic has already moved to the Player's position.
-        gfx.fillStyle(colorVal, 1);
-        gfx.lineStyle(thickness, 0xffffff);
+        gfx.fillStyle(colorVal, alphaVal);
+        gfx.lineStyle(thickness, 0xffffff, alphaVal);
 
         gfx.beginPath();
         gfx.moveTo(s, 0);       // Tip (Right)

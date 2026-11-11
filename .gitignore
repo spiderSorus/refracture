@@ -1,2 +1,16 @@
+# Dependency, cache, and build folders
 node_modules/
+.venv/
+venv/
+__pycache__/
+.next/
+dist/
+build/
+
+# Compiled native helper binary (rebuilt automatically from src/native/mac_gamepad.m)
+src/native/mac_gamepad
+
+# Logs and OS metadata
+*.log
+npm-debug.log*
 .DS_Store

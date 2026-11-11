@@ -76,8 +76,8 @@ export const PathSystem = (entities, dtSeconds, scene) => {
             }
         }
 
-        // 4. SPAWN PARTICLES (Every 500ms)
-        if (now - tracker.lastParticleTime >= 500) {
+        // 4. SPAWN PARTICLES (Disabled unless explicitly enabled via scene.enablePathDots)
+        if (scene.enablePathDots && (now - tracker.lastParticleTime >= 500)) {
             scene.addEntity([
                 Position(tracker.current[0]?.x || pos.x, tracker.current[0]?.y || pos.y),
                 GravityExempt(),
@@ -105,7 +105,16 @@ export const PathSystem = (entities, dtSeconds, scene) => {
         tracker.lastPlayerId = null;
     }
 
-    // 5. UPDATE ALL PATH FOLLOWERS
+    // 5. UPDATE ALL PATH FOLLOWERS (or clean them up if disabled)
+    if (!scene.enablePathDots) {
+        entities.forEach(entity => {
+            if (entity.components.PathFollower) {
+                entity.toDestroy = true;
+            }
+        });
+        return;
+    }
+
     entities.forEach(entity => {
         const follower = entity.components.PathFollower;
         const pos = entity.components.Position;

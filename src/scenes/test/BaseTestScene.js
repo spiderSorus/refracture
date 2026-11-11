@@ -37,6 +37,7 @@ export class BaseTestScene extends Phaser.Scene {
         this.entities = [];
         this.entitiesMap = new Map();
         this.hasBoundaries = true; // Default to true
+        this.enablePathDots = false; // Disable path follower dots
     }
 
     addEnergyRule(rule) {
@@ -61,6 +62,50 @@ export class BaseTestScene extends Phaser.Scene {
     disableEnergyRule(ruleName) {
         this.energyRules = this.energyRules.filter(r => r.ruleName !== ruleName);
     }
+
+    /**
+     * Artist-friendly background layer & effect configurator.
+     * Allows scenes to define visual layers with isolated post-processing shaders and parallax depths.
+     * @param {Object} layersConfig Map of layer names to their shader effect and parallax depth:
+     *   {
+     *       haze:     { effect: 'watercolor', parallax: 0.15 },
+     *       crystals: { effect: 'rainbow',    parallax: 0.40 },
+     *       dust:     { effect: 'old_glass',  parallax: 0.75 }
+     *   }
+     */
+    setupBackgroundLayers(layersConfig = {}) {
+        if (!this.auxLayers) this.auxLayers = {};
+        if (!this.auxCameras) this.auxCameras = {};
+        if (!this.cameraConfigs) this.cameraConfigs = [];
+
+        const newCameraConfigs = [];
+
+        Object.entries(layersConfig).forEach(([layerKey, cfg], idx) => {
+            // 1. Pre-create the Phaser Layer immediately (depth 30-80, strictly below playground at 100)
+            const depth = 30 + idx * 5;
+            if (!this.auxLayers[layerKey]) {
+                const layer = this.add.layer().setName(layerKey.toUpperCase()).setDepth(depth);
+                this.auxLayers[layerKey] = layer;
+                this[layerKey] = layer;
+            }
+
+            // 2. Configure dedicated isolated background camera with shader effect
+            newCameraConfigs.push({
+                name: `${layerKey}_Camera`,
+                layer: layerKey,
+                effect: cfg.effect || null,
+                effectConfig: cfg.effectConfig || {},
+                type: 'BACKGROUND',
+                parallaxFactor: cfg.parallax ?? 1.0,
+                includeUI: false
+            });
+        });
+
+        // Filter out duplicate layer configs and prepend the new background camera configs
+        const filteredExisting = this.cameraConfigs.filter(c => !newCameraConfigs.some(nc => nc.layer === c.layer));
+        this.cameraConfigs = [...newCameraConfigs, ...filteredExisting];
+    }
+
 
     create() {
         this.entities = [];
@@ -110,6 +155,10 @@ export class BaseTestScene extends Phaser.Scene {
         this.atmosphereColor = undefined;
 
         this._camInitialized = false;
+        if (this.recIndicator) {
+            this.recIndicator.destroy();
+            this.recIndicator = null;
+        }
     }
 
     update(time, delta) {
@@ -127,6 +176,13 @@ export class BaseTestScene extends Phaser.Scene {
             const maxY = worldBounds.y + worldBounds.height;
 
             if (this.hasBoundaries) {
+                if (!this.textures.exists('bg_grid')) {
+                    const gfx = this.make.graphics({ x: 0, y: 0, add: false });
+                    gfx.lineStyle(2, 0x1a1a1a, 1);
+                    gfx.strokeRect(0, 0, 100, 100);
+                    gfx.generateTexture('bg_grid', 100, 100);
+                    gfx.destroy();
+                }
                 const grid = this.add.tileSprite(
                     minX + worldBounds.width / 2, 
                     minY + worldBounds.height / 2, 
@@ -178,9 +234,13 @@ export class BaseTestScene extends Phaser.Scene {
         this.inputManager.update();
         RecordingSystem(this, this.inputManager);
 
-        this.accumulator += delta;
+        // Clamp delta to prevent death spiral upon scene switch or frame drop
+        const clampedDelta = Math.min(delta, 100);
+        this.accumulator += clampedDelta;
 
-        while (this.accumulator >= PHYSICS.STEP) {
+        let steps = 0;
+        const maxSteps = 6;
+        while (this.accumulator >= PHYSICS.STEP && steps < maxSteps) {
             const dtSeconds = PHYSICS.STEP / 1000;
 
             SlingshotSystem(this.entities, this.inputManager);
@@ -198,6 +258,10 @@ export class BaseTestScene extends Phaser.Scene {
 
             this.fixedUpdate(time, PHYSICS.STEP);
             this.accumulator -= PHYSICS.STEP;
+            steps++;
+        }
+        if (steps >= maxSteps) {
+            this.accumulator = 0;
         }
 
         this.entities = this.entities.filter(e => {
@@ -237,30 +301,10 @@ export class BaseTestScene extends Phaser.Scene {
     }
 
     renderDebugPath() {
-        if (!this._pathTracker || !this.debug_camera) return;
-
-        if (!this._debugGfx) {
-            this._debugGfx = this.add.graphics();
-            this.debug_camera.add(this._debugGfx);
+        // Circle & line distance-from-center indicator disabled
+        if (this._debugGfx) {
+            this._debugGfx.clear();
         }
-
-        const gfx = this._debugGfx;
-        gfx.clear();
-
-        const { maxDist, maxDistPoint } = this._pathTracker;
-        if (maxDist <= 0) return;
-
-        // Draw Circle (Max Radius)
-        gfx.lineStyle(2, 0xffffff, 0.3);
-        gfx.strokeCircle(0, 0, maxDist);
-
-        // Draw Line to Furthest Point
-        gfx.lineStyle(2, 0xffffff, 0.5);
-        gfx.lineBetween(0, 0, maxDistPoint.x, maxDistPoint.y);
-        
-        // Mark the point
-        gfx.fillStyle(0xffffff, 0.8);
-        gfx.fillCircle(maxDistPoint.x, maxDistPoint.y, 10);
     }
 
     fixedUpdate(time, dt) { }

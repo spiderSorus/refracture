@@ -8,22 +8,19 @@ export const CAMERA_TEMPLATES = {
         name: 'Watercolor Camera', 
         layer: 'bg_watercolor', 
         effect: 'watercolor', 
-        type: 'BACKGROUND', 
-        includeUI: true 
+        type: 'BACKGROUND'
     },
     'stainedGlass': { 
         name: 'Stained Glass Camera', 
         layer: 'bg_watercolor', 
         effect: 'stainedGlass', 
-        type: 'BACKGROUND', 
-        includeUI: true 
+        type: 'BACKGROUND'
     },
     'detail': { 
         name: 'Detail Camera', 
         layer: 'bg_glass', 
         effect: 'old_glass', 
-        type: 'BACKGROUND', 
-        includeUI: true 
+        type: 'BACKGROUND'
     },
     'grayscale': { 
         name: 'ForegroundBW', 

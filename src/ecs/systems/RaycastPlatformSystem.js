@@ -46,7 +46,20 @@ export const RaycastPlatformSystem = {
                 const circle = new Phaser.Geom.Circle(pPos.x, pPos.y, col.radius);
                 intersectionPoints = Phaser.Geom.Intersects.GetLineToCircle(ray, circle);
             }
-            // 2. Rectangle Intersection Logic
+            // 2. Polygon Intersection Logic
+            else if (col.type === 'polygon' && col.points && col.points.length >= 3) {
+                const pts = col.points;
+                for (let i = 0; i < pts.length; i++) {
+                    const a = pts[i];
+                    const b = pts[(i + 1) % pts.length];
+                    const seg = new Phaser.Geom.Line(pPos.x + a.x, pPos.y + a.y, pPos.x + b.x, pPos.y + b.y);
+                    const out = new Phaser.Geom.Point();
+                    if (Phaser.Geom.Intersects.LineToLine(ray, seg, out)) {
+                        intersectionPoints.push({ x: out.x, y: out.y });
+                    }
+                }
+            }
+            // 3. Rectangle Intersection Logic
             else {
                 const rect = new Phaser.Geom.Rectangle(
                     pPos.x - col.width / 2,

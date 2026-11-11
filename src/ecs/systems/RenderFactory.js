@@ -17,6 +17,8 @@ import { StemGraphic } from '../../graphics/StemGraphic';
 import { DebugStemGraphic } from '../../graphics/DebugStemGraphic';
 import { DebugPlayerGraphic } from '../../graphics/DebugPlayerGraphic';
 import { WatercolorTextGraphic } from '../../graphics/WatercolorTextGraphic';
+import { CellPolygonGraphic } from '../../graphics/CellPolygonGraphic';
+import { GraphOverlayGraphic } from '../../graphics/GraphOverlayGraphic';
 
 const REGISTRY = {
     'sprite': SpriteGraphic,
@@ -37,7 +39,9 @@ const REGISTRY = {
     'stem': StemGraphic,
     'debug_stem': DebugStemGraphic,
     'debug_player': DebugPlayerGraphic,
-    'watercolor_text': WatercolorTextGraphic
+    'watercolor_text': WatercolorTextGraphic,
+    'cell_polygon': CellPolygonGraphic,
+    'graph_overlay': GraphOverlayGraphic
 };
 
 export const RenderFactory = {

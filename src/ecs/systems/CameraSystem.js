@@ -41,7 +41,7 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
             // For background layers, we want to know their parallax factor for sorting
             if (cfg.type === 'BACKGROUND') {
                 const firstEntity = entities.find(e => e.components.ZLayer?.layerName === cfg.layer);
-                newCam.parallaxFactor = firstEntity?.components.Parallax?.factor ?? 1.0;
+                newCam.parallaxFactor = cfg.parallaxFactor ?? firstEntity?.components.Parallax?.factor ?? 1.0;
             }
 
             scene.auxCameras[cfg.name] = newCam;
@@ -67,9 +67,9 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
     });
 
     // --- CAMERA SORTING ---
-    // Render Order (Bottom to Top): BACKGROUND -> PLAY (main) -> FOREGROUND -> UI
+    // Render Order (Bottom to Top): BACKGROUND -> PLAY (main) -> FOREGROUND -> UIBG -> UI
     // Run this every frame to ensure order is maintained
-    const TYPE_ORDER = { 'BACKGROUND': 0, 'PLAY': 1, 'FOREGROUND': 2, 'UI': 3 };
+    const TYPE_ORDER = { 'BACKGROUND': 0, 'PLAY': 1, 'FOREGROUND': 2, 'UIBG': 3, 'UI': 4 };
     
     // Tag the web camera if it exists
     if (scene.webCamera) {
@@ -137,53 +137,68 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
 
     // Isolate camera rendering
     const allAuxLayers = Object.values(scene.auxLayers);
-    // allManagedAuxLayers includes all aux layers AND the uiLayer AND webLayer
-    const allManagedLayers = [...allAuxLayers, scene.webLayer, scene.uiLayer].filter(l => l);
+    // allManagedAuxLayers includes all aux layers AND the uiLayer, uibgLayer, debug_camera, and webLayer
+    const allManagedLayers = [
+        ...allAuxLayers, 
+        scene.webLayer, 
+        scene.uiLayer, 
+        scene.uibgLayer, 
+        scene.debug_camera
+    ].filter(l => l);
 
-    // 1. MAIN CAMERA ignores ALL managed auxiliary layers (including UI)
+    // 1. MAIN CAMERA ignores ALL managed auxiliary layers (including UI and background effects)
     mainCam.ignore(allManagedLayers);
     mainCam.renderedLayers = ['MAIN'];
     
     // 2. WEB CAMERA ignores EVERYTHING except its own layer
     if (scene.webCamera) {
-        const webIgnore = [...allAuxLayers, scene.uiLayer, scene.backgroundLayer, scene.playground, scene.foregroundLayer].filter(l => l && l !== scene.webLayer);
+        const webIgnore = [
+            ...allAuxLayers, 
+            scene.uiLayer, 
+            scene.uibgLayer,
+            scene.debug_camera,
+            scene.backgroundLayer, 
+            scene.playground, 
+            scene.foregroundLayer
+        ].filter(l => l && l !== scene.webLayer);
         scene.webCamera.ignore(webIgnore);
         scene.webCamera.renderedLayers = ['WEB'];
     }
     
-    // Explicitly tag the UI layer if it's managed by a camera
+    // 3. AUXILIARY CAMERAS (Background, Foreground, UI, etc.)
+    const standardBuiltinLayers = [
+        scene.backgroundLayer, 
+        scene.playground, 
+        scene.foregroundLayer, 
+        scene.webLayer,
+        scene.uiLayer,
+        scene.uibgLayer,
+        scene.debug_camera
+    ].filter(l => l);
+
     configs.forEach(cfg => {
         const cam = scene.auxCameras[cfg.name];
         if (!cam) return;
 
         if (cfg.type === 'UI' || cfg.layer === 'uiLayer') {
             cam.renderedLayers = ['UI'];
+        } else if (cfg.type === 'UIBG' || cfg.layer === 'uibgLayer') {
+            cam.renderedLayers = ['UIBG'];
         } else {
             cam.renderedLayers = [cfg.layer];
-            if (cfg.includeUI) cam.renderedLayers.push('UI');
         }
-    });
-    
-    // 3. AUXILIARY CAMERAS (Background, Foreground, etc.)
-    configs.forEach(cfg => {
-        const cam = scene.auxCameras[cfg.name];
-        if (!cam) return;
 
-        const designatedLayer = scene.auxLayers[cfg.layer] || (cfg.layer === 'uiLayer' ? scene.uiLayer : null);
+        const designatedLayer = scene.auxLayers[cfg.layer] || 
+            (cfg.layer === 'uiLayer' ? scene.uiLayer : 
+             cfg.layer === 'uibgLayer' ? scene.uibgLayer : 
+             cfg.layer === 'debug_camera' ? scene.debug_camera : null);
         
-        // Auxiliary cameras must ignore all standard layers and other managed layers
-        // except their own.
-        const standardLayers = [scene.backgroundLayer, scene.playground, scene.foregroundLayer, scene.webLayer].filter(l => l);
+        // Auxiliary cameras must ignore all standard layers and other managed layers except their own.
+        // This guarantees that background shader cameras NEVER render the UI/HUD.
+        const otherStandardLayers = standardBuiltinLayers.filter(l => l !== designatedLayer);
         const otherAuxLayers = allAuxLayers.filter(l => l !== designatedLayer);
         
-        const ignoreList = [...standardLayers, ...otherAuxLayers];
-        
-        // Add UI to ignore list ONLY if we don't want to include it
-        if (!cfg.includeUI && scene.uiLayer && designatedLayer !== scene.uiLayer) {
-            ignoreList.push(scene.uiLayer);
-        }
-
-        const finalIgnore = [...new Set(ignoreList.filter(l => l && l !== designatedLayer))];
+        const finalIgnore = [...new Set([...otherStandardLayers, ...otherAuxLayers])];
         cam.ignore(finalIgnore);
     });
 
@@ -214,8 +229,8 @@ export const CameraSystem = (entities, scene, inputManager, alpha = 1.0) => {
     // --- SYNC ALL CAMERAS ---
     const syncAux = (cam) => {
         if (!cam) return;
-        // UI cameras should stay static at (0,0) with zoom 1.0
-        if (cam.auxType === 'UI') {
+        // UI and UIBG cameras should stay static at (0,0) with zoom 1.0
+        if (cam.auxType === 'UI' || cam.auxType === 'UIBG') {
             cam.setScroll(0, 0);
             cam.setZoom(1.0);
             cam.setRotation(0);

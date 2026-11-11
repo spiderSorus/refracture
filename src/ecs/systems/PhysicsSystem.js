@@ -175,7 +175,7 @@ export const PhysicsSystem = (entities, delta, scene) => {
 
             if (isStatic || isSeesaw || (isWebbed && !isTestBall)) {
                 vel.x = 0; vel.y = 0;
-            } else if (isPlayer || isTestBall || (!entity.components.GravityExempt && !entity.components.PlatformTag)) {
+            } else if (!entity.components.GravityExempt && !(scene && scene.disableGravity) && (isPlayer || isTestBall || !entity.components.PlatformTag)) {
                 if (scene && scene.hasCentralGravity) {
                     // Central Gravity toward (0,0)
                     const dx = -pos.x;

@@ -30,9 +30,11 @@ export const AttachmentSystem = (entities, scene) => {
                 const rot = lastPlat.components.Rotation?.angle || 0;
                 // Larger buffer to ensure they've really left before we clear the jump state/ID
                 const isStillInside = isPointInside(pPos, lastPlat.components.Position, lastPlat.components.Collider, catchBuffer + 10, rot);
-                if (!isStillInside) {
+                const pVel = player.components.Velocity;
+                const speed = pVel ? Math.hypot(pVel.x, pVel.y) : 0;
+                if (!isStillInside || speed < 350) {
                     sling.lastPlatformId = null;
-                    sling.isJumping = false; // They've left the starting platform
+                    sling.isJumping = false; // They've left the starting platform or finished a short hop
                 }
             } else {
                 sling.lastPlatformId = null;
