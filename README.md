@@ -2,6 +2,108 @@
 
 > **A game about a spider. And neurodivergence.**
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+**Refracture** is an atmospheric 2D physics-platformer and procedural world-simulation game centered on a jumping spider navigating a shattered cosmos. Reality has fractured into floating polygon shards ("cells") suspended in a limitless coordinate space; the player traverses across shards using precision 360° slingshot jumps, surface adhesion, silk tether stitching, and emergent 64-type Yijing energy interactions.
+
+The project is built for **indie physics-platformer players** and **procedural-generation / game-architecture enthusiasts**, featuring a **Dual-Runtime Architecture**:
+1. **Game Runtime (`Refracture`)**: The main playable experience where validated mechanics come together in an integrated fractured universe.
+2. **Lab Suite (`Lab Runtime`)**: A categorized interactive sandbox gallery organized across 6 design spaces (plus 24 experimental prototypes) for isolating, tuning, and stress-testing physics, shaders, procedural graphs, and AI behaviors.
+
+---
+
+## Built With
+
+- **Engine & Rendering**: [Phaser 3](https://phaser.io/) (`^3.80.1`) with custom WebGL post-processing fragment shader pipelines (`AquarellePipeline`, `GrayscalePipeline`, `OldGlassPipeline`, `RainbowPipeline`) and procedural vector geometry renderers.
+- **Architecture**: Custom lightweight Entity Component System (`src/ecs/`) with pure data components and deterministic fixed-step physics systems (`60 Hz` accumulator).
+- **Procedural Geometry**: Custom topological N-gon + 2D Perlin-noise fracture graph generator (`src/world/FractureGraph.js`) and spatial query engine (`src/world/GraphQueries.js`).
+- **Desktop Wrapper & Native Gamepad Bridge**: [Electron](https://www.electronjs.org/) (`^40.0.0`) paired with a self-compiling macOS Objective-C helper (`src/native/mac_gamepad.m`) bridging Apple's `GameController.framework` directly into Chromium's Gamepad API.
+- **Bundler & Build Orchestrator**: [Vite](https://vitejs.dev/) (`^5.0.0`) and a multi-target build script (`scripts/build.cjs`) supporting clean standalone builds (`game`, `web`, `steam`, `mac`, `windows`, `linux`, `xbox`, `lab`).
+
+---
+
+## How to Run
+
+### Prerequisites
+- **Node.js** `>= 18.x` and **npm**
+- *(Optional, for desktop mode on macOS)* Xcode Command Line Tools (`clang`) for automatic compilation of the native `GameController` bridge.
+
+### 1. Install Dependencies
+```bash
+npm install
+```
+
+### 2. Run in Browser (Vite Dev Server)
+Use the included `./runserver` launcher (or npm scripts) to start either runtime:
+
+```bash
+# Launch the Main Game Runtime at http://localhost:3000
+./runserver
+# or: npm run dev:game
+
+# Launch the Lab / Sandbox Suite at http://localhost:3001
+./runserver lab
+# or: npm run dev:lab
+```
+
+### 3. Run as Desktop App (Electron)
+In a second terminal (while the Vite server is running on port `3000` or `3001`), launch the Electron shell:
+
+```bash
+# Desktop wrapper for Main Game Runtime (connects to port 3000)
+npm run start:game
+
+# Desktop wrapper for Lab Suite (connects to port 3001)
+npm run start:lab
+```
+
+### 4. Production Builds
+Build standalone bundles into `dist/<target>/` with an accompanying `build-manifest.json`:
+
+```bash
+npm run build          # Builds standalone Game Runtime to dist/game/
+npm run build web      # Builds Web Game Bundle to dist/web/
+npm run build lab      # Builds Developer Lab & Sandbox Suite to dist/lab/
+```
+
+### Controls
+| Action | Keyboard | Gamepad (Xbox / DualSense) |
+| :--- | :--- | :--- |
+| **Move / Walk on Cell Surface** | `A` / `D` or `Left` / `Right` | Left Stick |
+| **Aim Slingshot Jump (360°)** | `I` `J` `K` `L` | Right Stick (hold & release) |
+| **Menu Navigation / Select** | `W` `A` `S` `D` / `Enter` or `Space` | D-Pad or Left Stick / `A` (`Cross`) |
+| **Inspect / Toggle Graph Overlay (Lab)** | `G` / `U` / `R` (reseed) | Shoulder Buttons |
+| **Back to Menu** | `Escape` | `B` (`Circle`) or `Back` / `Select` |
+
+---
+
+## Roadmap & Planned Work Ahead (45+ Hours)
+
+Active development is organized around promoting prototypes from the **Lab Suite** into the **Main Game Runtime** across our 6 Design Spaces. See [`docs/GAME_DESIGN.md`](docs/GAME_DESIGN.md) for full mechanical specifications.
+
+- [ ] **Phase 1 — Space 1 (`world-graph`): True Perlin Branching & Edge-Split Polygon Extraction (~8 hrs)**
+  - [ ] Upgrade `FractureGraph.js` from perturbed Voronoi/lloyd relaxation to iterative Perlin-noise ray propagation with configurable branching angles (`branchingFactor`) and exact line-segment intersection splitting.
+  - [ ] Add interactive graph inspector tools in `01_WorldGraphLab.js` (corner/edge ID inspection, neighbor highlighting, and animated scramble/unscramble transitions).
+  - [ ] Add unit test suite verifying planar graph invariants (Euler characteristic, zero overlapping cells, area bounds `100` player units to `1%` of universe).
+- [ ] **Phase 2 — Space 2 (`cell-physics`): Mutual N-Body Cell Gravity, Silk Stitching & Equilibrium (~10 hrs)**
+  - [ ] Implement `CellGravitySystem` computing mass-proportional gravitational attraction (`mass = area * density`) between scrambled land cells in 64-bit coordinate space.
+  - [ ] Implement `StitchTether` component and `StitchPhysicsSystem` (Hooke's law spring-damper tethers connecting two shards, player tension tuning, and Newtonian launch kickback).
+  - [ ] Implement player & item land-manipulation forces (pushing/pulling shards toward equilibrium).
+- [ ] **Phase 3 — Space 3 (`yijing-energy`): 64-Type Energy Profiles, Maia & Ziran State Engine (~8 hrs)**
+  - [ ] Build `EnergyProfile` component (`Float32Array(64)`) for cells, entities, and cosmic background.
+  - [ ] Implement `MaiaSystem` (global universe hexagram state) and `ZiranSystem` (local cell/entity state) with emergent energy transmission along silk stitches and contact points.
+  - [ ] Create `03_YijingEnergyLab.js` sandbox with real-time 64-channel spectrum visualizer and hexagram state switcher.
+- [ ] **Phase 4 — Space 4 (`player-spider`): Dot-to-Spider Vector Zoom & State-Driven Morphology (~6 hrs)**
+  - [ ] Implement smooth logarithmic camera zoom transitioning seamlessly from macro universe view (player rendered as a 1-unit dot) to micro inspection view (procedural articulated spider rig).
+  - [ ] Wire player state & local Ziran to procedural spider leg kinematics, eye glow, and trail rendering.
+- [ ] **Phase 5 — Space 5 (`items-ecology`): Unified Ecological Item System (~7 hrs)**
+  - [ ] Implement unified `Item` entity architecture differentiated by Ziran into creatures, plants, and objects.
+  - [ ] Implement passive (`consumable`, `carryable`) and active (`walks`, `eats`, `carries`, `moves_land`) ability resolvers with 64-type target masks (e.g. `eats: [64, 63, 62]`).
+  - [ ] Build `05_EcologyLab.js` sandbox demonstrating self-sustaining creature/plant generation and consumption loops.
+- [ ] **Phase 6 — Space 6 (`visuals-maia-ziran`) & World Progression (~8 hrs)**
+  - [ ] Author procedural visual themes mapping the 64 I Ching states to background shader uniforms (`Maia`) and cell/entity styles (`Ziran`).
+  - [ ] Build the Cosmic Constellation world map & node gating controller (connecting major shards with woven silk threads as zones are completed).
+
 ---
 
 ## 1. Grouped Design Spaces
@@ -96,7 +198,7 @@ To avoid a cluttered test list and prevent deep rewrites as mechanics evolve, th
 
 ```mermaid
 flowchart TD
-    subgraph Shared["Shared Feature Modules (src/modules/ & src/ecs/)"]
+    subgraph Shared["Shared Feature Modules (src/world/ & src/ecs/)"]
         M1["world-graph (Cells, N-gon, Fracture Graph)"]
         M2["cell-physics (Gravity, Push/Pull, Equilibrium)"]
         M3["yijing-energy (64 Types, Maia & Ziran)"]
@@ -131,67 +233,6 @@ flowchart TD
 
 ---
 
-## 3. Raw Idea Capture Log
+## License
 
-- Core identity: **Refracture** — a game about a spider, and about neurodivergence.
-- World composition: Two primary spatial elements — **platforms (land)** and **space (sky)**.
-- Player representation & zoom:
-  - At normal view, the player is shown as a **small dot**.
-  - Pressing a **zoom button** zooms in on the player, revealing the **image of a spider**.
-- State relationship:
-  - The **spider's visual appearance changes** based on **player state**.
-  - **Player state** is manipulated by **universe state**.
-- Land / World structure & Graph metadata:
-  - The land is made of **chunks (cells)**, represented in metadata as a **graph**:
-    - Each **corner** is tracked as a unique `id` with $(x, y)$ coordinates.
-    - Each **edge** is defined by two corner IDs; neighboring edges are identified naturally because they share a corner ID.
-    - Each **cell** is a unique collection of edge IDs (`edgeIds`); the edges make the cells, and shared edge IDs implicitly define original neighbors without storing extra neighbor metadata.
-  - Each chunk is a shard of a **fractured whole**, like a **pane of broken glass**.
-  - When all edges of the graph are placed in their correct positions, the chunks form a complete **circle 1 universe wide**, **but the land will be scrambled**.
-  - Scale: The player is **1/nth of the universe** (exact scale to be tuned for fun during development).
-- Seeding, Fractures & Coordinate Units:
-  - Unit definition: **1 player area = 1 unit circle** (the size of the player).
-  - Universe minimum size: Always **1,000 player diameters across or more**.
-  - Fracture / chunk sizes: Seeding a universe generates fractures ranging from **100 player areas** up to **1/100th of the universe size**.
-  - **Vector scalable**: Units-to-pixels translation is dynamic based on current **zoom** and **universe size**.
-- Cells, Geometry & Fracture Generation Algorithm:
-  - **Cells**: Each piece of land is called a **cell**.
-  - **Cell topology**: Each cell has $x$ **edges**, and each edge has two **corners** (each corner defined by two coordinates $(x, y)$).
-  - **Universe boundary (N-gon)**:
-    - The circular universe is approximated as a regular **N-gon** so boundary corners and edges already exist to close outer cells.
-    - The number of boundary corners/edges should fit cleanly into an **even bit / power-of-two** count (e.g., **128** corners/edges).
-  - **Procedural fracture generation**:
-    - Start with the N-gon circle and a randomly chosen **fracture point**.
-    - Propagate **fracture lines** outward toward the universe boundary using **Perlin noise**.
-    - **Branch** off at random angles controlled by a branching variable.
-    - **Cells** are formed wherever fracture branches **intersect** one another or **reach the boundary edges**.
-- Sky, Coordinate Space & Cell Gravity:
-  - **Sky**: Anything that is not a piece of land (cell).
-  - **Limitless space**: The universe exists in a **64-bit address space** for $(x, y)$ coordinates.
-  - **Gravitational pull between cells**:
-    - Land units (cells) exert **gravitational pull** on one another based on their **mass**.
-    - Initially, **mass = cell size (area)**, with per-cell **density** introduced later based on emergent design properties discovered during development.
-- Player Base Abilities & Item System:
-  - **Starting player abilities**:
-    - Walk around on platforms (cells).
-    - Jump from platform to platform.
-    - Touch **items** (touching an item impacts *some* state).
-  - **Items & Abilities**:
-    - Items possess **passive abilities** (e.g., *consumable*, *carryable*) and **active abilities** (e.g., *walks*, *eats*, *carries*).
-    - Each ability defines a **range/set of valid targets** (e.g., `eats: [x, y, z]`, `carries: [d, e, f]`, where `x, y, z` correspond to energy types like `64, 63, 62`).
-    - **Creatures vs. Items (Ecological Loop)**: Items (acting as *creatures*) can **generate** and **consume** other items based on their abilities.
-    - **Ziran-Driven Item Differentiation & Energy Transmission**:
-      - What differentiates an item (e.g., creature, plant, object, and its behavior/role) depends on its **Ziran** (local Yijing state).
-      - Item abilities can **transmit Yijing energy** in various ways, with exact transmission mechanics discovered and tuned emergently for fun gameplay.
-- 64-Type Energy System:
-  - **64 unnamed energy types** (`1..64` or `0..63`).
-  - **Cell stored energy**: Each land segment (cell) holds stored energy across the 64 types.
-  - **Background energy**: The universe/background also has energy measured across the same 64 types (calculated via a system we will develop iteratively).
-  - **Universal entity interaction**: Every entity (**item**, **land/cell**, **player**) has distinct interactions with the 64 energy types (and ability targets like `x, y, z` map directly to energy type indices such as `64, 63, 62`).
-- Land Manipulation, Equilibrium & Yijing State:
-  - **Pushing / Pulling / Manipulating Land**: Land cells can be pushed, pulled, and manipulated both by the **player** and by **items** that have land-moving abilities.
-  - **Equilibrium & Yijing (I Ching) State**: By default, land cells seek **equilibrium** governed by **physics**, modified by the current **Yijing state** (connecting with the 64-type structure).
-  - **Visual Language of Yijing States**:
-    - **64 I Ching Themes**: Each of the 64 energy/Yijing states has a distinct theme based on the I Ching.
-    - **Maia (Universal Yijing State)**: Visual elements that hint toward the universal state of the Yijing — driving generated **colors, actions, and visual styles for the background**.
-    - **Ziran (Local Yijing State)**: Visual elements that hint toward the local state of the Yijing — driving the visual style of **items (creatures)**, **items (plants)**, and **items (objects)**.
+Released under the [MIT License](LICENSE).

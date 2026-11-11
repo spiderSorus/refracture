@@ -1,7 +1,8 @@
 {
   "name": "refracture",
   "version": "1.0.0",
-  "description": "Phaser + Electron Project",
+  "description": "Atmospheric 2D physics-platformer and procedural world-graph sandbox built with Phaser 3, custom WebGL shaders, and Electron.",
+  "license": "MIT",
   "main": "src/main.js",
   "type": "commonjs",
   "scripts": {

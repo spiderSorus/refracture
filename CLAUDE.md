@@ -1,9 +1,7 @@
 # CLAUDE.md — Refracture Project Guidelines
 
 ## Workspace & Git Rules
-- **`code_root`: `/workspace/project`** — All project files (`./runserver`, `package.json`, `vite.config.js`, `index.html`, `src/`, `scripts/`, `docs/`, `assets/`) reside directly in `/workspace/project` in the sandbox.
-- **Do NOT run `git init` or `git clone` in this project.**
-- Leave out and do not commit dependency, cache, and build folders (`node_modules/`, `.venv/`, `venv/`, `__pycache__/`, `.next/`, `dist/`, `build/`).
+- Leave out and do not commit dependency, cache, secret, and build folders (`node_modules/`, `.venv/`, `venv/`, `__pycache__/`, `.next/`, `dist/`, `build/`, `.env`).
 
 ## Project Overview
 **Refracture** is a Phaser 3 + Electron physics-platformer and experimental game about a jumping spider navigating a fractured cosmos (`A game about a spider. And neurodivergence.`). It uses a custom Entity Component System (ECS), a procedural N-gon Perlin fracture graph (`FractureGraph`), custom WebGL shader pipelines, and a dual-runtime architecture separating the **Lab Suite** from the **Main Game Runtime**.
